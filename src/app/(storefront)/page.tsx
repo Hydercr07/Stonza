@@ -1,20 +1,32 @@
 import { Hero } from "@/components/storefront/hero";
 import {
+  FeaturedCategoriesSection,
   FeaturedCollectionsSection,
   FeaturedProductsSection,
   StorySection,
 } from "@/components/storefront/sections";
-import { getHeroSettings, getHomepageSections, listCollections, listJournalPosts, listProducts } from "@/lib/data/store";
+import {
+  getHeroSettings,
+  getHomepageSections,
+  getLabelMap,
+  listCategories,
+  listCollections,
+  listJournalPosts,
+  listProducts,
+} from "@/lib/data/store";
 
 export default async function HomePage() {
-  const [hero, sections, featuredCollections, featuredProducts, newProducts] = await Promise.all([
+  const [hero, sections, labels, featuredCategories, featuredCollections, featuredProducts, newProducts] = await Promise.all([
     getHeroSettings(),
     getHomepageSections(),
+    getLabelMap(),
+    listCategories({ featuredOnly: true }),
     listCollections(true),
     listProducts({ featuredOnly: true }),
     listProducts({ newOnly: true }),
   ]);
 
+  const categorySection = sections.find((section) => section.key === "featured-categories");
   const collectionSection = sections.find((section) => section.key === "featured-collections");
   const signatureSection = sections.find((section) => section.key === "signature-stones");
   const storySection = sections.find((section) => section.key === "born-beneath-earth");
@@ -24,13 +36,14 @@ export default async function HomePage() {
   return (
     <>
       <Hero hero={hero} />
+      {categorySection ? <FeaturedCategoriesSection section={categorySection} categories={featuredCategories.slice(0, 3)} /> : null}
       {collectionSection ? <FeaturedCollectionsSection section={collectionSection} collections={featuredCollections} /> : null}
       {signatureSection ? <FeaturedProductsSection eyebrow="Featured Stones" section={signatureSection} products={featuredProducts.slice(0, 3)} /> : null}
       {storySection ? <StorySection section={storySection} /> : null}
       {authenticitySection ? <FeaturedProductsSection eyebrow="New Arrivals" section={authenticitySection} products={newProducts.slice(0, 3)} /> : null}
       <section className="container-shell py-18">
         <div className="stone-panel rounded-[2rem] p-8 md:p-12">
-          <p className="text-xs uppercase tracking-[0.28em] text-accent">Journal</p>
+          <p className="text-xs uppercase tracking-[0.28em] text-accent">{labels.homepageJournalEyebrow}</p>
           <div className="mt-5 grid gap-6 md:grid-cols-2">
             {journalPosts.map((post) => (
               <a key={post.id} href={`/journal/${post.slug}`} className="rounded-[1.5rem] border border-white/10 p-6">

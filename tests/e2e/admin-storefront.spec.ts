@@ -1,16 +1,16 @@
 import path from "node:path";
 import { test, expect } from "@playwright/test";
 
-const ownerEmail = process.env.OWNER_EMAIL ?? "owner@stonza.local";
-const ownerPassword = "stonza-admin-demo";
 const categoryName = `Playwright Category ${Date.now()}`;
 const productName = `Playwright Stone ${Date.now()}`;
 const editedProductName = `${productName} Edited`;
 
 async function login(page: import("@playwright/test").Page) {
   await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(ownerEmail);
-  await page.getByLabel("Password").fill(ownerPassword);
+  const emailInput = page.getByLabel("Email");
+  const passwordInput = page.getByLabel("Password");
+  await emailInput.fill(await emailInput.inputValue());
+  await passwordInput.fill(await passwordInput.inputValue());
   await page.getByRole("button", { name: "Enter admin portal" }).click();
   await expect(page).toHaveURL(/\/admin$/);
 }
@@ -28,21 +28,23 @@ test.describe.serial("admin and storefront flows", () => {
 
   test("owner can create a category", async ({ page }) => {
     await login(page);
-    await page.goto("/admin/categories");
-    await page.getByPlaceholder("Name").fill(categoryName);
-    await page.getByPlaceholder("Description").fill("Playwright generated category for critical admin mutation testing.");
+    await page.goto("/admin/categories/new");
+    await page.getByLabel("Name").fill(categoryName);
+    await page.getByLabel("Short description").fill("Playwright generated category for critical admin mutation testing.");
+    await page.getByLabel("Full description").fill("Playwright generated category for critical admin mutation testing with full editorial detail.");
+    await page.getByLabel("Alt text").fill(`${categoryName} image`);
+    await page.locator('input[type="file"]').first().setInputFiles(path.join(process.cwd(), "public", "brand", "stonza-logo.png"));
+    await page.waitForTimeout(1500);
     await page.getByRole("button", { name: "Save category" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/categories\//);
+    await expect(page.getByRole("heading", { name: categoryName })).toBeVisible();
   });
 
   test("owner can upload product media", async ({ page }) => {
     await login(page);
     await page.goto("/admin/media");
     await page.locator('input[type="file"]').setInputFiles(path.join(process.cwd(), "public", "brand", "stonza-logo.png"));
-    await Promise.all([
-      page.waitForURL(/\/admin\/media$/),
-      page.getByRole("button", { name: "Upload asset" }).click(),
-    ]);
+    await page.waitForTimeout(1500);
     await expect(page.locator("p.truncate").filter({ hasText: "stonza-logo.png" }).first()).toBeVisible();
   });
 
@@ -57,6 +59,8 @@ test.describe.serial("admin and storefront flows", () => {
     await page.getByLabel("Inventory", { exact: true }).fill("1");
     await page.getByLabel("Stone type").fill("Quartz");
     await page.getByLabel("Origin").fill("Pakistan");
+    await page.locator('input[type="file"]').first().setInputFiles(path.join(process.cwd(), "public", "brand", "stonza-logo.png"));
+    await page.waitForTimeout(1500);
     await page.getByLabel("Status").selectOption("published");
     await page.getByRole("button", { name: "Save product" }).click();
     await expect(page).toHaveURL(/\/admin\/products\//);
@@ -96,12 +100,12 @@ test.describe.serial("admin and storefront flows", () => {
   test("hero can switch between image and video configuration", async ({ page }) => {
     await login(page);
     await page.goto("/admin/hero");
-    await page.getByLabel("Mode").selectOption("video");
+    await page.getByRole("button", { name: "Background Video" }).click();
     await page.getByRole("button", { name: "Save hero" }).click();
-    await expect(page.getByLabel("Mode")).toHaveValue("video");
-    await page.getByLabel("Mode").selectOption("interactive-3d");
+    await expect(page.locator('input[name="activeMode"]')).toHaveValue("video");
+    await page.getByRole("button", { name: "Interactive 3D Hero" }).click();
     await page.getByRole("button", { name: "Save hero" }).click();
-    await expect(page.getByLabel("Mode")).toHaveValue("interactive-3d");
+    await expect(page.locator('input[name="activeMode"]')).toHaveValue("interactive-3d");
   });
 
   test("public users cannot call protected admin mutations", async ({ request }) => {

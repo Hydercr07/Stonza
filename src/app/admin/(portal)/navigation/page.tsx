@@ -1,3 +1,7 @@
-export default function AdminNavigationPage() {
-  return <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-8 text-white/68">Navigation management is planned as a database-backed menu editor once the settings and page CRUD layer is complete.</div>;
+import { NavigationManagerForm } from "@/components/admin/navigation-manager-form";
+import { getContentLabels, getSiteSettings } from "@/lib/data/store";
+
+export default async function AdminNavigationPage() {
+  const [settings, labels] = await Promise.all([getSiteSettings(), getContentLabels()]);
+  return <NavigationManagerForm settings={settings} labels={labels} />;
 }

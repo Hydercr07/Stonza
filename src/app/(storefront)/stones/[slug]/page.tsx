@@ -2,7 +2,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/shared/ui/button";
 import { RichText } from "@/components/shared/rich-text";
-import { getProductBySlug, listProducts } from "@/lib/data/store";
+import { getLabelMap, getProductBySlug, getSiteSettings, listProducts } from "@/lib/data/store";
 import { formatMoney } from "@/lib/utils";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -10,7 +10,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const related = (await listProducts()).filter((item) => product.relatedProductSlugs.includes(item.slug));
+  const [labels, settings, relatedProducts] = await Promise.all([
+    getLabelMap(),
+    getSiteSettings(),
+    listProducts(),
+  ]);
+  const related = relatedProducts.filter((item) => product.relatedProductSlugs.includes(item.slug));
   const unavailable = ["sold", "out_of_stock", "archived", "trash"].includes(product.status) || product.inventoryQuantity <= 0;
 
   return (
@@ -45,14 +50,28 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button disabled={unavailable || !product.allowCartPurchase}>Add to cart</Button>
-            <Button variant="outline">WhatsApp enquiry</Button>
+            <Button variant="outline">{labels.productWhatsappLabel}</Button>
           </div>
           <RichText html={product.description} className="prose prose-invert max-w-none text-white/70" />
+          <div className="grid gap-4 rounded-[1.5rem] border border-white/10 p-6 text-sm text-white/68">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-white/42">{labels.productCertificateHeading}</p>
+              <p className="mt-2">{product.certificateNumber || "Certificate details available on request."}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-white/42">{labels.productShippingHeading}</p>
+              <p className="mt-2">{settings.shippingText}</p>
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-white/42">{labels.productReturnsHeading}</p>
+              <p className="mt-2">{settings.returnsText}</p>
+            </div>
+          </div>
         </div>
       </div>
       {related.length ? (
         <div className="mt-16">
-          <h2 className="text-display mb-6 text-4xl text-white">Related stones</h2>
+          <h2 className="text-display mb-6 text-4xl text-white">{labels.productRelatedHeading}</h2>
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {related.map((item) => (
               <a key={item.id} href={`/stones/${item.slug}`} className="rounded-[1.5rem] border border-white/10 p-5">

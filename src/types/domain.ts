@@ -8,7 +8,9 @@ export type ProductStatus =
   | "archived"
   | "trash";
 
-export type HeroMode = "image" | "video" | "interactive-3d" | "hybrid";
+export type ContentStatus = "draft" | "published" | "archived" | "trash";
+
+export type HeroMode = "carousel" | "video" | "interactive-3d" | "hybrid";
 
 export type AdminRole =
   | "owner"
@@ -20,15 +22,59 @@ export type AdminRole =
 
 export type MediaType = "image" | "video" | "document" | "model" | "brand";
 
+export interface NavigationItem {
+  id: string;
+  label: string;
+  href: string;
+  order: number;
+  visible: boolean;
+  children?: NavigationItem[];
+}
+
+export interface FooterSection {
+  id: string;
+  title: string;
+  order: number;
+  links: Array<{
+    id: string;
+    label: string;
+    href: string;
+  }>;
+}
+
+export interface ContentLabel {
+  id: string;
+  key: string;
+  label: string;
+  description?: string;
+  updatedAt: string;
+  updatedBy: string;
+}
+
 export interface Category {
   id: string;
   name: string;
   slug: string;
+  shortDescription: string;
   description: string;
   featuredImage: string;
-  active: boolean;
-  featured: boolean;
+  heroImage?: string;
+  mobileImage?: string;
+  video?: string;
+  altText: string;
+  parentCategorySlug?: string;
   sortOrder: number;
+  featured: boolean;
+  active: boolean;
+  status: ContentStatus;
+  seoTitle?: string;
+  seoDescription?: string;
+  openGraphImage?: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+  updatedBy: string;
+  deletedAt?: string;
 }
 
 export interface Collection {
@@ -39,6 +85,17 @@ export interface Collection {
   featuredImage: string;
   heroMedia: string;
   active: boolean;
+  featured: boolean;
+  sortOrder: number;
+}
+
+export interface ProductMediaItem {
+  id: string;
+  assetId?: string;
+  url: string;
+  altText: string;
+  fileName: string;
+  size: number;
   featured: boolean;
   sortOrder: number;
 }
@@ -61,6 +118,7 @@ export interface Product {
   allowCartPurchase: boolean;
   stoneType: string;
   categorySlug: string;
+  categorySlugs?: string[];
   collectionSlug: string;
   weight: string;
   carat: number;
@@ -78,6 +136,7 @@ export interface Product {
   certificatePdf?: string;
   featuredImage: string;
   galleryImages: string[];
+  media?: ProductMediaItem[];
   productVideo?: string;
   video360?: string;
   model3d?: string;
@@ -99,9 +158,70 @@ export interface Product {
   updatedAt: string;
 }
 
+export interface HeroSlide {
+  id: string;
+  desktopImage?: string;
+  mobileImage?: string;
+  eyebrow: string;
+  heading: string;
+  description: string;
+  primaryCtaLabel: string;
+  primaryCtaUrl: string;
+  secondaryCtaLabel: string;
+  secondaryCtaUrl: string;
+  textAlignment: "left" | "center";
+  textPosition: "start" | "center" | "end";
+  overlayOpacity: number;
+  focalPoint: string;
+  active: boolean;
+  sortOrder: number;
+}
+
+export interface HeroVideoConfig {
+  desktopVideo?: string;
+  mobileVideo?: string;
+  posterImage?: string;
+  mobilePosterImage?: string;
+  heading: string;
+  description: string;
+  primaryCtaLabel: string;
+  primaryCtaUrl: string;
+  secondaryCtaLabel: string;
+  secondaryCtaUrl: string;
+  textAlignment: "left" | "center";
+  textPosition: "start" | "center" | "end";
+  overlayOpacity: number;
+  autoplay: boolean;
+  loop: boolean;
+  muted: boolean;
+  showControls: boolean;
+  status: "draft" | "published" | "incomplete";
+}
+
+export interface HeroThreeConfig {
+  eyebrow: string;
+  heading: string;
+  subheading: string;
+  description: string;
+  primaryCtaLabel: string;
+  primaryCtaUrl: string;
+  secondaryCtaLabel: string;
+  secondaryCtaUrl: string;
+  textAlignment: "left" | "center";
+  textPosition: "start" | "center" | "end";
+  overlayOpacity: number;
+  heroHeight: "screen" | "large" | "medium";
+  showScrollIndicator: boolean;
+  model3d?: string;
+  splineUrl?: string;
+  backgroundImage?: string;
+  status: "draft" | "published" | "incomplete";
+}
+
 export interface HeroSettings {
   id: string;
   mode: HeroMode;
+  activeMode: HeroMode;
   desktopBannerImage?: string;
   mobileBannerImage?: string;
   desktopBackgroundVideo?: string;
@@ -128,6 +248,25 @@ export interface HeroSettings {
   showControls: boolean;
   showScrollIndicator: boolean;
   status: "draft" | "published";
+  carousel: {
+    autoplay: boolean;
+    autoplayInterval: number;
+    loop: boolean;
+    pauseOnHover: boolean;
+    showArrows: boolean;
+    showDots: boolean;
+    transitionStyle: "fade" | "slide";
+    slides: HeroSlide[];
+    status: "draft" | "published" | "incomplete";
+  };
+  video: HeroVideoConfig;
+  interactive3d: HeroThreeConfig;
+  hybrid: HeroThreeConfig & {
+    desktopImage?: string;
+    mobileImage?: string;
+  };
+  updatedAt: string;
+  updatedBy: string;
 }
 
 export interface HomepageSection {
@@ -136,6 +275,7 @@ export interface HomepageSection {
   enabled: boolean;
   order: number;
   heading: string;
+  eyebrow?: string;
   body: string;
   layout: string;
   background: string;
@@ -143,6 +283,12 @@ export interface HomepageSection {
   ctaUrl?: string;
   productSlugs?: string[];
   collectionSlugs?: string[];
+  categorySlugs?: string[];
+  testimonial?: string;
+  media?: string;
+  status?: "draft" | "published";
+  updatedAt?: string;
+  updatedBy?: string;
 }
 
 export interface ManagedPage {
@@ -179,6 +325,7 @@ export interface MediaAsset {
   uploadedBy: string;
   uploadedAt: string;
   usage: string[];
+  deletedAt?: string;
 }
 
 export interface SiteSettings {
@@ -197,13 +344,74 @@ export interface SiteSettings {
   announcement: {
     enabled: boolean;
     text: string;
+    linkLabel?: string;
     link?: string;
+    backgroundStyle?: "graphite" | "ivory" | "accent";
   };
+  brand: {
+    name: string;
+    tagline: string;
+    logo: string;
+    lightLogo: string;
+    favicon: string;
+    colors: {
+      primary: string;
+      secondary: string;
+      accent: string;
+      surface: string;
+    };
+    headingFont: string;
+    bodyFont: string;
+  };
+  header: {
+    style: "transparent" | "solid";
+    sticky: boolean;
+    showSearch: boolean;
+    showWishlist: boolean;
+    showCart: boolean;
+    contactButton: {
+      label: string;
+      destination: string;
+      enabled: boolean;
+    };
+    navigation: NavigationItem[];
+  };
+  footer: {
+    description: string;
+    newsletterHeading: string;
+    newsletterBody: string;
+    copyright: string;
+    legalLinks: NavigationItem[];
+    sections: FooterSection[];
+  };
+  social: {
+    instagram?: string;
+    facebook?: string;
+    tiktok?: string;
+    youtube?: string;
+    pinterest?: string;
+  };
+  seo: {
+    defaultTitle: string;
+    defaultDescription: string;
+    defaultOgImage: string;
+  };
+  labels: Record<string, string>;
   contactButton: {
     label: string;
     destination: string;
     enabled: boolean;
   };
+}
+
+export interface ActivityLogEntry {
+  id: string;
+  action: string;
+  actor: string;
+  entity: string;
+  entityId: string;
+  timestamp: string;
+  detail?: string;
 }
 
 export interface StoreData {
@@ -216,12 +424,6 @@ export interface StoreData {
   pages: ManagedPage[];
   journalPosts: JournalPost[];
   mediaAssets: MediaAsset[];
-  activityLogs: Array<{
-    id: string;
-    action: string;
-    actor: string;
-    entity: string;
-    entityId: string;
-    timestamp: string;
-  }>;
+  contentLabels?: ContentLabel[];
+  activityLogs: ActivityLogEntry[];
 }

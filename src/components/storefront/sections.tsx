@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { CollectionCard, ProductCard } from "@/components/storefront/cards";
+import { CategoryCard, CollectionCard, ProductCard } from "@/components/storefront/cards";
 import { Button } from "@/components/shared/ui/button";
-import type { Collection, HomepageSection, Product } from "@/types/domain";
+import type { Category, Collection, HomepageSection, Product } from "@/types/domain";
 
 export function SectionHeading({
   eyebrow,
@@ -41,10 +41,29 @@ export function FeaturedCollectionsSection({
 }) {
   return (
     <section className="container-shell py-18">
-      <SectionHeading eyebrow="Collections" title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
+      <SectionHeading eyebrow={section.eyebrow ?? "Collections"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
       <div className="grid gap-6 lg:grid-cols-3">
         {collections.map((collection) => (
           <CollectionCard key={collection.id} collection={collection} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function FeaturedCategoriesSection({
+  section,
+  categories,
+}: {
+  section: HomepageSection;
+  categories: Category[];
+}) {
+  return (
+    <section className="container-shell py-18">
+      <SectionHeading eyebrow={section.eyebrow ?? "Categories"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
+      <div className="grid gap-6 lg:grid-cols-3">
+        {categories.map((category) => (
+          <CategoryCard key={category.id} category={category} />
         ))}
       </div>
     </section>
@@ -62,7 +81,7 @@ export function FeaturedProductsSection({
 }) {
   return (
     <section className="container-shell py-18">
-      <SectionHeading eyebrow={eyebrow} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
+      <SectionHeading eyebrow={section.eyebrow ?? eyebrow} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />

@@ -13,11 +13,25 @@ export default async function StorefrontLayout({
   return (
     <div className="min-h-screen bg-background text-foreground">
       {settings.announcement.enabled ? (
-        <AnnouncementBar text={settings.announcement.text} href={settings.announcement.link} />
+        <AnnouncementBar
+          text={settings.announcement.text}
+          href={settings.announcement.link}
+          linkLabel={settings.announcement.linkLabel}
+        />
       ) : null}
-      <Header contactLabel={settings.contactButton.label} contactHref={settings.contactButton.destination} />
+      <Header
+        logo={settings.brand.lightLogo}
+        logoAlt={`${settings.brand.name} ${settings.brand.tagline}`}
+        contactLabel={settings.header.contactButton.label}
+        contactHref={settings.header.contactButton.destination}
+        navigation={settings.header.navigation}
+        showSearch={settings.header.showSearch}
+        showWishlist={settings.header.showWishlist}
+        showCart={settings.header.showCart}
+        sticky={settings.header.sticky}
+      />
       <main className="flex-1">{children}</main>
-      <Footer />
+      <Footer settings={settings} />
     </div>
   );
 }

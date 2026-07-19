@@ -3,9 +3,9 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { addMediaAsset } from "@/lib/data/store";
 import { parseAdminSessionCookie } from "@/lib/auth/session";
-import type { MediaType } from "@/types/domain";
+import { safeFilename, validateMediaInput } from "@/lib/media";
+import type { MediaAsset, MediaType } from "@/types/domain";
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024;
 const mimeGroups: Record<string, { type: MediaType; dir: string }> = {
   "image/jpeg": { type: "image", dir: "images" },
   "image/png": { type: "image", dir: "images" },
@@ -18,36 +18,22 @@ const mimeGroups: Record<string, { type: MediaType; dir: string }> = {
   "model/gltf+json": { type: "model", dir: "models" },
 };
 
-function safeFilename(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/-+/g, "-");
+function unauthorized() {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
-export async function POST(request: Request) {
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const sessionCookie = cookieHeader
-    .split(";")
-    .map((entry) => entry.trim())
-    .find((entry) => entry.startsWith("stonza-admin-session="))
-    ?.slice("stonza-admin-session=".length);
-  const session = parseAdminSessionCookie(sessionCookie ? decodeURIComponent(sessionCookie) : undefined);
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  const formData = await request.formData();
-  const file = formData.get("file");
-
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Missing file" }, { status: 400 });
-  }
-
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: "File too large" }, { status: 400 });
+async function saveFile(file: File, sessionEmail: string): Promise<MediaAsset> {
+  const validationError = validateMediaInput({
+    mimeType: file.type,
+    size: file.size,
+  });
+  if (validationError) {
+    throw new Error(validationError);
   }
 
   const mime = mimeGroups[file.type];
   if (!mime) {
-    return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
+    throw new Error("Unsupported file type");
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
@@ -59,7 +45,7 @@ export async function POST(request: Request) {
   await fs.mkdir(outputDir, { recursive: true });
   await fs.writeFile(absolutePath, bytes);
 
-  await addMediaAsset({
+  const asset: MediaAsset = {
     id: `media-${crypto.randomUUID()}`,
     type: mime.type,
     path: absolutePath,
@@ -67,12 +53,49 @@ export async function POST(request: Request) {
     originalFilename: file.name,
     mimeType: file.type,
     size: file.size,
-    altText: "",
+    altText: file.name.replace(/\.[^.]+$/, ""),
     caption: "",
-    uploadedBy: session.email,
+    uploadedBy: sessionEmail,
     uploadedAt: new Date().toISOString(),
     usage: [],
-  });
+  };
 
-  return NextResponse.redirect(new URL("/admin/media", request.url), { status: 303 });
+  await addMediaAsset(asset);
+  return asset;
+}
+
+export async function POST(request: Request) {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const sessionCookie = cookieHeader
+    .split(";")
+    .map((entry) => entry.trim())
+    .find((entry) => entry.startsWith("stonza-admin-session="))
+    ?.slice("stonza-admin-session=".length);
+  const session = parseAdminSessionCookie(sessionCookie ? decodeURIComponent(sessionCookie) : undefined);
+  if (!session) {
+    return unauthorized();
+  }
+
+  const formData = await request.formData();
+  const entries = formData.getAll("file").filter((entry): entry is File => entry instanceof File);
+
+  if (!entries.length) {
+    return NextResponse.json({ error: "Missing file" }, { status: 400 });
+  }
+
+  try {
+    const assets = [];
+    for (const file of entries) {
+      assets.push(await saveFile(file, session.email));
+    }
+
+    if ((request.headers.get("accept") ?? "").includes("application/json")) {
+      return NextResponse.json(entries.length === 1 ? assets[0] : assets);
+    }
+
+    return NextResponse.redirect(new URL("/admin/media", request.url), { status: 303 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Upload failed";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

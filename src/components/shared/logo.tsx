@@ -7,13 +7,22 @@ interface LogoProps {
   light?: boolean;
   className?: string;
   priority?: boolean;
+  src?: string;
+  alt?: string;
 }
 
-export function Logo({ href = "/", light = false, className, priority = false }: LogoProps) {
+export function Logo({
+  href = "/",
+  light = false,
+  className,
+  priority = false,
+  src = "/brand/stonza-logo.png",
+  alt = "STONZA Original Stones",
+}: LogoProps) {
   const image = (
     <Image
-      src="/brand/stonza-logo.png"
-      alt="STONZA Original Stones"
+      src={src}
+      alt={alt}
       width={315}
       height={95}
       priority={priority}

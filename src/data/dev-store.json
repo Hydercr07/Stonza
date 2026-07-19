@@ -15,7 +15,194 @@
     "announcement": {
       "enabled": true,
       "text": "Private sourcing appointments now open for the July 2026 collection release.",
-      "link": "/contact"
+      "linkLabel": "Book now",
+      "link": "/contact",
+      "backgroundStyle": "graphite"
+    },
+    "brand": {
+      "name": "STONZA",
+      "tagline": "ORIGINAL STONES",
+      "logo": "/brand/stonza-logo.png",
+      "lightLogo": "/brand/stonza-logo.png",
+      "favicon": "/favicon.ico",
+      "colors": {
+        "primary": "#0d0e0e",
+        "secondary": "#f3ede1",
+        "accent": "#d5c7a9",
+        "surface": "#161818"
+      },
+      "headingFont": "Cormorant Garamond",
+      "bodyFont": "Inter"
+    },
+    "header": {
+      "style": "transparent",
+      "sticky": true,
+      "showSearch": true,
+      "showWishlist": true,
+      "showCart": true,
+      "contactButton": {
+        "label": "WhatsApp Concierge",
+        "destination": "/contact",
+        "enabled": true
+      },
+      "navigation": [
+        {
+          "id": "nav-shop",
+          "label": "Shop",
+          "href": "/shop",
+          "order": 1,
+          "visible": true
+        },
+        {
+          "id": "nav-collections",
+          "label": "Collections",
+          "href": "/collections",
+          "order": 2,
+          "visible": true
+        },
+        {
+          "id": "nav-journal",
+          "label": "Journal",
+          "href": "/journal",
+          "order": 3,
+          "visible": true
+        },
+        {
+          "id": "nav-authenticity",
+          "label": "Authenticity",
+          "href": "/authenticity",
+          "order": 4,
+          "visible": true
+        },
+        {
+          "id": "nav-about",
+          "label": "About",
+          "href": "/about",
+          "order": 5,
+          "visible": true
+        },
+        {
+          "id": "nav-contact",
+          "label": "Contact",
+          "href": "/contact",
+          "order": 6,
+          "visible": true
+        }
+      ]
+    },
+    "footer": {
+      "description": "Natural stones selected for provenance, atmosphere and enduring presence. STONZA pairs editorial curation with transparent authenticity.",
+      "newsletterHeading": "Private release notes",
+      "newsletterBody": "Receive quiet release alerts, sourcing notes and collector updates.",
+      "copyright": "© 2026 STONZA. All rights reserved.",
+      "legalLinks": [
+        {
+          "id": "footer-legal-1",
+          "label": "Privacy Policy",
+          "href": "/privacy-policy",
+          "order": 1,
+          "visible": true
+        },
+        {
+          "id": "footer-legal-2",
+          "label": "Terms & Conditions",
+          "href": "/terms-and-conditions",
+          "order": 2,
+          "visible": true
+        },
+        {
+          "id": "footer-legal-3",
+          "label": "Shipping & Returns",
+          "href": "/shipping-and-returns",
+          "order": 3,
+          "visible": true
+        }
+      ],
+      "sections": [
+        {
+          "id": "footer-explore",
+          "title": "Explore",
+          "order": 1,
+          "links": [
+            {
+              "id": "footer-shop",
+              "label": "Shop",
+              "href": "/shop"
+            },
+            {
+              "id": "footer-collections",
+              "label": "Collections",
+              "href": "/collections"
+            },
+            {
+              "id": "footer-journal",
+              "label": "Journal",
+              "href": "/journal"
+            },
+            {
+              "id": "footer-about",
+              "label": "About",
+              "href": "/about"
+            }
+          ]
+        },
+        {
+          "id": "footer-legal",
+          "title": "Legal",
+          "order": 2,
+          "links": [
+            {
+              "id": "footer-privacy",
+              "label": "Privacy Policy",
+              "href": "/privacy-policy"
+            },
+            {
+              "id": "footer-terms",
+              "label": "Terms & Conditions",
+              "href": "/terms-and-conditions"
+            },
+            {
+              "id": "footer-shipping",
+              "label": "Shipping & Returns",
+              "href": "/shipping-and-returns"
+            }
+          ]
+        }
+      ]
+    },
+    "social": {
+      "instagram": "",
+      "facebook": "",
+      "tiktok": "",
+      "youtube": "",
+      "pinterest": ""
+    },
+    "seo": {
+      "defaultTitle": "STONZA | ORIGINAL STONES",
+      "defaultDescription": "Original natural stones, elevated through cinematic curation and authentic provenance.",
+      "defaultOgImage": "/brand/stonza-logo.png"
+    },
+    "labels": {
+      "homepageJournalEyebrow": "Journal",
+      "homepageJournalHeading": "Field Notes",
+      "homepageJournalBody": "Editorial notes on provenance, presentation and the mineral worlds behind each stone.",
+      "homepageCategoryEyebrow": "Featured Categories",
+      "homepageCategoryHeading": "Stone families with distinct purpose",
+      "homepageCategoryBody": "Statement pieces, desk objects and architectural stones arranged with clarity.",
+      "shopEyebrow": "Shop",
+      "shopHeading": "Curated stones",
+      "shopBody": "Search, filter and discover original stones selected for provenance, atmosphere and collector value.",
+      "shopEmpty": "No stones matched the current filters.",
+      "collectionsEyebrow": "Collections",
+      "collectionsHeading": "Mineral worlds with distinct tone",
+      "collectionsBody": "Collections curated by atmosphere, tonal family and geological personality.",
+      "productRelatedHeading": "Related Stones",
+      "productShippingHeading": "Shipping",
+      "productReturnsHeading": "Returns",
+      "productEnquiryLabel": "Request Details",
+      "productWhatsappLabel": "WhatsApp Concierge",
+      "productCertificateHeading": "Certificate & Provenance",
+      "notFoundTitle": "The stone you were looking for could not be found."
     },
     "contactButton": {
       "label": "WhatsApp Concierge",
@@ -25,7 +212,8 @@
   },
   "hero": {
     "id": "hero-1",
-    "mode": "video",
+    "mode": "interactive-3d",
+    "activeMode": "interactive-3d",
     "desktopBannerImage": "/placeholders/hero-strata.svg",
     "mobileBannerImage": "/placeholders/hero-strata-mobile.svg",
     "videoPoster": "/placeholders/hero-poster.svg",
@@ -47,9 +235,112 @@
     "muted": true,
     "showControls": false,
     "showScrollIndicator": true,
-    "status": "published"
+    "status": "published",
+    "carousel": {
+      "autoplay": true,
+      "autoplayInterval": 6500,
+      "loop": true,
+      "pauseOnHover": true,
+      "showArrows": true,
+      "showDots": true,
+      "transitionStyle": "fade",
+      "slides": [
+        {
+          "id": "slide-1",
+          "desktopImage": "/placeholders/hero-strata.svg",
+          "mobileImage": "/placeholders/hero-strata-mobile.svg",
+          "eyebrow": "Original stones. Editorial rarity.",
+          "heading": "Mineral luxury shaped by time, pressure and provenance.",
+          "description": "Discover obsidian drama, quiet platinum tones and collector-grade pieces chosen for character, origin and enduring presence.",
+          "primaryCtaLabel": "Explore the stones",
+          "primaryCtaUrl": "/shop",
+          "secondaryCtaLabel": "Read the provenance",
+          "secondaryCtaUrl": "/authenticity",
+          "textAlignment": "left",
+          "textPosition": "center",
+          "overlayOpacity": 0.46,
+          "focalPoint": "center",
+          "active": true,
+          "sortOrder": 1
+        }
+      ],
+      "status": "published"
+    },
+    "video": {
+      "posterImage": "/placeholders/hero-poster.svg",
+      "mobilePosterImage": "/placeholders/hero-strata-mobile.svg",
+      "heading": "Mineral luxury shaped by time, pressure and provenance.",
+      "description": "Discover obsidian drama, quiet platinum tones and collector-grade pieces chosen for character, origin and enduring presence.",
+      "primaryCtaLabel": "Explore the stones",
+      "primaryCtaUrl": "/shop",
+      "secondaryCtaLabel": "Read the provenance",
+      "secondaryCtaUrl": "/authenticity",
+      "textAlignment": "left",
+      "textPosition": "center",
+      "overlayOpacity": 0.46,
+      "autoplay": true,
+      "loop": true,
+      "muted": true,
+      "showControls": false,
+      "status": "draft"
+    },
+    "interactive3d": {
+      "eyebrow": "Original stones. Editorial rarity.",
+      "heading": "Mineral luxury shaped by time, pressure and provenance.",
+      "subheading": "STONZA curates singular stones with geological authenticity and cinematic presentation.",
+      "description": "Discover obsidian drama, quiet platinum tones and collector-grade pieces chosen for character, origin and enduring presence.",
+      "primaryCtaLabel": "Explore the stones",
+      "primaryCtaUrl": "/shop",
+      "secondaryCtaLabel": "Read the provenance",
+      "secondaryCtaUrl": "/authenticity",
+      "textAlignment": "left",
+      "textPosition": "center",
+      "overlayOpacity": 0.46,
+      "heroHeight": "screen",
+      "showScrollIndicator": true,
+      "backgroundImage": "/placeholders/hero-strata.svg",
+      "status": "published"
+    },
+    "hybrid": {
+      "eyebrow": "Original stones. Editorial rarity.",
+      "heading": "Mineral luxury shaped by time, pressure and provenance.",
+      "subheading": "STONZA curates singular stones with geological authenticity and cinematic presentation.",
+      "description": "Discover obsidian drama, quiet platinum tones and collector-grade pieces chosen for character, origin and enduring presence.",
+      "primaryCtaLabel": "Explore the stones",
+      "primaryCtaUrl": "/shop",
+      "secondaryCtaLabel": "Read the provenance",
+      "secondaryCtaUrl": "/authenticity",
+      "textAlignment": "left",
+      "textPosition": "center",
+      "overlayOpacity": 0.46,
+      "heroHeight": "screen",
+      "showScrollIndicator": true,
+      "backgroundImage": "/placeholders/hero-strata.svg",
+      "status": "draft",
+      "desktopImage": "/placeholders/hero-strata.svg",
+      "mobileImage": "/placeholders/hero-strata-mobile.svg"
+    },
+    "updatedAt": "2026-07-19T01:54:15.146Z",
+    "updatedBy": "hyderhorbex12@gmail.com"
   },
   "homepageSections": [
+    {
+      "id": "section-categories",
+      "key": "featured-categories",
+      "enabled": true,
+      "order": 0,
+      "heading": "Stone families with distinct purpose",
+      "eyebrow": "Featured Categories",
+      "body": "Statement pieces, desk objects and architectural stones arranged with clarity.",
+      "layout": "grid",
+      "background": "graphite",
+      "ctaLabel": "Browse categories",
+      "ctaUrl": "/shop",
+      "categorySlugs": [],
+      "status": "published",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
     {
       "id": "section-collections",
       "key": "featured-collections",
@@ -65,7 +356,11 @@
         "midnight-vein",
         "earthlight",
         "atlas-rare"
-      ]
+      ],
+      "eyebrow": "Collections",
+      "status": "published",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
     },
     {
       "id": "section-signature",
@@ -82,7 +377,11 @@
         "noir-obsidian-heart",
         "desert-calcite-prism",
         "aurora-agate-orbit"
-      ]
+      ],
+      "eyebrow": "Signature Stones",
+      "status": "published",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
     },
     {
       "id": "section-story",
@@ -94,7 +393,11 @@
       "layout": "story",
       "background": "ivory",
       "ctaLabel": "About the house",
-      "ctaUrl": "/about"
+      "ctaUrl": "/about",
+      "eyebrow": "Story",
+      "status": "published",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
     },
     {
       "id": "section-authenticity",
@@ -106,7 +409,11 @@
       "layout": "feature",
       "background": "graphite",
       "ctaLabel": "See authenticity policy",
-      "ctaUrl": "/authenticity"
+      "ctaUrl": "/authenticity",
+      "eyebrow": "Authenticity",
+      "status": "published",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
     }
   ],
   "categories": [
@@ -114,131 +421,83 @@
       "id": "cat-1",
       "name": "Statement Stones",
       "slug": "statement-stones",
+      "shortDescription": "Collector-driven centrepieces with strong silhouette and singular geological identity.",
       "description": "Collector-driven centrepieces with strong silhouette and singular geological identity.",
       "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
+      "heroImage": "/placeholders/category-statement.svg",
+      "mobileImage": "/placeholders/category-statement.svg",
+      "altText": "Statement Stones",
+      "sortOrder": 1,
       "featured": true,
-      "sortOrder": 1
+      "active": true,
+      "status": "published",
+      "openGraphImage": "/placeholders/category-statement.svg",
+      "createdAt": "2026-07-19T01:39:51.996Z",
+      "updatedAt": "2026-07-19T01:39:51.996Z",
+      "createdBy": "system",
+      "updatedBy": "system"
     },
     {
       "id": "cat-2",
       "name": "Desk Objects",
       "slug": "desk-objects",
+      "shortDescription": "Refined mineral objects for study, atmosphere and daily ritual.",
       "description": "Refined mineral objects for study, atmosphere and daily ritual.",
       "featuredImage": "/placeholders/category-desk.svg",
-      "active": true,
+      "heroImage": "/placeholders/category-desk.svg",
+      "mobileImage": "/placeholders/category-desk.svg",
+      "altText": "Desk Objects",
+      "sortOrder": 2,
       "featured": true,
-      "sortOrder": 2
+      "active": true,
+      "status": "published",
+      "openGraphImage": "/placeholders/category-desk.svg",
+      "createdAt": "2026-07-19T01:39:51.996Z",
+      "updatedAt": "2026-07-19T01:39:51.996Z",
+      "createdBy": "system",
+      "updatedBy": "system"
     },
     {
       "id": "cat-3",
       "name": "Architectural Pieces",
       "slug": "architectural-pieces",
+      "shortDescription": "Larger stones with sculptural presence and spatial drama.",
       "description": "Larger stones with sculptural presence and spatial drama.",
       "featuredImage": "/placeholders/category-architectural.svg",
-      "active": true,
+      "heroImage": "/placeholders/category-architectural.svg",
+      "mobileImage": "/placeholders/category-architectural.svg",
+      "altText": "Architectural Pieces",
+      "sortOrder": 3,
       "featured": false,
-      "sortOrder": 3
+      "active": true,
+      "status": "published",
+      "openGraphImage": "/placeholders/category-architectural.svg",
+      "createdAt": "2026-07-19T01:39:51.996Z",
+      "updatedAt": "2026-07-19T01:39:51.996Z",
+      "createdBy": "system",
+      "updatedBy": "system"
     },
     {
-      "id": "cat-90b5debd-472b-4871-a820-0c6c4ef4036e",
-      "name": "Playwright Category 1784417126031",
-      "slug": "playwright-category-1784417126031",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
+      "id": "cat-3dd50abd-2619-4add-a9c2-1a5f46863a72",
+      "name": "Playwright Category 1784426004119",
+      "slug": "playwright-category-1784426004119",
+      "shortDescription": "Playwright generated category for critical admin mutation testing.",
+      "description": "Playwright generated category for critical admin mutation testing with full editorial detail.",
+      "featuredImage": "/uploads/images/1784426014669-stonza-logo.png",
+      "heroImage": "/uploads/images/1784426014669-stonza-logo.png",
+      "mobileImage": "/uploads/images/1784426014669-stonza-logo.png",
+      "altText": "Playwright Category 1784426004119 image",
+      "sortOrder": 4,
       "featured": false,
-      "sortOrder": 4
-    },
-    {
-      "id": "cat-bac86a8b-0aa1-4477-bf17-561158c2e0f3",
-      "name": "Playwright Category 1784417194553",
-      "slug": "playwright-category-1784417194553",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
       "active": true,
-      "featured": false,
-      "sortOrder": 5
-    },
-    {
-      "id": "cat-7992a3d9-7b14-44b9-a1f9-db6197777174",
-      "name": "Playwright Category 1784417280648",
-      "slug": "playwright-category-1784417280648",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
-      "featured": false,
-      "sortOrder": 6
-    },
-    {
-      "id": "cat-d4b349db-2894-4a2e-babc-172ad3309dc3",
-      "name": "Playwright Category 1784417354939",
-      "slug": "playwright-category-1784417354939",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
-      "featured": false,
-      "sortOrder": 7
-    },
-    {
-      "id": "cat-5c7b6930-0d46-4286-ada2-f3c1c3c0e4d7",
-      "name": "Playwright Category 1784417414071",
-      "slug": "playwright-category-1784417414071",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
-      "featured": false,
-      "sortOrder": 8
-    },
-    {
-      "id": "cat-b72cd2a5-1448-4ac9-90fc-ee9b5ebd1274",
-      "name": "Playwright Category 1784417526390",
-      "slug": "playwright-category-1784417526390",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
-      "featured": false,
-      "sortOrder": 9
-    },
-    {
-      "id": "cat-9f92b709-8deb-4870-b774-aba438aade4d",
-      "name": "Playwright Category 1784417605487",
-      "slug": "playwright-category-1784417605487",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
-      "featured": false,
-      "sortOrder": 10
-    },
-    {
-      "id": "cat-b3cb595f-a914-4642-afc7-520a60973879",
-      "name": "Playwright Category 1784417712494",
-      "slug": "playwright-category-1784417712494",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
-      "featured": false,
-      "sortOrder": 11
-    },
-    {
-      "id": "cat-1e0fa43d-a2ac-4d8b-9365-f77ac063f757",
-      "name": "Playwright Category 1784418062811",
-      "slug": "playwright-category-1784418062811",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
-      "featured": false,
-      "sortOrder": 12
-    },
-    {
-      "id": "cat-cf94ec81-a43f-4fcb-b8a9-745526df5526",
-      "name": "Playwright Category 1784418170301",
-      "slug": "playwright-category-1784418170301",
-      "description": "Playwright generated category for critical admin mutation testing.",
-      "featuredImage": "/placeholders/category-statement.svg",
-      "active": true,
-      "featured": false,
-      "sortOrder": 13
+      "status": "draft",
+      "seoTitle": "",
+      "seoDescription": "",
+      "openGraphImage": "",
+      "createdAt": "2026-07-19T01:53:36.192Z",
+      "updatedAt": "2026-07-19T01:53:36.192Z",
+      "createdBy": "hyderhorbex12@gmail.com",
+      "updatedBy": "hyderhorbex12@gmail.com"
     }
   ],
   "collections": [
@@ -295,6 +554,9 @@
       "allowCartPurchase": true,
       "stoneType": "Obsidian",
       "categorySlug": "statement-stones",
+      "categorySlugs": [
+        "statement-stones"
+      ],
       "collectionSlug": "midnight-vein",
       "weight": "4.2 kg",
       "carat": 2100,
@@ -314,6 +576,26 @@
       "galleryImages": [
         "/placeholders/product-obsidian.svg",
         "/placeholders/product-obsidian-detail.svg"
+      ],
+      "media": [
+        {
+          "id": "media-prd-1-1",
+          "url": "/placeholders/product-obsidian.svg",
+          "altText": "Noir Obsidian Heart stone",
+          "fileName": "product-obsidian.svg",
+          "size": 0,
+          "featured": true,
+          "sortOrder": 1
+        },
+        {
+          "id": "media-prd-1-2",
+          "url": "/placeholders/product-obsidian-detail.svg",
+          "altText": "Noir Obsidian Heart stone",
+          "fileName": "product-obsidian-detail.svg",
+          "size": 0,
+          "featured": false,
+          "sortOrder": 2
+        }
       ],
       "productVideo": "",
       "video360": "",
@@ -363,6 +645,9 @@
       "allowCartPurchase": true,
       "stoneType": "Calcite",
       "categorySlug": "desk-objects",
+      "categorySlugs": [
+        "desk-objects"
+      ],
       "collectionSlug": "earthlight",
       "weight": "1.9 kg",
       "carat": 920,
@@ -377,6 +662,17 @@
       "featuredImage": "/placeholders/product-calcite.svg",
       "galleryImages": [
         "/placeholders/product-calcite.svg"
+      ],
+      "media": [
+        {
+          "id": "media-prd-2-1",
+          "url": "/placeholders/product-calcite.svg",
+          "altText": "Desert Calcite Prism stone",
+          "fileName": "product-calcite.svg",
+          "size": 0,
+          "featured": true,
+          "sortOrder": 1
+        }
       ],
       "altText": "Desert Calcite Prism stone",
       "featured": true,
@@ -417,6 +713,9 @@
       "allowCartPurchase": false,
       "stoneType": "Agate",
       "categorySlug": "statement-stones",
+      "categorySlugs": [
+        "statement-stones"
+      ],
       "collectionSlug": "atlas-rare",
       "weight": "2.6 kg",
       "carat": 1310,
@@ -431,6 +730,17 @@
       "featuredImage": "/placeholders/product-agate.svg",
       "galleryImages": [
         "/placeholders/product-agate.svg"
+      ],
+      "media": [
+        {
+          "id": "media-prd-3-1",
+          "url": "/placeholders/product-agate.svg",
+          "altText": "Aurora Agate Orbit stone",
+          "fileName": "product-agate.svg",
+          "size": 0,
+          "featured": true,
+          "sortOrder": 1
+        }
       ],
       "altText": "Aurora Agate Orbit stone",
       "featured": true,
@@ -471,6 +781,9 @@
       "allowCartPurchase": true,
       "stoneType": "Onyx",
       "categorySlug": "architectural-pieces",
+      "categorySlugs": [
+        "architectural-pieces"
+      ],
       "collectionSlug": "midnight-vein",
       "weight": "8.1 kg",
       "carat": 4050,
@@ -485,6 +798,17 @@
       "featuredImage": "/placeholders/product-onyx.svg",
       "galleryImages": [
         "/placeholders/product-onyx.svg"
+      ],
+      "media": [
+        {
+          "id": "media-prd-4-1",
+          "url": "/placeholders/product-onyx.svg",
+          "altText": "Graphite Onyx Column stone",
+          "fileName": "product-onyx.svg",
+          "size": 0,
+          "featured": true,
+          "sortOrder": 1
+        }
       ],
       "altText": "Graphite Onyx Column stone",
       "featured": false,
@@ -523,6 +847,9 @@
       "allowCartPurchase": true,
       "stoneType": "Quartz",
       "categorySlug": "statement-stones",
+      "categorySlugs": [
+        "statement-stones"
+      ],
       "collectionSlug": "atlas-rare",
       "weight": "2.2 kg",
       "carat": 1100,
@@ -537,6 +864,17 @@
       "featuredImage": "/placeholders/product-quartz.svg",
       "galleryImages": [
         "/placeholders/product-quartz.svg"
+      ],
+      "media": [
+        {
+          "id": "media-prd-5-1",
+          "url": "/placeholders/product-quartz.svg",
+          "altText": "Atlas Quartz Flame stone",
+          "fileName": "product-quartz.svg",
+          "size": 0,
+          "featured": true,
+          "sortOrder": 1
+        }
       ],
       "altText": "Atlas Quartz Flame stone",
       "featured": true,
@@ -575,6 +913,9 @@
       "allowCartPurchase": true,
       "stoneType": "Alabaster",
       "categorySlug": "desk-objects",
+      "categorySlugs": [
+        "desk-objects"
+      ],
       "collectionSlug": "earthlight",
       "weight": "0.9 kg",
       "carat": 440,
@@ -589,6 +930,17 @@
       "featuredImage": "/placeholders/product-alabaster.svg",
       "galleryImages": [
         "/placeholders/product-alabaster.svg"
+      ],
+      "media": [
+        {
+          "id": "media-prd-6-1",
+          "url": "/placeholders/product-alabaster.svg",
+          "altText": "Alabaster Veil stone",
+          "fileName": "product-alabaster.svg",
+          "size": 0,
+          "featured": true,
+          "sortOrder": 1
+        }
       ],
       "altText": "Alabaster Veil stone",
       "featured": false,
@@ -626,6 +978,9 @@
       "allowCartPurchase": false,
       "stoneType": "Basalt",
       "categorySlug": "architectural-pieces",
+      "categorySlugs": [
+        "architectural-pieces"
+      ],
       "collectionSlug": "midnight-vein",
       "weight": "6.8 kg",
       "carat": 3350,
@@ -640,6 +995,17 @@
       "featuredImage": "/placeholders/product-basalt.svg",
       "galleryImages": [
         "/placeholders/product-basalt.svg"
+      ],
+      "media": [
+        {
+          "id": "media-prd-7-1",
+          "url": "/placeholders/product-basalt.svg",
+          "altText": "Basalt Horizon Block stone",
+          "fileName": "product-basalt.svg",
+          "size": 0,
+          "featured": true,
+          "sortOrder": 1
+        }
       ],
       "altText": "Basalt Horizon Block stone",
       "featured": false,
@@ -676,6 +1042,9 @@
       "allowCartPurchase": true,
       "stoneType": "Moonstone",
       "categorySlug": "desk-objects",
+      "categorySlugs": [
+        "desk-objects"
+      ],
       "collectionSlug": "atlas-rare",
       "weight": "1.4 kg",
       "carat": 690,
@@ -690,6 +1059,17 @@
       "featuredImage": "/placeholders/product-moonstone.svg",
       "galleryImages": [
         "/placeholders/product-moonstone.svg"
+      ],
+      "media": [
+        {
+          "id": "media-prd-8-1",
+          "url": "/placeholders/product-moonstone.svg",
+          "altText": "Moonstone Ledger stone",
+          "fileName": "product-moonstone.svg",
+          "size": 0,
+          "featured": true,
+          "sortOrder": 1
+        }
       ],
       "altText": "Moonstone Ledger stone",
       "featured": true,
@@ -711,11 +1091,26 @@
       "updatedAt": "2026-07-10T09:00:00.000Z"
     },
     {
-      "slug": "playwright-stone-1784417526390",
+      "id": "prd-93656601-3ac0-4309-92f3-e919368a8ce4",
+      "name": "Playwright Stone 1784426004119 Edited",
+      "slug": "playwright-stone-1784426004119-edited",
+      "sku": "PW-1784426027625",
+      "shortDescription": "Playwright product created to verify admin and storefront publication.",
+      "description": "<p>Long Playwright verification description for STONZA.</p>",
+      "price": 999,
       "currency": "USD",
       "costPrice": 0,
+      "inventoryQuantity": 1,
       "lowStockThreshold": 1,
       "oneOfOne": false,
+      "allowEnquiry": true,
+      "allowCartPurchase": true,
+      "stoneType": "Quartz",
+      "categorySlug": "statement-stones",
+      "categorySlugs": [
+        "statement-stones"
+      ],
+      "collectionSlug": "midnight-vein",
       "weight": "0 kg",
       "carat": 0,
       "dimensions": "TBD",
@@ -723,206 +1118,35 @@
       "cut": "Polished",
       "color": "Undisclosed",
       "clarity": "Undisclosed",
+      "origin": "Pakistan",
       "naturalOrTreated": "natural",
       "treatmentDetails": "None disclosed.",
-      "featuredImage": "/placeholders/product-obsidian.svg",
+      "featuredImage": "/uploads/images/1784426028102-stonza-logo.png",
       "galleryImages": [
-        "/placeholders/product-obsidian.svg"
+        "/uploads/images/1784426028102-stonza-logo.png"
       ],
-      "altText": "Playwright Stone 1784417526390",
+      "media": [
+        {
+          "id": "product-media-media-77248f4d-b0f5-4e26-85ae-7dc728437551",
+          "assetId": "media-77248f4d-b0f5-4e26-85ae-7dc728437551",
+          "url": "/uploads/images/1784426028102-stonza-logo.png",
+          "altText": "stonza-logo",
+          "fileName": "stonza-logo.png",
+          "size": 554136,
+          "featured": true,
+          "sortOrder": 1
+        }
+      ],
+      "altText": "stonza-logo",
+      "featured": false,
+      "newArrival": false,
       "bestseller": false,
       "relatedProductSlugs": [],
       "tags": [],
       "searchKeywords": [],
-      "createdAt": "2026-07-18T23:32:22.446Z",
-      "updatedAt": "2026-07-18T23:32:22.446Z",
-      "name": "Playwright Stone 1784417526390",
-      "sku": "PW-1784417541978",
-      "shortDescription": "Playwright product created to verify admin and storefront publication.",
-      "description": "<p>Long Playwright verification description for STONZA.</p>",
-      "price": 999,
-      "inventoryQuantity": 1,
-      "categorySlug": "statement-stones",
-      "collectionSlug": "midnight-vein",
-      "stoneType": "Quartz",
-      "origin": "Pakistan",
       "status": "published",
-      "featured": false,
-      "newArrival": false,
-      "allowCartPurchase": true,
-      "allowEnquiry": true
-    },
-    {
-      "id": "prd-f84ded85-da48-4d7c-b415-6514aaa0c948",
-      "slug": "playwright-stone-1784417605487-edited",
-      "currency": "USD",
-      "costPrice": 0,
-      "lowStockThreshold": 1,
-      "oneOfOne": false,
-      "weight": "0 kg",
-      "carat": 0,
-      "dimensions": "TBD",
-      "shape": "Organic",
-      "cut": "Polished",
-      "color": "Undisclosed",
-      "clarity": "Undisclosed",
-      "naturalOrTreated": "natural",
-      "treatmentDetails": "None disclosed.",
-      "featuredImage": "/placeholders/product-obsidian.svg",
-      "galleryImages": [
-        "/placeholders/product-obsidian.svg"
-      ],
-      "altText": "Playwright Stone 1784417605487",
-      "bestseller": false,
-      "relatedProductSlugs": [],
-      "tags": [],
-      "searchKeywords": [],
-      "createdAt": "2026-07-18T23:33:42.704Z",
-      "updatedAt": "2026-07-18T23:34:02.305Z",
-      "name": "Playwright Stone 1784417605487 Edited",
-      "sku": "PW-1784417622247",
-      "shortDescription": "Playwright product created to verify admin and storefront publication.",
-      "description": "<p>Long Playwright verification description for STONZA.</p>",
-      "price": 999,
-      "inventoryQuantity": 1,
-      "categorySlug": "statement-stones",
-      "collectionSlug": "midnight-vein",
-      "stoneType": "Quartz",
-      "origin": "Pakistan",
-      "status": "published",
-      "featured": false,
-      "newArrival": false,
-      "allowCartPurchase": true,
-      "allowEnquiry": true
-    },
-    {
-      "id": "prd-88b309ea-58a8-4217-b728-9421166876eb",
-      "slug": "playwright-stone-1784417712494-edited",
-      "currency": "USD",
-      "costPrice": 0,
-      "lowStockThreshold": 1,
-      "oneOfOne": false,
-      "weight": "0 kg",
-      "carat": 0,
-      "dimensions": "TBD",
-      "shape": "Organic",
-      "cut": "Polished",
-      "color": "Undisclosed",
-      "clarity": "Undisclosed",
-      "naturalOrTreated": "natural",
-      "treatmentDetails": "None disclosed.",
-      "featuredImage": "/placeholders/product-obsidian.svg",
-      "galleryImages": [
-        "/placeholders/product-obsidian.svg"
-      ],
-      "altText": "Playwright Stone 1784417712494",
-      "bestseller": false,
-      "relatedProductSlugs": [],
-      "tags": [],
-      "searchKeywords": [],
-      "createdAt": "2026-07-18T23:35:30.016Z",
-      "updatedAt": "2026-07-18T23:35:49.267Z",
-      "name": "Playwright Stone 1784417712494 Edited",
-      "sku": "PW-1784417729570",
-      "shortDescription": "Playwright product created to verify admin and storefront publication.",
-      "description": "<p>Long Playwright verification description for STONZA.</p>",
-      "price": 999,
-      "inventoryQuantity": 1,
-      "categorySlug": "statement-stones",
-      "collectionSlug": "midnight-vein",
-      "stoneType": "Quartz",
-      "origin": "Pakistan",
-      "status": "published",
-      "featured": false,
-      "newArrival": false,
-      "allowCartPurchase": true,
-      "allowEnquiry": true
-    },
-    {
-      "id": "prd-54a44515-0776-4bca-b82c-6343dc45cf48",
-      "slug": "playwright-stone-1784418062811",
-      "currency": "USD",
-      "costPrice": 0,
-      "lowStockThreshold": 1,
-      "oneOfOne": false,
-      "weight": "0 kg",
-      "carat": 0,
-      "dimensions": "TBD",
-      "shape": "Organic",
-      "cut": "Polished",
-      "color": "Undisclosed",
-      "clarity": "Undisclosed",
-      "naturalOrTreated": "natural",
-      "treatmentDetails": "None disclosed.",
-      "featuredImage": "/placeholders/product-obsidian.svg",
-      "galleryImages": [
-        "/placeholders/product-obsidian.svg"
-      ],
-      "altText": "Playwright Stone 1784418062811",
-      "bestseller": false,
-      "relatedProductSlugs": [],
-      "tags": [],
-      "searchKeywords": [],
-      "createdAt": "2026-07-18T23:41:29.335Z",
-      "updatedAt": "2026-07-18T23:41:29.335Z",
-      "name": "Playwright Stone 1784418062811",
-      "sku": "PW-1784418088746",
-      "shortDescription": "Playwright product created to verify admin and storefront publication.",
-      "description": "<p>Long Playwright verification description for STONZA.</p>",
-      "price": 999,
-      "inventoryQuantity": 1,
-      "categorySlug": "statement-stones",
-      "collectionSlug": "midnight-vein",
-      "stoneType": "Quartz",
-      "origin": "Pakistan",
-      "status": "published",
-      "featured": false,
-      "newArrival": false,
-      "allowCartPurchase": true,
-      "allowEnquiry": true
-    },
-    {
-      "id": "prd-7b913b5c-af81-45a5-b645-da602b7b66e6",
-      "slug": "playwright-stone-1784418170301-edited",
-      "currency": "USD",
-      "costPrice": 0,
-      "lowStockThreshold": 1,
-      "oneOfOne": false,
-      "weight": "0 kg",
-      "carat": 0,
-      "dimensions": "TBD",
-      "shape": "Organic",
-      "cut": "Polished",
-      "color": "Undisclosed",
-      "clarity": "Undisclosed",
-      "naturalOrTreated": "natural",
-      "treatmentDetails": "None disclosed.",
-      "featuredImage": "/placeholders/product-obsidian.svg",
-      "galleryImages": [
-        "/placeholders/product-obsidian.svg"
-      ],
-      "altText": "Playwright Stone 1784418170301",
-      "bestseller": false,
-      "relatedProductSlugs": [],
-      "tags": [],
-      "searchKeywords": [],
-      "createdAt": "2026-07-18T23:43:05.224Z",
-      "updatedAt": "2026-07-18T23:43:27.562Z",
-      "name": "Playwright Stone 1784418170301 Edited",
-      "sku": "PW-1784418184772",
-      "shortDescription": "Playwright product created to verify admin and storefront publication.",
-      "description": "<p>Long Playwright verification description for STONZA.</p>",
-      "price": 999,
-      "inventoryQuantity": 1,
-      "categorySlug": "statement-stones",
-      "collectionSlug": "midnight-vein",
-      "stoneType": "Quartz",
-      "origin": "Pakistan",
-      "status": "published",
-      "featured": false,
-      "newArrival": false,
-      "allowCartPurchase": true,
-      "allowEnquiry": true
+      "createdAt": "2026-07-19T01:53:49.913Z",
+      "updatedAt": "2026-07-19T01:54:09.125Z"
     }
   ],
   "pages": [
@@ -1000,143 +1224,45 @@
   ],
   "mediaAssets": [
     {
-      "id": "media-aff3c34c-279b-41da-9180-6b1956cc86f2",
+      "id": "media-77248f4d-b0f5-4e26-85ae-7dc728437551",
       "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784418181464-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784418181464-stonza-logo.png",
+      "path": "D:\\Stonza\\public\\uploads\\images\\1784426028102-stonza-logo.png",
+      "publicUrl": "/uploads/images/1784426028102-stonza-logo.png",
       "originalFilename": "stonza-logo.png",
       "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
+      "size": 554136,
+      "altText": "stonza-logo",
       "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:43:01.467Z",
+      "uploadedBy": "hyderhorbex12@gmail.com",
+      "uploadedAt": "2026-07-19T01:53:48.107Z",
       "usage": []
     },
     {
-      "id": "media-fca9159d-959f-48e3-8fd2-d92daa3406bc",
+      "id": "media-6bed8967-e8c3-4e96-a1c9-55ab459560b4",
       "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784418081704-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784418081704-stonza-logo.png",
+      "path": "D:\\Stonza\\public\\uploads\\images\\1784426022903-stonza-logo.png",
+      "publicUrl": "/uploads/images/1784426022903-stonza-logo.png",
       "originalFilename": "stonza-logo.png",
       "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
+      "size": 554136,
+      "altText": "stonza-logo",
       "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:41:21.711Z",
+      "uploadedBy": "hyderhorbex12@gmail.com",
+      "uploadedAt": "2026-07-19T01:53:42.910Z",
       "usage": []
     },
     {
-      "id": "media-27ebc6ab-40e6-4d20-82fa-abdeaba59193",
+      "id": "media-07327cd8-4e10-4521-9d31-4d6b783399fc",
       "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784417724884-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784417724884-stonza-logo.png",
+      "path": "D:\\Stonza\\public\\uploads\\images\\1784426014669-stonza-logo.png",
+      "publicUrl": "/uploads/images/1784426014669-stonza-logo.png",
       "originalFilename": "stonza-logo.png",
       "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
+      "size": 554136,
+      "altText": "stonza-logo",
       "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:35:24.888Z",
-      "usage": []
-    },
-    {
-      "id": "media-31352a60-deb0-43ec-964e-a3a7799dc504",
-      "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784417617330-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784417617330-stonza-logo.png",
-      "originalFilename": "stonza-logo.png",
-      "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
-      "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:33:37.333Z",
-      "usage": []
-    },
-    {
-      "id": "media-6893b1d3-3bd9-45b9-9824-1283524fc631",
-      "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784417537264-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784417537264-stonza-logo.png",
-      "originalFilename": "stonza-logo.png",
-      "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
-      "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:32:17.267Z",
-      "usage": []
-    },
-    {
-      "id": "media-3ed6024b-9af9-43fb-874d-4e6f2b631d79",
-      "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784417425134-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784417425134-stonza-logo.png",
-      "originalFilename": "stonza-logo.png",
-      "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
-      "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:30:25.137Z",
-      "usage": []
-    },
-    {
-      "id": "media-9381ef1b-c808-4788-8adf-3dc57eec3b0d",
-      "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784417365820-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784417365820-stonza-logo.png",
-      "originalFilename": "stonza-logo.png",
-      "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
-      "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:29:25.833Z",
-      "usage": []
-    },
-    {
-      "id": "media-63c2386b-06c6-4b2d-a1f3-69a4dec43723",
-      "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784417291980-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784417291980-stonza-logo.png",
-      "originalFilename": "stonza-logo.png",
-      "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
-      "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:28:11.988Z",
-      "usage": []
-    },
-    {
-      "id": "media-35fe89d7-5aed-4c20-a49f-0b9b55e0b503",
-      "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784417206161-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784417206161-stonza-logo.png",
-      "originalFilename": "stonza-logo.png",
-      "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
-      "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:26:46.166Z",
-      "usage": []
-    },
-    {
-      "id": "media-458408da-c992-4231-b6c6-b77147b10794",
-      "type": "image",
-      "path": "D:\\Stonza\\public\\uploads\\images\\1784417142952-stonza-logo.png",
-      "publicUrl": "/uploads/images/1784417142952-stonza-logo.png",
-      "originalFilename": "stonza-logo.png",
-      "mimeType": "image/png",
-      "size": 405201,
-      "altText": "",
-      "caption": "",
-      "uploadedBy": "owner@stonza.local",
-      "uploadedAt": "2026-07-18T23:25:42.955Z",
+      "uploadedBy": "hyderhorbex12@gmail.com",
+      "uploadedAt": "2026-07-19T01:53:34.676Z",
       "usage": []
     },
     {
@@ -1159,7 +1285,248 @@
       ]
     }
   ],
+  "contentLabels": [
+    {
+      "id": "label-homepageJournalEyebrow",
+      "key": "homepageJournalEyebrow",
+      "label": "Journal",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-homepageJournalHeading",
+      "key": "homepageJournalHeading",
+      "label": "Field Notes",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-homepageJournalBody",
+      "key": "homepageJournalBody",
+      "label": "Editorial notes on provenance, presentation and the mineral worlds behind each stone.",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-homepageCategoryEyebrow",
+      "key": "homepageCategoryEyebrow",
+      "label": "Featured Categories",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-homepageCategoryHeading",
+      "key": "homepageCategoryHeading",
+      "label": "Stone families with distinct purpose",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-homepageCategoryBody",
+      "key": "homepageCategoryBody",
+      "label": "Statement pieces, desk objects and architectural stones arranged with clarity.",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-shopEyebrow",
+      "key": "shopEyebrow",
+      "label": "Shop",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-shopHeading",
+      "key": "shopHeading",
+      "label": "Curated stones",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-shopBody",
+      "key": "shopBody",
+      "label": "Search, filter and discover original stones selected for provenance, atmosphere and collector value.",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-shopEmpty",
+      "key": "shopEmpty",
+      "label": "No stones matched the current filters.",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-collectionsEyebrow",
+      "key": "collectionsEyebrow",
+      "label": "Collections",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-collectionsHeading",
+      "key": "collectionsHeading",
+      "label": "Mineral worlds with distinct tone",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-collectionsBody",
+      "key": "collectionsBody",
+      "label": "Collections curated by atmosphere, tonal family and geological personality.",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-productRelatedHeading",
+      "key": "productRelatedHeading",
+      "label": "Related Stones",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-productShippingHeading",
+      "key": "productShippingHeading",
+      "label": "Shipping",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-productReturnsHeading",
+      "key": "productReturnsHeading",
+      "label": "Returns",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-productEnquiryLabel",
+      "key": "productEnquiryLabel",
+      "label": "Request Details",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-productWhatsappLabel",
+      "key": "productWhatsappLabel",
+      "label": "WhatsApp Concierge",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-productCertificateHeading",
+      "key": "productCertificateHeading",
+      "label": "Certificate & Provenance",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    },
+    {
+      "id": "label-notFoundTitle",
+      "key": "notFoundTitle",
+      "label": "The stone you were looking for could not be found.",
+      "updatedAt": "2026-07-19T00:00:00.000Z",
+      "updatedBy": "system"
+    }
+  ],
   "activityLogs": [
+    {
+      "id": "log-bb2fe7ef-231e-4d14-9622-e731f027f959",
+      "timestamp": "2026-07-19T01:54:15.164Z",
+      "action": "hero_updated",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "hero",
+      "entityId": "hero-1",
+      "detail": "interactive-3d"
+    },
+    {
+      "id": "log-a5e71d89-4c92-49f8-b07e-3bdab7a65465",
+      "timestamp": "2026-07-19T01:54:14.685Z",
+      "action": "hero_updated",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "hero",
+      "entityId": "hero-1",
+      "detail": "video"
+    },
+    {
+      "id": "log-f6ed816d-384d-44f0-8c95-6b017fa9bfea",
+      "timestamp": "2026-07-19T01:54:09.140Z",
+      "action": "product_published",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "product",
+      "entityId": "prd-93656601-3ac0-4309-92f3-e919368a8ce4",
+      "detail": "Playwright Stone 1784426004119 Edited"
+    },
+    {
+      "id": "log-ab0d4d50-95e6-4592-bdbc-7ab2b28f6243",
+      "timestamp": "2026-07-19T01:54:08.056Z",
+      "action": "product_archived",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "product",
+      "entityId": "prd-93656601-3ac0-4309-92f3-e919368a8ce4",
+      "detail": "Playwright Stone 1784426004119 Edited"
+    },
+    {
+      "id": "log-a80fd893-62bb-4f15-b143-7071e83e9f58",
+      "timestamp": "2026-07-19T01:54:01.136Z",
+      "action": "product_updated",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "product",
+      "entityId": "prd-93656601-3ac0-4309-92f3-e919368a8ce4",
+      "detail": "Playwright Stone 1784426004119 Edited"
+    },
+    {
+      "id": "log-781c3a9a-4592-4d91-a343-f4c761084b7f",
+      "timestamp": "2026-07-19T01:53:49.924Z",
+      "action": "product_created",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "product",
+      "entityId": "prd-93656601-3ac0-4309-92f3-e919368a8ce4",
+      "detail": "Playwright Stone 1784426004119"
+    },
+    {
+      "id": "log-35fff5f6-55cc-407f-8e57-94d592e4e4d2",
+      "timestamp": "2026-07-19T01:53:36.210Z",
+      "action": "category_created",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "category",
+      "entityId": "cat-3dd50abd-2619-4add-a9c2-1a5f46863a72",
+      "detail": "Playwright Category 1784426004119"
+    },
+    {
+      "id": "log-322ed917-25d6-4b22-a7a4-faaaaf396eb6",
+      "timestamp": "2026-07-19T01:51:25.601Z",
+      "action": "hero_updated",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "hero",
+      "entityId": "hero-1",
+      "detail": "interactive-3d"
+    },
+    {
+      "id": "log-2b6494d0-473d-42f6-986f-6add676cf67c",
+      "timestamp": "2026-07-19T01:51:25.170Z",
+      "action": "hero_updated",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "hero",
+      "entityId": "hero-1",
+      "detail": "video"
+    },
+    {
+      "id": "log-3d6f9317-fb1d-4e30-9c2c-aab3aca925ae",
+      "timestamp": "2026-07-19T01:43:48.721Z",
+      "action": "hero_updated",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "hero",
+      "entityId": "hero-1",
+      "detail": "interactive-3d"
+    },
+    {
+      "id": "log-ce23e817-c475-434b-b30d-11e4b1dd734c",
+      "timestamp": "2026-07-19T01:43:45.234Z",
+      "action": "hero_updated",
+      "actor": "hyderhorbex12@gmail.com",
+      "entity": "hero",
+      "entityId": "hero-1",
+      "detail": "video"
+    },
     {
       "id": "log-1",
       "action": "seeded_store",

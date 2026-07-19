@@ -3,7 +3,7 @@ import { Button } from "@/components/shared/ui/button";
 import { getHomepageSections } from "@/lib/data/store";
 
 export default async function HomepagePage() {
-  const sections = await getHomepageSections();
+  const sections = await getHomepageSections(true);
 
   return (
     <form action={saveHomepageSectionsAction} className="space-y-6">
@@ -23,10 +23,14 @@ export default async function HomepagePage() {
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name={`${section.id}:enabled`} defaultChecked={section.enabled} /> Enabled</label>
             </div>
             <div className="grid gap-3">
+              <input name={`${section.id}:eyebrow`} defaultValue={section.eyebrow} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
               <input name={`${section.id}:heading`} defaultValue={section.heading} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
               <textarea name={`${section.id}:body`} defaultValue={section.body} rows={4} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
               <input name={`${section.id}:ctaLabel`} defaultValue={section.ctaLabel} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
               <input name={`${section.id}:ctaUrl`} defaultValue={section.ctaUrl} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
+              <input name={`${section.id}:categorySlugs`} defaultValue={JSON.stringify(section.categorySlugs ?? [])} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
+              <input name={`${section.id}:collectionSlugs`} defaultValue={JSON.stringify(section.collectionSlugs ?? [])} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
+              <input name={`${section.id}:productSlugs`} defaultValue={JSON.stringify(section.productSlugs ?? [])} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
             </div>
           </div>
         ))}
