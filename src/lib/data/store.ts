@@ -3,6 +3,7 @@ import "server-only";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { unstable_noStore as noStore } from "next/cache";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   ActivityLogEntry,
   Category,
@@ -21,8 +22,11 @@ import type {
   StoreData,
 } from "@/types/domain";
 import { slugify } from "@/lib/utils";
+import { env } from "@/lib/env";
 
 const storePath = path.join(process.cwd(), "src", "data", "dev-store.json");
+const remoteStoreBucket = "documents";
+const remoteStoreObjectPath = "runtime/dev-store.json";
 
 const defaultNavigation: NavigationItem[] = [
   { id: "nav-shop", label: "Shop", href: "/shop", order: 1, visible: true },
@@ -561,15 +565,80 @@ function normalizeStore(store: Partial<StoreData>): StoreData {
 
 async function readStore(): Promise<StoreData> {
   noStore();
-  const raw = await fs.readFile(storePath, "utf8");
+  const raw = await readStoreSource();
   const parsed = JSON.parse(raw) as Partial<StoreData>;
   return normalizeStore(parsed);
 }
 
 async function writeStore(store: StoreData) {
+  const payload = `${JSON.stringify(store, null, 2)}\n`;
+
+  if (shouldUseRemoteStore()) {
+    await writeRemoteStore(payload);
+    return;
+  }
+
   const tempPath = `${storePath}.tmp`;
-  await fs.writeFile(tempPath, `${JSON.stringify(store, null, 2)}\n`, "utf8");
+  await fs.writeFile(tempPath, payload, "utf8");
   await fs.rename(tempPath, storePath);
+}
+
+function shouldUseRemoteStore() {
+  return Boolean(process.env.VERCEL && env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+async function readLocalStore() {
+  return fs.readFile(storePath, "utf8");
+}
+
+async function readStoreSource() {
+  if (!shouldUseRemoteStore()) {
+    return readLocalStore();
+  }
+
+  try {
+    return await readRemoteStore();
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : "";
+    if (message.includes("not found") || message.includes("404")) {
+      const seed = await readLocalStore();
+      await writeRemoteStore(seed);
+      return seed;
+    }
+
+    throw error;
+  }
+}
+
+async function readRemoteStore() {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.storage.from(remoteStoreBucket).download(remoteStoreObjectPath);
+
+  if (error) {
+    throw new Error(`Supabase store read failed: ${error.message}`);
+  }
+
+  return data.text();
+}
+
+async function writeRemoteStore(payload: string) {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.storage
+    .from(remoteStoreBucket)
+    .upload(remoteStoreObjectPath, Buffer.from(payload, "utf8"), {
+      contentType: "application/json; charset=utf-8",
+      upsert: true,
+    });
+
+  if (error) {
+    if (error.message.toLowerCase().includes("bucket not found")) {
+      throw new Error(
+        `Supabase bucket "${remoteStoreBucket}" was not found. Create the "${remoteStoreBucket}" bucket in Supabase Storage, then try again.`,
+      );
+    }
+
+    throw new Error(`Supabase store write failed: ${error.message}`);
+  }
 }
 
 function visibleCategory(category: Category) {
