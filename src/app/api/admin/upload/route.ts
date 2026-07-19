@@ -40,6 +40,12 @@ async function uploadToSupabase(file: File, directory: string, filename: string)
   });
 
   if (error) {
+    if (error.message.toLowerCase().includes("bucket not found")) {
+      throw new Error(
+        `Supabase bucket "${bucket}" was not found. Create the "${bucket}" bucket in Supabase Storage, then try the upload again.`,
+      );
+    }
+
     throw new Error(`Supabase upload failed: ${error.message}`);
   }
 
