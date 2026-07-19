@@ -3,7 +3,9 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { addMediaAsset } from "@/lib/data/store";
 import { parseAdminSessionCookie } from "@/lib/auth/session";
+import { env } from "@/lib/env";
 import { safeFilename, validateMediaInput } from "@/lib/media";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { MediaAsset, MediaType } from "@/types/domain";
 
 const mimeGroups: Record<string, { type: MediaType; dir: string }> = {
@@ -22,6 +24,32 @@ function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
+function isSupabaseStorageConfigured() {
+  return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+async function uploadToSupabase(file: File, directory: string, filename: string) {
+  const supabase = createSupabaseAdminClient();
+  const bucket = directory;
+  const objectPath = filename;
+  const bytes = Buffer.from(await file.arrayBuffer());
+
+  const { error } = await supabase.storage.from(bucket).upload(objectPath, bytes, {
+    contentType: file.type,
+    upsert: false,
+  });
+
+  if (error) {
+    throw new Error(`Supabase upload failed: ${error.message}`);
+  }
+
+  const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+  return {
+    path: `${bucket}/${objectPath}`,
+    publicUrl: data.publicUrl,
+  };
+}
+
 async function saveFile(file: File, sessionEmail: string): Promise<MediaAsset> {
   const validationError = validateMediaInput({
     mimeType: file.type,
@@ -36,19 +64,35 @@ async function saveFile(file: File, sessionEmail: string): Promise<MediaAsset> {
     throw new Error("Unsupported file type");
   }
 
-  const bytes = Buffer.from(await file.arrayBuffer());
   const filename = `${Date.now()}-${safeFilename(file.name)}`;
-  const outputDir = path.join(process.cwd(), "public", "uploads", mime.dir);
-  const absolutePath = path.join(outputDir, filename);
-  const publicUrl = `/uploads/${mime.dir}/${filename}`;
+  let storedPath = "";
+  let publicUrl = "";
 
-  await fs.mkdir(outputDir, { recursive: true });
-  await fs.writeFile(absolutePath, bytes);
+  if (isSupabaseStorageConfigured()) {
+    const uploaded = await uploadToSupabase(file, mime.dir, filename);
+    storedPath = uploaded.path;
+    publicUrl = uploaded.publicUrl;
+  } else {
+    if (process.env.VERCEL) {
+      throw new Error(
+        "Supabase Storage is not configured for this deployment. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then create the images, videos, documents and models buckets.",
+      );
+    }
+
+    const bytes = Buffer.from(await file.arrayBuffer());
+    const outputDir = path.join(process.cwd(), "public", "uploads", mime.dir);
+    const absolutePath = path.join(outputDir, filename);
+    publicUrl = `/uploads/${mime.dir}/${filename}`;
+
+    await fs.mkdir(outputDir, { recursive: true });
+    await fs.writeFile(absolutePath, bytes);
+    storedPath = absolutePath;
+  }
 
   const asset: MediaAsset = {
     id: `media-${crypto.randomUUID()}`,
     type: mime.type,
-    path: absolutePath,
+    path: storedPath,
     publicUrl,
     originalFilename: file.name,
     mimeType: file.type,
