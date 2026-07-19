@@ -33,6 +33,7 @@ export default function AdminLoginPage() {
             <input
               name="email"
               type="email"
+              autoComplete="email"
               defaultValue={getOwnerEmail()}
               className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white"
             />
@@ -42,6 +43,7 @@ export default function AdminLoginPage() {
             <input
               name="password"
               type="password"
+              autoComplete="current-password"
               defaultValue={getOwnerPassword()}
               className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-white"
             />
