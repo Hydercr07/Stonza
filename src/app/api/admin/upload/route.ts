@@ -28,11 +28,36 @@ function isSupabaseStorageConfigured() {
   return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
+async function ensureSupabaseBucket(bucket: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.storage.getBucket(bucket);
+
+  if (!error && data) {
+    return;
+  }
+
+  const message = error?.message.toLowerCase() ?? "";
+  if (message.includes("not found")) {
+    const { error: createError } = await supabase.storage.createBucket(bucket, { public: true });
+    if (createError && !createError.message.toLowerCase().includes("already exists")) {
+      throw new Error(`Supabase bucket "${bucket}" could not be created automatically: ${createError.message}`);
+    }
+
+    return;
+  }
+
+  if (error) {
+    throw new Error(`Supabase bucket "${bucket}" could not be inspected: ${error.message}`);
+  }
+}
+
 async function uploadToSupabase(file: File, directory: string, filename: string) {
   const supabase = createSupabaseAdminClient();
   const bucket = directory;
   const objectPath = filename;
   const bytes = Buffer.from(await file.arrayBuffer());
+
+  await ensureSupabaseBucket(bucket);
 
   const { error } = await supabase.storage.from(bucket).upload(objectPath, bytes, {
     contentType: file.type,
