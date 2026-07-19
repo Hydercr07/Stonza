@@ -612,6 +612,7 @@ async function readStoreSource() {
 
 async function readRemoteStore() {
   const supabase = createSupabaseAdminClient();
+  await ensureRemoteStoreBucket();
   const { data, error } = await supabase.storage.from(remoteStoreBucket).download(remoteStoreObjectPath);
 
   if (error) {
@@ -623,6 +624,7 @@ async function readRemoteStore() {
 
 async function writeRemoteStore(payload: string) {
   const supabase = createSupabaseAdminClient();
+  await ensureRemoteStoreBucket();
   const { error } = await supabase.storage
     .from(remoteStoreBucket)
     .upload(remoteStoreObjectPath, Buffer.from(payload, "utf8"), {
@@ -638,6 +640,32 @@ async function writeRemoteStore(payload: string) {
     }
 
     throw new Error(`Supabase store write failed: ${error.message}`);
+  }
+}
+
+async function ensureRemoteStoreBucket() {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.storage.getBucket(remoteStoreBucket);
+
+  if (!error && data) {
+    return;
+  }
+
+  const message = error?.message.toLowerCase() ?? "";
+  if (message.includes("not found")) {
+    const { error: createError } = await supabase.storage.createBucket(remoteStoreBucket, {
+      public: false,
+    });
+
+    if (createError && !createError.message.toLowerCase().includes("already exists")) {
+      throw new Error(`Supabase bucket "${remoteStoreBucket}" could not be created automatically: ${createError.message}`);
+    }
+
+    return;
+  }
+
+  if (error) {
+    throw new Error(`Supabase bucket "${remoteStoreBucket}" could not be inspected: ${error.message}`);
   }
 }
 
