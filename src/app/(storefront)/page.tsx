@@ -1,109 +1,184 @@
+import Image from "next/image";
 import Link from "next/link";
-import { Hero } from "@/components/storefront/hero";
 import {
-  FeaturedCategoriesSection,
-  FeaturedCollectionsSection,
-  FeaturedProductsSection,
-  StorySection,
-} from "@/components/storefront/sections";
+  BadgePercent,
+  CreditCard,
+  MapPinned,
+  Truck,
+} from "lucide-react";
+import { ProductCard } from "@/components/storefront/cards";
 import { Button } from "@/components/shared/ui/button";
 import {
   getHeroSettings,
-  getHomepageSections,
-  getLabelMap,
   listCategories,
   listCollections,
-  listJournalPosts,
   listProducts,
 } from "@/lib/data/store";
 
+const partnerLogos = ["logoipsum", "logoipsum", "logoipsum", "logoipsum"];
+
 export default async function HomePage() {
-  const [hero, sections, labels, featuredCategories, featuredCollections, featuredProducts, newProducts] = await Promise.all([
+  const [hero, categories, collections, featuredProducts, newProducts] = await Promise.all([
     getHeroSettings(),
-    getHomepageSections(),
-    getLabelMap(),
     listCategories({ featuredOnly: true }),
     listCollections(true),
     listProducts({ featuredOnly: true }),
     listProducts({ newOnly: true }),
   ]);
 
-  const categorySection = sections.find((section) => section.key === "featured-categories");
-  const collectionSection = sections.find((section) => section.key === "featured-collections");
-  const signatureSection = sections.find((section) => section.key === "signature-stones");
-  const storySection = sections.find((section) => section.key === "born-beneath-earth");
-  const authenticitySection = sections.find((section) => section.key === "authenticity");
-  const journalPosts = await listJournalPosts();
+  const heroImage = hero.desktopBannerImage || featuredProducts[0]?.featuredImage || "/placeholders/hero-strata.svg";
+  const primaryCollection = collections[0];
+  const editorialProduct = featuredProducts[0] ?? newProducts[0];
+  const editorialCategory = categories[0];
+  const trendingProducts = featuredProducts.slice(0, 4);
+  const bestSellingProducts = [...featuredProducts].reverse().slice(0, 4);
 
   return (
     <>
-      <Hero hero={hero} />
-      <section className="container-shell py-8">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {[
-            { title: "New this week", body: "Fresh collector-grade additions with ready-to-view product pages.", href: "/shop" },
-            { title: "By collection", body: "Shop themed edits like gallery walls, desk pieces and statement forms.", href: "/collections" },
-            { title: "Authenticity", body: "Understand origin, treatment and certification before purchase.", href: "/authenticity" },
-            { title: "Private sourcing", body: "Need something specific for a client or interior project? Start a brief.", href: "/contact" },
-          ].map((item) => (
-            <Link key={item.title} href={item.href} className="stone-panel rounded-[1.75rem] p-6 hover:border-white/20">
-              <p className="text-xs uppercase tracking-[0.26em] text-accent">{item.title}</p>
-              <p className="mt-3 text-sm leading-7 text-white/64">{item.body}</p>
-            </Link>
+      <section className="border-b border-[#ece2d5] bg-[#fffdfa]">
+        <div className="container-shell grid min-h-[min(82vh,780px)] items-center gap-10 py-10 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="order-2 max-w-xl space-y-6 lg:order-1">
+            <p className="text-xs uppercase tracking-[0.22em] text-black/55">New collection</p>
+            <h1 className="text-display text-[clamp(3.2rem,8vw,6.2rem)] leading-[0.92] text-[#171717]">
+              {hero.heading}
+            </h1>
+            <p className="max-w-lg text-base leading-8 text-black/58">
+              {hero.description}
+            </p>
+            <Button asChild variant="outline" size="lg" className="rounded-none px-8">
+              <Link href={hero.primaryCtaUrl || "/shop"}>{hero.primaryCtaLabel || "Shop now"}</Link>
+            </Button>
+          </div>
+          <div className="order-1 lg:order-2">
+            <div className="relative overflow-hidden bg-[#efe3cf]">
+              <div className="relative min-h-[28rem] md:min-h-[38rem]">
+                <Image
+                  src={heroImage}
+                  alt={hero.heading}
+                  fill
+                  priority
+                  className="object-cover"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="container-shell py-10 md:py-14">
+        <div className="grid gap-5 md:grid-cols-4">
+          {partnerLogos.map((logo, index) => (
+            <div key={`${logo}-${index}`} className="flex min-h-28 items-center justify-center border border-[#ece2d5] bg-white px-6">
+              <p className="text-3xl font-semibold tracking-tight text-black/82">{logo}</p>
+            </div>
           ))}
         </div>
       </section>
-      {categorySection ? <FeaturedCategoriesSection section={categorySection} categories={featuredCategories.slice(0, 3)} /> : null}
-      {collectionSection ? <FeaturedCollectionsSection section={collectionSection} collections={featuredCollections} /> : null}
-      {signatureSection ? <FeaturedProductsSection eyebrow="Featured Stones" section={signatureSection} products={featuredProducts.slice(0, 3)} /> : null}
-      <section className="container-shell py-10">
-        <div className="grid gap-6 rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-8 md:grid-cols-[0.95fr_1.05fr] md:p-10">
-          <div className="space-y-4">
-            <p className="text-xs uppercase tracking-[0.3em] text-accent">Shop by confidence</p>
-            <h2 className="text-display text-4xl text-white md:text-5xl">The rhythm of a modern luxury store, tailored for natural stone.</h2>
-            <p className="max-w-xl text-sm leading-7 text-white/62">
-              Every product page is structured to feel closer to a strong Shopify storefront: clear pricing, availability, provenance, imagery and next-step buying paths.
+
+      <section className="container-shell py-14 md:py-18">
+        <div className="mb-10 text-center">
+          <p className="text-xs uppercase tracking-[0.22em] text-black/55">Popular Products</p>
+          <h2 className="text-display mt-4 text-5xl text-[#171717] md:text-6xl">Trending Now</h2>
+          <div className="mx-auto mt-5 h-px w-14 bg-[#b88f5b]" />
+        </div>
+        <div className="shop-grid">
+          {trendingProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
+
+      <section className="container-shell py-14 md:py-18">
+        <div className="mb-10 text-center">
+          <p className="text-xs uppercase tracking-[0.22em] text-black/55">Shop</p>
+          <h2 className="text-display mt-4 text-5xl text-[#171717] md:text-6xl">Best Selling</h2>
+          <div className="mx-auto mt-5 h-px w-14 bg-[#b88f5b]" />
+        </div>
+        <div className="shop-grid">
+          {bestSellingProducts.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </section>
+
+      <section className="container-shell py-18 md:py-24">
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div className="max-w-sm space-y-5">
+            <p className="text-xs uppercase tracking-[0.22em] text-black/55">
+              {editorialCategory?.name ?? "Unique pieces"}
             </p>
-            <Button asChild variant="outline">
-              <Link href="/shop">Browse all stones</Link>
+            <h2 className="text-display text-[clamp(3rem,7vw,5.3rem)] leading-[0.92] text-[#171717]">
+              Be Always On Trend
+            </h2>
+            <p className="text-base leading-8 text-black/58">
+              Discover pieces selected for sculptural form, rich materiality and quiet elegance. Designed to feel timeless, modern and collectible.
+            </p>
+            <Button asChild variant="outline" size="lg" className="rounded-none px-8">
+              <Link href="/shop">Shop now</Link>
             </Button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              { value: featuredProducts.length, label: "featured listings" },
-              { value: featuredCollections.length, label: "curated collections" },
-              { value: newProducts.length, label: "new arrivals live" },
-            ].map((item) => (
-              <div key={item.label} className="rounded-[1.5rem] border border-white/10 bg-black/18 p-5 text-center">
-                <p className="text-display text-5xl text-white">{item.value}</p>
-                <p className="mt-2 text-xs uppercase tracking-[0.24em] text-white/48">{item.label}</p>
-              </div>
-            ))}
+          <div className="relative min-h-[32rem] lg:min-h-[44rem]">
+            <div className="absolute right-0 top-0 h-[78%] w-[72%] overflow-hidden bg-[#c67d32]">
+              <Image
+                src={primaryCollection?.featuredImage || heroImage}
+                alt={primaryCollection?.name || "Collection highlight"}
+                fill
+                className="object-cover"
+              />
+            </div>
+            <div className="absolute bottom-8 left-0 h-[58%] w-[44%] overflow-hidden border-[10px] border-[#fffdfa] bg-white shadow-[0_20px_50px_rgba(24,18,12,0.08)]">
+              <Image
+                src={editorialProduct?.featuredImage || heroImage}
+                alt={editorialProduct?.name || "Featured stone"}
+                fill
+                className="object-cover"
+              />
+            </div>
           </div>
         </div>
       </section>
-      {storySection ? <StorySection section={storySection} /> : null}
-      {authenticitySection ? <FeaturedProductsSection eyebrow="New Arrivals" section={authenticitySection} products={newProducts.slice(0, 3)} /> : null}
-      <section className="container-shell py-18">
-        <div className="stone-panel rounded-[2rem] p-8 md:p-12">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-accent">{labels.homepageJournalEyebrow}</p>
-              <h2 className="text-display mt-3 text-4xl text-white md:text-5xl">Editorial guidance around every release.</h2>
-            </div>
-            <Link href="/journal" className="text-sm text-white/62 hover:text-white">
-              Explore the journal
-            </Link>
-          </div>
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
-            {journalPosts.map((post) => (
-              <Link key={post.id} href={`/journal/${post.slug}`} className="rounded-[1.5rem] border border-white/10 bg-white/3 p-6">
-                <p className="text-xs uppercase tracking-[0.28em] text-white/42">{new Date(post.publishedAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</p>
-                <h3 className="text-display mt-3 text-3xl text-white">{post.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-white/60">{post.excerpt}</p>
-              </Link>
-            ))}
-          </div>
+
+      <section className="container-shell py-18 md:py-22">
+        <div className="mx-auto max-w-4xl text-center">
+          <p className="text-xs uppercase tracking-[0.22em] text-black/55">Best in business</p>
+          <h2 className="text-display mt-4 text-5xl text-[#171717] md:text-6xl">Why Choose Us</h2>
+          <p className="mt-6 text-lg leading-9 text-black/58">
+            Carefully curated natural stones, elegant presentation and an online experience designed to feel refined, trustworthy and effortless.
+          </p>
+          <div className="mx-auto mt-6 h-px w-14 bg-[#b88f5b]" />
+        </div>
+        <div className="mt-14 grid gap-10 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            {
+              icon: BadgePercent,
+              title: "Big Discounts",
+              body: "Seasonal offers on selected featured stones and curated capsule collections.",
+            },
+            {
+              icon: Truck,
+              title: "Free Shipping",
+              body: "Protected shipping support and white-glove handling for qualifying orders.",
+            },
+            {
+              icon: CreditCard,
+              title: "Secure Payments",
+              body: "Clear checkout flow, concierge support and reliable payment assurance.",
+            },
+            {
+              icon: MapPinned,
+              title: "Order Tracking",
+              body: "Stay informed from confirmation to delivery with guided support throughout.",
+            },
+          ].map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.title} className="space-y-5">
+                <Icon className="h-11 w-11 text-black/75" strokeWidth={1.4} />
+                <h3 className="text-display text-3xl text-[#171717]">{item.title}</h3>
+                <p className="text-sm leading-8 text-black/56">{item.body}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
     </>

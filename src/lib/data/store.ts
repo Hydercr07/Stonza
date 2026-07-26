@@ -30,6 +30,10 @@ const storePath = path.join(storeRuntimeDir, "dev-store.json");
 const remoteStoreBucket = "documents";
 const remoteStoreObjectPath = "runtime/dev-store.json";
 
+function isReadOnlyRuntime() {
+  return Boolean(process.env.VERCEL);
+}
+
 const defaultNavigation: NavigationItem[] = [
   { id: "nav-shop", label: "Shop", href: "/shop", order: 1, visible: true },
   { id: "nav-collections", label: "Collections", href: "/collections", order: 2, visible: true },
@@ -580,6 +584,12 @@ async function writeStore(store: StoreData) {
     return;
   }
 
+  if (isReadOnlyRuntime()) {
+    throw new Error(
+      "Store mutations require remote storage on Vercel. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then create the documents bucket.",
+    );
+  }
+
   await fs.mkdir(storeRuntimeDir, { recursive: true });
   await fs.writeFile(storePath, payload, "utf8");
 }
@@ -598,8 +608,12 @@ async function readLocalStore() {
     }
 
     const seed = await fs.readFile(storeSeedPath, "utf8");
-    await fs.mkdir(storeRuntimeDir, { recursive: true });
-    await fs.writeFile(storePath, seed, "utf8");
+
+    if (!isReadOnlyRuntime()) {
+      await fs.mkdir(storeRuntimeDir, { recursive: true });
+      await fs.writeFile(storePath, seed, "utf8");
+    }
+
     return seed;
   }
 }

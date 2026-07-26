@@ -33,10 +33,10 @@ function HeroCopy({
   secondaryHref: string;
 }) {
   return (
-    <div className="max-w-2xl space-y-7">
-      <p className="text-xs uppercase tracking-[0.35em] text-accent">{eyebrow}</p>
-      <h1 className="text-display text-5xl leading-[0.92] text-white sm:text-6xl md:text-8xl">{heading}</h1>
-      <p className="max-w-xl text-lg leading-8 text-white/74 md:text-xl">{body}</p>
+    <div className="max-w-2xl rounded-[2rem] border border-[#e8dfd1] bg-[rgba(255,252,247,0.96)] p-8 shadow-[0_24px_60px_rgba(22,18,14,0.1)] md:p-10">
+      <p className="text-xs uppercase tracking-[0.35em] text-[#a2845d]">{eyebrow}</p>
+      <h1 className="text-display mt-4 text-5xl leading-[0.95] text-[#171717] sm:text-6xl md:text-7xl">{heading}</h1>
+      <p className="mt-5 max-w-xl text-base leading-8 text-black/62 md:text-lg">{body}</p>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button asChild size="lg">
           <Link href={primaryHref}>
@@ -48,15 +48,15 @@ function HeroCopy({
           <Link href={secondaryHref}>{secondaryLabel}</Link>
         </Button>
       </div>
-      <div className="grid max-w-xl gap-3 pt-2 sm:grid-cols-3">
+      <div className="mt-6 grid max-w-xl gap-3 sm:grid-cols-3">
         {[
           { label: "Certified", value: "Natural origin" },
           { label: "Shipping", value: "Protected global dispatch" },
           { label: "Support", value: "Concierge sourcing" },
         ].map((item) => (
-          <div key={item.label} className="stone-chip rounded-[1.25rem] px-4 py-3">
-            <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">{item.label}</p>
-            <p className="mt-2 text-sm text-white/80">{item.value}</p>
+          <div key={item.label} className="stone-chip rounded-[1.1rem] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-black/40">{item.label}</p>
+            <p className="mt-2 text-sm text-black/72">{item.value}</p>
           </div>
         ))}
       </div>
@@ -85,7 +85,7 @@ function HeroVideo({
           <source src={source} />
         </video>
       ) : null}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(208,198,178,0.12),transparent_34%),linear-gradient(180deg,rgba(7,7,7,0.7),rgba(16,17,18,0.95))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,12,13,0.68),rgba(11,12,13,0.42)),radial-gradient(circle_at_top_left,rgba(183,154,114,0.18),transparent_32%)]" />
       <div className="container-shell relative grid min-h-[calc(100vh-7rem)] items-center py-18 md:py-20">
         <HeroCopy
           eyebrow="Video story"
@@ -130,7 +130,7 @@ function HeroCarousel({ hero }: { hero: HeroSettings }) {
           backgroundImage: `linear-gradient(180deg,rgba(7,7,7,0.7),rgba(16,17,18,1)),url('${slide.desktopImage || hero.desktopBannerImage || "/placeholders/hero-strata.svg"}')`,
         }}
       />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(208,198,178,0.12),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(255,255,255,0.08),transparent_28%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,12,13,0.72),rgba(11,12,13,0.34)),radial-gradient(circle_at_top_left,rgba(183,154,114,0.18),transparent_32%)]" />
       <div className="container-shell relative grid min-h-[calc(100vh-7rem)] items-center gap-12 py-18 md:py-20">
         <HeroCopy
           eyebrow={slide.eyebrow}
@@ -179,7 +179,7 @@ export function Hero({ hero }: { hero: HeroSettings }) {
               backgroundImage: `linear-gradient(180deg,rgba(7,7,7,0.7),rgba(16,17,18,1)),url('${hero.hybrid.desktopImage || hero.desktopBannerImage || "/placeholders/hero-strata.svg"}')`,
             }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(208,198,178,0.12),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(255,255,255,0.08),transparent_28%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,12,13,0.72),rgba(11,12,13,0.34)),radial-gradient(circle_at_top_left,rgba(183,154,114,0.18),transparent_32%)]" />
           <div className="container-shell relative grid min-h-[calc(100vh-7rem)] items-center gap-12 py-18 md:grid-cols-[1.1fr_0.9fr] md:py-20">
             <HeroCopy
               eyebrow={hero.hybrid.eyebrow}
@@ -203,18 +203,15 @@ export function Hero({ hero }: { hero: HeroSettings }) {
                 "linear-gradient(180deg,rgba(7,7,7,0.7),rgba(16,17,18,1)),url('/placeholders/hero-strata.svg')",
             }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_20%,rgba(208,198,178,0.12),transparent_34%),radial-gradient(circle_at_88%_12%,rgba(255,255,255,0.08),transparent_28%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(11,12,13,0.74),rgba(11,12,13,0.36)),radial-gradient(circle_at_top_left,rgba(183,154,114,0.18),transparent_32%)]" />
           <div className="container-shell relative grid min-h-[calc(100vh-7rem)] items-center gap-12 py-18 md:grid-cols-[1.1fr_0.9fr] md:py-20">
-            <div className="max-w-2xl space-y-7">
-              <p className="text-xs uppercase tracking-[0.35em] text-accent">{hero.interactive3d.eyebrow}</p>
-              <h1 className="text-display text-5xl leading-[0.92] text-white sm:text-6xl md:text-8xl">
+            <div className="max-w-2xl rounded-[2rem] border border-[#e8dfd1] bg-[rgba(255,252,247,0.96)] p-8 shadow-[0_24px_60px_rgba(22,18,14,0.1)] md:p-10">
+              <p className="text-xs uppercase tracking-[0.35em] text-[#a2845d]">{hero.interactive3d.eyebrow}</p>
+              <h1 className="text-display mt-4 text-5xl leading-[0.95] text-[#171717] sm:text-6xl md:text-7xl">
                 {hero.interactive3d.heading}
               </h1>
-              <p className="max-w-xl text-lg leading-8 text-white/74 md:text-xl">
+              <p className="mt-5 max-w-xl text-base leading-8 text-black/68 md:text-lg">
                 {hero.interactive3d.subheading}
-              </p>
-              <p className="max-w-xl text-sm leading-7 text-white/55 md:text-base">
-                {hero.interactive3d.description}
               </p>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg">
@@ -232,20 +229,6 @@ export function Hero({ hero }: { hero: HeroSettings }) {
           </div>
         </>
       ) : null}
-      <div className="relative border-t border-white/10 bg-[#0d0e0f]/92">
-        <div className="container-shell grid gap-4 py-5 md:grid-cols-4">
-          {[
-            "Shopify-style merchandising flow with curated collections",
-            "Real inventory storytelling for one-of-one stones",
-            "Luxury editorial direction without losing conversion clarity",
-            "Search, wishlist and cart pathways surfaced up front",
-          ].map((item) => (
-            <div key={item} className="rounded-full border border-white/10 bg-white/4 px-4 py-3 text-center text-xs uppercase tracking-[0.2em] text-white/62">
-              {item}
-            </div>
-          ))}
-        </div>
-      </div>
     </section>
   );
 }

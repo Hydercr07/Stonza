@@ -7,9 +7,9 @@ export function CollectionCard({ collection }: { collection: Collection }) {
   return (
     <Link
       href={`/collections/${collection.slug}`}
-      className="group overflow-hidden rounded-[2rem] border border-white/10 bg-white/4 transition duration-300 hover:-translate-y-1 hover:border-white/18"
+      className="group block transition duration-300 hover:-translate-y-1"
     >
-      <div className="relative h-72 overflow-hidden">
+      <div className="relative h-80 overflow-hidden bg-[#f2ece4]">
         <Image
           src={collection.featuredImage}
           alt={collection.name}
@@ -17,15 +17,10 @@ export function CollectionCard({ collection }: { collection: Collection }) {
           className="object-cover transition duration-700 group-hover:scale-105"
         />
       </div>
-      <div className="space-y-3 p-6">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs uppercase tracking-[0.28em] text-white/45">Collection</p>
-          <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-white/55">
-            Editorial drop
-          </span>
-        </div>
-        <h3 className="text-display text-3xl text-white">{collection.name}</h3>
-        <p className="text-sm leading-7 text-white/62">{collection.description}</p>
+      <div className="space-y-2 px-1 pt-5">
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7a4f]">Collection</p>
+        <h3 className="text-display text-2xl text-[#171717]">{collection.name}</h3>
+        <p className="text-sm leading-7 text-black/58">{collection.description}</p>
       </div>
     </Link>
   );
@@ -35,9 +30,9 @@ export function CategoryCard({ category }: { category: Category }) {
   return (
     <Link
       href={`/shop?category=${category.slug}`}
-      className="group overflow-hidden rounded-[2rem] border border-white/10 bg-white/4 transition duration-300 hover:-translate-y-1 hover:border-white/18"
+      className="group block transition duration-300 hover:-translate-y-1"
     >
-      <div className="relative h-64 overflow-hidden">
+      <div className="relative h-72 overflow-hidden bg-[#f2ece4]">
         <Image
           src={category.featuredImage}
           alt={category.altText}
@@ -45,15 +40,10 @@ export function CategoryCard({ category }: { category: Category }) {
           className="object-cover transition duration-700 group-hover:scale-105"
         />
       </div>
-      <div className="space-y-2 p-6">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs uppercase tracking-[0.28em] text-white/45">Category</p>
-          <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-white/55">
-            Shop edit
-          </span>
-        </div>
-        <h3 className="text-display text-3xl text-white">{category.name}</h3>
-        <p className="text-sm leading-7 text-white/62">{category.shortDescription}</p>
+      <div className="space-y-2 px-1 pt-5">
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7a4f]">Category</p>
+        <h3 className="text-display text-2xl text-[#171717]">{category.name}</h3>
+        <p className="text-sm leading-7 text-black/58">{category.shortDescription}</p>
       </div>
     </Link>
   );
@@ -66,9 +56,9 @@ export function ProductCard({ product }: { product: Product }) {
   return (
     <Link
       href={`/stones/${product.slug}`}
-      className="group overflow-hidden rounded-[2rem] border border-white/10 bg-white/3 transition duration-300 hover:-translate-y-1 hover:border-white/18"
+      className="group block transition duration-300 hover:-translate-y-1"
     >
-      <div className="relative h-72 overflow-hidden bg-[#161818]">
+      <div className="relative h-96 overflow-hidden bg-[#f2ece4]">
         <Image
           src={product.featuredImage}
           alt={product.altText}
@@ -76,31 +66,25 @@ export function ProductCard({ product }: { product: Product }) {
           className="object-cover transition duration-700 group-hover:scale-105 group-hover:opacity-90"
         />
         {badge ? (
-          <span className="absolute left-4 top-4 rounded-full bg-black/72 px-3 py-1 text-xs uppercase tracking-[0.22em] text-white/78">
+          <span className="absolute left-5 top-5 rounded-full bg-white/90 px-3 py-1 text-xs text-black/72 shadow-sm">
             {badge}
           </span>
         ) : null}
-        <div className="absolute inset-x-4 bottom-4 flex items-center justify-between rounded-full border border-white/10 bg-black/40 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-white/70 backdrop-blur-md">
+        <div className="absolute inset-x-5 bottom-5 flex items-center justify-between rounded-full bg-white/88 px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-black/55 shadow-sm backdrop-blur-md">
           <span>{product.origin}</span>
           <span>{product.carat} ct</span>
         </div>
       </div>
-      <div className="space-y-3 p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-white/45">{product.stoneType}</p>
-            <h3 className="text-display text-2xl text-white">{product.name}</h3>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-white/74">{formatMoney(product.salePrice ?? product.price, product.currency)}</p>
-            {product.salePrice ? <p className="text-xs text-white/35 line-through">{formatMoney(product.price, product.currency)}</p> : null}
-          </div>
+      <div className="space-y-2 px-1 pt-5">
+        <h3 className="text-display text-[2rem] leading-none text-[#171717]">{product.name}</h3>
+        <div className="flex items-center gap-2 text-[1.05rem] text-black/72">
+          {product.salePrice ? <span className="text-black/28 line-through">{formatMoney(product.price, product.currency)}</span> : null}
+          <span className={product.salePrice ? "font-semibold text-[#171717]" : ""}>{formatMoney(product.salePrice ?? product.price, product.currency)}</span>
         </div>
-        <p className="text-sm leading-7 text-white/60">{product.shortDescription}</p>
-        <div className="flex items-center justify-between border-t border-white/8 pt-4 text-xs uppercase tracking-[0.22em] text-white/48">
-          <span>{product.allowCartPurchase && !isUnavailable ? "Ready to purchase" : "Concierge order"}</span>
-          <span>{product.shape}</span>
-        </div>
+        <p className="text-sm leading-7 text-black/52">{product.shortDescription}</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] text-black/38">
+          {product.allowCartPurchase && !isUnavailable ? "Ready to purchase" : "Concierge order"}
+        </p>
       </div>
     </Link>
   );

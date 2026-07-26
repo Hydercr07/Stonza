@@ -19,9 +19,9 @@ export function SectionHeading({
   return (
     <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
       <div className="max-w-2xl space-y-4">
-        <p className="text-xs uppercase tracking-[0.3em] text-accent">{eyebrow}</p>
-        <h2 className="text-display text-4xl text-white md:text-5xl">{title}</h2>
-        <p className="text-sm leading-7 text-white/62 md:text-base">{body}</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-[#a2845d]">{eyebrow}</p>
+        <h2 className="text-display text-4xl text-[#171717] md:text-5xl">{title}</h2>
+        <p className="text-sm leading-7 text-black/58 md:text-base">{body}</p>
       </div>
       {ctaLabel && ctaHref ? (
         <Button asChild variant="outline">
@@ -95,22 +95,22 @@ export function StorySection({ section }: { section: HomepageSection }) {
   return (
     <section className="container-shell grid gap-8 py-18 lg:grid-cols-[0.9fr_1.1fr]">
       <div
-        className="min-h-[22rem] rounded-[2rem] border border-white/10 bg-cover bg-center"
+        className="min-h-[22rem] rounded-[2rem] border border-black/8 bg-cover bg-center shadow-[0_18px_44px_rgba(26,20,12,0.08)]"
         style={{ backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.46)), url('/placeholders/story-mineral.svg')" }}
       />
       <div className="stone-panel rounded-[2rem] p-8 md:p-12">
-        <p className="mb-4 text-xs uppercase tracking-[0.28em] text-accent">Brand Story</p>
-        <h2 className="text-display text-4xl text-white md:text-5xl">{section.heading}</h2>
-        <p className="mt-6 max-w-2xl text-base leading-8 text-white/66">{section.body}</p>
+        <p className="mb-4 text-xs uppercase tracking-[0.28em] text-[#a2845d]">Brand Story</p>
+        <h2 className="text-display text-4xl text-[#171717] md:text-5xl">{section.heading}</h2>
+        <p className="mt-6 max-w-2xl text-base leading-8 text-black/62">{section.body}</p>
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {[
             { label: "Sourcing", value: "Private collector network" },
             { label: "Selection", value: "Editorially curated inventory" },
             { label: "Delivery", value: "Protected regional and global dispatch" },
           ].map((item) => (
-            <div key={item.label} className="rounded-[1.5rem] border border-white/10 bg-white/3 p-4">
-              <p className="text-[10px] uppercase tracking-[0.24em] text-white/42">{item.label}</p>
-              <p className="mt-2 text-sm text-white/78">{item.value}</p>
+            <div key={item.label} className="rounded-[1.5rem] border border-black/8 bg-[rgba(255,255,255,0.68)] p-4">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-black/42">{item.label}</p>
+              <p className="mt-2 text-sm text-black/72">{item.value}</p>
             </div>
           ))}
         </div>
