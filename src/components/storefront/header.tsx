@@ -39,9 +39,6 @@ export function Header({
   }, []);
 
   const visibleNavigation = navigation.filter((item) => item.visible);
-  const midpoint = Math.ceil(visibleNavigation.length / 2);
-  const leftNavigation = visibleNavigation.slice(0, midpoint);
-  const rightNavigation = visibleNavigation.slice(midpoint);
 
   return (
     <>
@@ -64,19 +61,12 @@ export function Header({
             <Logo dark priority src={logo} alt={logoAlt} className="w-[132px] sm:w-[150px]" />
           </div>
 
-          <div className="hidden items-center gap-10 lg:flex">
+          <div className="hidden items-center lg:flex">
             <Logo dark priority src={logo} alt={logoAlt} className="w-[165px] xl:w-[185px]" />
-            <nav className="hidden items-center gap-6 text-[12px] uppercase tracking-[0.12em] text-black/72 xl:flex 2xl:gap-8">
-              {visibleNavigation.map((item) => (
-                <Link key={item.href} href={item.href} className="relative py-2 hover:text-black">
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
           </div>
 
-          <nav className="hidden items-center justify-center gap-6 text-[12px] uppercase tracking-[0.12em] text-black/72 lg:flex xl:hidden">
-            {leftNavigation.map((item) => (
+          <nav className="hidden items-center justify-center gap-6 text-[12px] uppercase tracking-[0.12em] text-black/72 lg:flex xl:gap-8">
+            {visibleNavigation.map((item) => (
               <Link key={item.href} href={item.href} className="relative py-2 hover:text-black">
                 {item.label}
               </Link>
@@ -84,13 +74,6 @@ export function Header({
           </nav>
 
           <div className="flex items-center justify-end gap-1 sm:gap-2 lg:gap-3">
-            <nav className="hidden items-center gap-6 text-[12px] uppercase tracking-[0.12em] text-black/72 lg:flex xl:hidden">
-              {rightNavigation.map((item) => (
-                <Link key={item.href} href={item.href} className="relative py-2 hover:text-black">
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
             {showSearch ? (
               <Link
                 href="/search"
