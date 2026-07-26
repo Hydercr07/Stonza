@@ -135,7 +135,13 @@ select:focus-visible {
   }
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1024px) {
+  .shop-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1440px) {
   .shop-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

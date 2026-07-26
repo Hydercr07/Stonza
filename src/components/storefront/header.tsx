@@ -51,19 +51,31 @@ export function Header({
           scrolled ? "border-b border-black/8 bg-[rgba(255,253,249,0.96)] shadow-[0_12px_34px_rgba(26,20,12,0.06)] backdrop-blur-xl" : "border-b border-[#ece2d5] bg-[rgba(255,253,249,0.94)]",
         )}
       >
-        <div className="container-shell grid min-h-22 grid-cols-[auto_1fr_auto] items-center gap-4 py-2 md:grid-cols-[1fr_auto_1fr]">
-          <div className="flex items-center gap-5 md:hidden">
+        <div className="container-shell grid min-h-20 grid-cols-[auto_1fr_auto] items-center gap-4 py-2 lg:grid-cols-[auto_1fr_auto]">
+          <div className="flex items-center gap-3 lg:hidden">
             <button
               type="button"
               onClick={() => setOpen(true)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white md:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white"
               aria-label="Open navigation"
             >
               <Menu className="h-5 w-5" />
             </button>
+            <Logo dark priority src={logo} alt={logoAlt} className="w-[132px] sm:w-[150px]" />
           </div>
 
-          <nav className="hidden items-center gap-8 text-[13px] uppercase tracking-[0.12em] text-black/72 md:flex">
+          <div className="hidden items-center gap-10 lg:flex">
+            <Logo dark priority src={logo} alt={logoAlt} className="w-[165px] xl:w-[185px]" />
+            <nav className="hidden items-center gap-6 text-[12px] uppercase tracking-[0.12em] text-black/72 xl:flex 2xl:gap-8">
+              {visibleNavigation.map((item) => (
+                <Link key={item.href} href={item.href} className="relative py-2 hover:text-black">
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          <nav className="hidden items-center justify-center gap-6 text-[12px] uppercase tracking-[0.12em] text-black/72 lg:flex xl:hidden">
             {leftNavigation.map((item) => (
               <Link key={item.href} href={item.href} className="relative py-2 hover:text-black">
                 {item.label}
@@ -71,12 +83,8 @@ export function Header({
             ))}
           </nav>
 
-          <div className="flex justify-center">
-            <Logo priority src={logo} alt={logoAlt} className="w-[160px] md:w-[220px]" />
-          </div>
-
-          <div className="flex items-center justify-end gap-3">
-            <nav className="hidden items-center gap-8 text-[13px] uppercase tracking-[0.12em] text-black/72 md:flex">
+          <div className="flex items-center justify-end gap-1 sm:gap-2 lg:gap-3">
+            <nav className="hidden items-center gap-6 text-[12px] uppercase tracking-[0.12em] text-black/72 lg:flex xl:hidden">
               {rightNavigation.map((item) => (
                 <Link key={item.href} href={item.href} className="relative py-2 hover:text-black">
                   {item.label}
@@ -86,7 +94,7 @@ export function Header({
             {showSearch ? (
               <Link
                 href="/search"
-                className="inline-flex h-10 w-10 items-center justify-center text-black/70 hover:text-black"
+                className="inline-flex h-9 w-9 items-center justify-center text-black/70 hover:text-black sm:h-10 sm:w-10"
                 aria-label="Search"
               >
                 <Search className="h-4 w-4" />
@@ -95,7 +103,7 @@ export function Header({
             {showWishlist ? (
               <Link
                 href="/wishlist"
-                className="inline-flex h-10 w-10 items-center justify-center text-black/70 hover:text-black"
+                className="inline-flex h-9 w-9 items-center justify-center text-black/70 hover:text-black sm:h-10 sm:w-10"
                 aria-label="Wishlist"
               >
                 <Star className="h-4 w-4" />
@@ -104,7 +112,7 @@ export function Header({
             {showCart ? (
               <Link
                 href="/cart"
-                className="inline-flex h-10 w-10 items-center justify-center text-black/70 hover:text-black"
+                className="inline-flex h-9 w-9 items-center justify-center text-black/70 hover:text-black sm:h-10 sm:w-10"
                 aria-label="Cart"
               >
                 <ShoppingBag className="h-4 w-4" />

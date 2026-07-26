@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 interface LogoProps {
   href?: string;
   light?: boolean;
+  dark?: boolean;
   className?: string;
   priority?: boolean;
   src?: string;
@@ -14,6 +15,7 @@ interface LogoProps {
 export function Logo({
   href = "/",
   light = false,
+  dark = false,
   className,
   priority = false,
   src = "/brand/stonza-logo.png",
@@ -26,7 +28,12 @@ export function Logo({
       width={315}
       height={95}
       priority={priority}
-      className={cn("h-auto w-[170px] md:w-[210px]", light && "brightness-0 invert", className)}
+      className={cn(
+        "h-auto w-[170px] md:w-[210px]",
+        light && "brightness-0 invert",
+        dark && "brightness-0",
+        className,
+      )}
     />
   );
 
