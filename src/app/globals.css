@@ -12,7 +12,10 @@
   --accent: #d0c6b2;
   --accent-strong: #bcae90;
   --surface-2: #1d1f1f;
+  --surface-3: #232526;
+  --surface-4: #0c0d0d;
   --storefront-max: 1440px;
+  --shopify-green: #95bf47;
 }
 
 @theme inline {
@@ -104,6 +107,37 @@ select:focus-visible {
   background: radial-gradient(circle, rgba(188, 174, 144, 0.24), transparent 70%);
   filter: blur(32px);
   pointer-events: none;
+}
+
+.stone-mesh {
+  background:
+    radial-gradient(circle at top left, rgba(208, 198, 178, 0.16), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.06), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+    var(--surface-4);
+}
+
+.stone-chip {
+  border: 1px solid rgba(255, 248, 235, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+}
+
+.shop-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .shop-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .shop-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

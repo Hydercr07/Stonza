@@ -82,7 +82,7 @@ export function FeaturedProductsSection({
   return (
     <section className="container-shell py-18">
       <SectionHeading eyebrow={section.eyebrow ?? eyebrow} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+      <div className="shop-grid">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
@@ -96,12 +96,24 @@ export function StorySection({ section }: { section: HomepageSection }) {
     <section className="container-shell grid gap-8 py-18 lg:grid-cols-[0.9fr_1.1fr]">
       <div
         className="min-h-[22rem] rounded-[2rem] border border-white/10 bg-cover bg-center"
-        style={{ backgroundImage: "url('/placeholders/story-mineral.svg')" }}
+        style={{ backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.46)), url('/placeholders/story-mineral.svg')" }}
       />
       <div className="stone-panel rounded-[2rem] p-8 md:p-12">
         <p className="mb-4 text-xs uppercase tracking-[0.28em] text-accent">Brand Story</p>
         <h2 className="text-display text-4xl text-white md:text-5xl">{section.heading}</h2>
         <p className="mt-6 max-w-2xl text-base leading-8 text-white/66">{section.body}</p>
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          {[
+            { label: "Sourcing", value: "Private collector network" },
+            { label: "Selection", value: "Editorially curated inventory" },
+            { label: "Delivery", value: "Protected regional and global dispatch" },
+          ].map((item) => (
+            <div key={item.label} className="rounded-[1.5rem] border border-white/10 bg-white/3 p-4">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-white/42">{item.label}</p>
+              <p className="mt-2 text-sm text-white/78">{item.value}</p>
+            </div>
+          ))}
+        </div>
         {section.ctaLabel && section.ctaUrl ? (
           <Button asChild variant="outline" className="mt-8">
             <Link href={section.ctaUrl}>{section.ctaLabel}</Link>

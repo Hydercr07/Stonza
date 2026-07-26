@@ -48,6 +48,18 @@ function HeroCopy({
           <Link href={secondaryHref}>{secondaryLabel}</Link>
         </Button>
       </div>
+      <div className="grid max-w-xl gap-3 pt-2 sm:grid-cols-3">
+        {[
+          { label: "Certified", value: "Natural origin" },
+          { label: "Shipping", value: "Protected global dispatch" },
+          { label: "Support", value: "Concierge sourcing" },
+        ].map((item) => (
+          <div key={item.label} className="stone-chip rounded-[1.25rem] px-4 py-3">
+            <p className="text-[10px] uppercase tracking-[0.28em] text-white/45">{item.label}</p>
+            <p className="mt-2 text-sm text-white/80">{item.value}</p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -220,6 +232,20 @@ export function Hero({ hero }: { hero: HeroSettings }) {
           </div>
         </>
       ) : null}
+      <div className="relative border-t border-white/10 bg-[#0d0e0f]/92">
+        <div className="container-shell grid gap-4 py-5 md:grid-cols-4">
+          {[
+            "Shopify-style merchandising flow with curated collections",
+            "Real inventory storytelling for one-of-one stones",
+            "Luxury editorial direction without losing conversion clarity",
+            "Search, wishlist and cart pathways surfaced up front",
+          ].map((item) => (
+            <div key={item} className="rounded-full border border-white/10 bg-white/4 px-4 py-3 text-center text-xs uppercase tracking-[0.2em] text-white/62">
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 }
