@@ -24,7 +24,9 @@ import type {
 import { slugify } from "@/lib/utils";
 import { env } from "@/lib/env";
 
-const storePath = path.join(process.cwd(), "src", "data", "dev-store.json");
+const storeSeedPath = path.join(process.cwd(), "src", "data", "dev-store.json");
+const storeRuntimeDir = path.join(process.cwd(), ".stonza", "runtime");
+const storePath = path.join(storeRuntimeDir, "dev-store.json");
 const remoteStoreBucket = "documents";
 const remoteStoreObjectPath = "runtime/dev-store.json";
 
@@ -578,9 +580,8 @@ async function writeStore(store: StoreData) {
     return;
   }
 
-  const tempPath = `${storePath}.tmp`;
-  await fs.writeFile(tempPath, payload, "utf8");
-  await fs.rename(tempPath, storePath);
+  await fs.mkdir(storeRuntimeDir, { recursive: true });
+  await fs.writeFile(storePath, payload, "utf8");
 }
 
 function shouldUseRemoteStore() {
@@ -588,7 +589,19 @@ function shouldUseRemoteStore() {
 }
 
 async function readLocalStore() {
-  return fs.readFile(storePath, "utf8");
+  try {
+    return await fs.readFile(storePath, "utf8");
+  } catch (error) {
+    const nodeError = error as NodeJS.ErrnoException;
+    if (nodeError.code !== "ENOENT") {
+      throw error;
+    }
+
+    const seed = await fs.readFile(storeSeedPath, "utf8");
+    await fs.mkdir(storeRuntimeDir, { recursive: true });
+    await fs.writeFile(storePath, seed, "utf8");
+    return seed;
+  }
 }
 
 async function readStoreSource() {

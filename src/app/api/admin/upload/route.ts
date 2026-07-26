@@ -81,6 +81,20 @@ async function uploadToSupabase(file: File, directory: string, filename: string)
   };
 }
 
+async function saveFileLocally(file: File, directory: string, filename: string) {
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const outputDir = path.join(process.cwd(), ".stonza", "uploads", directory);
+  const absolutePath = path.join(outputDir, filename);
+
+  await fs.mkdir(outputDir, { recursive: true });
+  await fs.writeFile(absolutePath, bytes);
+
+  return {
+    path: absolutePath,
+    publicUrl: `/uploads/${directory}/${filename}`,
+  };
+}
+
 async function saveFile(file: File, sessionEmail: string): Promise<MediaAsset> {
   const validationError = validateMediaInput({
     mimeType: file.type,
@@ -100,9 +114,19 @@ async function saveFile(file: File, sessionEmail: string): Promise<MediaAsset> {
   let publicUrl = "";
 
   if (isSupabaseStorageConfigured()) {
-    const uploaded = await uploadToSupabase(file, mime.dir, filename);
-    storedPath = uploaded.path;
-    publicUrl = uploaded.publicUrl;
+    try {
+      const uploaded = await uploadToSupabase(file, mime.dir, filename);
+      storedPath = uploaded.path;
+      publicUrl = uploaded.publicUrl;
+    } catch (error) {
+      if (process.env.VERCEL) {
+        throw error;
+      }
+
+      const uploaded = await saveFileLocally(file, mime.dir, filename);
+      storedPath = uploaded.path;
+      publicUrl = uploaded.publicUrl;
+    }
   } else {
     if (process.env.VERCEL) {
       throw new Error(
@@ -110,14 +134,9 @@ async function saveFile(file: File, sessionEmail: string): Promise<MediaAsset> {
       );
     }
 
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const outputDir = path.join(process.cwd(), "public", "uploads", mime.dir);
-    const absolutePath = path.join(outputDir, filename);
-    publicUrl = `/uploads/${mime.dir}/${filename}`;
-
-    await fs.mkdir(outputDir, { recursive: true });
-    await fs.writeFile(absolutePath, bytes);
-    storedPath = absolutePath;
+    const uploaded = await saveFileLocally(file, mime.dir, filename);
+    storedPath = uploaded.path;
+    publicUrl = uploaded.publicUrl;
   }
 
   const asset: MediaAsset = {

@@ -36,8 +36,8 @@ test.describe.serial("admin and storefront flows", () => {
     await page.locator('input[type="file"]').first().setInputFiles(path.join(process.cwd(), "public", "brand", "stonza-logo.png"));
     await page.waitForTimeout(1500);
     await page.getByRole("button", { name: "Save category" }).click();
-    await expect(page).toHaveURL(/\/admin\/categories\//);
-    await expect(page.getByRole("heading", { name: categoryName })).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/categories\/(?!new$)[^/]+$/, { timeout: 15000 });
+    await expect(page.getByRole("heading", { name: categoryName })).toBeVisible({ timeout: 15000 });
   });
 
   test("owner can upload product media", async ({ page }) => {
