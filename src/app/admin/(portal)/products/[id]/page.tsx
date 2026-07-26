@@ -4,7 +4,11 @@ import { getProductById, listCategories, listCollections } from "@/lib/data/stor
 
 export default async function AdminProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [product, categories, collections] = await Promise.all([getProductById(id), listCategories(), listCollections()]);
+  const [product, categories, collections] = await Promise.all([
+    getProductById(id),
+    listCategories({ admin: true, includeInactive: true }),
+    listCollections(),
+  ]);
 
   if (!product) notFound();
 

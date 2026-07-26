@@ -21,6 +21,9 @@ export function ProductForm({
       : activeCategories[0]
         ? [activeCategories[0].slug]
         : [];
+  const hasCategories = activeCategories.length > 0;
+  const hasCollections = collections.length > 0;
+  const canSubmit = hasCategories && hasCollections;
 
   return (
     <div className="space-y-6">
@@ -49,6 +52,13 @@ export function ProductForm({
           ) : null}
         </div>
       </div>
+      {!canSubmit ? (
+        <div className="rounded-[1.25rem] border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+          {!hasCategories ? "Create at least one active category in the admin portal before publishing a product." : null}
+          {!hasCategories && !hasCollections ? " " : null}
+          {!hasCollections ? "Create at least one collection before publishing a product." : null}
+        </div>
+      ) : null}
       <form action={saveProductAction} className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <input type="hidden" name="id" defaultValue={product?.id} />
         <div className="space-y-6">
@@ -208,7 +218,7 @@ export function ProductForm({
             <input type="checkbox" name="allowEnquiry" defaultChecked={product?.allowEnquiry ?? true} /> Allow
             enquiry
           </label>
-          <Button className="w-full">Save product</Button>
+          <Button className="w-full" disabled={!canSubmit}>Save product</Button>
         </div>
       </form>
     </div>

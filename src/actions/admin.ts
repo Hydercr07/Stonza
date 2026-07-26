@@ -384,6 +384,18 @@ export async function saveProductAction(formData: FormData) {
     .filter((key) => key.startsWith("category:"))
     .map((key) => key.replace("category:", ""));
 
+  if (categorySlugs.length === 0) {
+    throw new Error("Select at least one category before saving this product.");
+  }
+
+  if (!formData.get("collectionSlug")) {
+    throw new Error("Select a collection before saving this product.");
+  }
+
+  if (media.length === 0) {
+    throw new Error("Upload at least one product image before saving this product.");
+  }
+
   const payload = productSchema.parse({
     id: formData.get("id") || undefined,
     name: formData.get("name"),
