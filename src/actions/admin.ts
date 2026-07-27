@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { ZodError } from "zod";
 import { clearAdminSession, getOwnerEmail, getOwnerPassword, requireAdminSession, setAdminSession } from "@/lib/auth/session";
 import {
   deleteMediaAsset,
@@ -93,6 +94,31 @@ function parseNavigation(value: FormDataEntryValue | null): NavigationItem[] {
       visible: child.visible ?? true,
     })),
   }));
+}
+
+function toSentenceCase(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function prettifyFieldPath(path: Array<string | number>) {
+  if (!path.length) return "Form";
+  return toSentenceCase(
+    path
+      .map((part) => String(part).replace(/([A-Z])/g, " $1"))
+      .join(" ")
+      .replace(/[_-]/g, " ")
+      .trim(),
+  );
+}
+
+function formatAdminError(error: unknown) {
+  if (error instanceof ZodError) {
+    return error.issues
+      .map((issue) => `${prettifyFieldPath(issue.path.filter((part): part is string | number => typeof part === "string" || typeof part === "number"))}: ${issue.message}`)
+      .join(" ");
+  }
+
+  return error instanceof Error ? error.message : "Product could not be saved right now.";
 }
 
 export async function loginAction(formData: FormData) {
@@ -553,7 +579,7 @@ export async function saveProductFormAction(
     }
 
     return {
-      error: error instanceof Error ? error.message : "Product could not be saved right now.",
+      error: formatAdminError(error),
     };
   }
 }
