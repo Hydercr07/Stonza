@@ -3,6 +3,7 @@ import { saveProductAction, transitionProductStatusAction } from "@/actions/admi
 import type { Category, Collection, Product } from "@/types/domain";
 import { Button } from "@/components/shared/ui/button";
 import { AdminMediaUploader } from "@/components/admin/media-uploader";
+import { UploadAwareSubmitButton } from "@/components/admin/upload-aware-submit-button";
 
 export function ProductForm({
   product,
@@ -218,7 +219,9 @@ export function ProductForm({
             <input type="checkbox" name="allowEnquiry" defaultChecked={product?.allowEnquiry ?? true} /> Allow
             enquiry
           </label>
-          <Button className="w-full" disabled={!canSubmit}>Save product</Button>
+          <UploadAwareSubmitButton className="w-full" disabled={!canSubmit}>
+            Save product
+          </UploadAwareSubmitButton>
         </div>
       </form>
     </div>

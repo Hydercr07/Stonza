@@ -793,9 +793,19 @@ export async function listCollections(featuredOnly = false): Promise<Collection[
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
+export async function listAdminCollections(): Promise<Collection[]> {
+  const store = await readStore();
+  return store.collections.sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 export async function getCollectionBySlug(slug: string) {
   const collections = await listCollections(false);
   return collections.find((collection) => collection.slug === slug) ?? null;
+}
+
+export async function getCollectionById(id: string) {
+  const store = await readStore();
+  return store.collections.find((collection) => collection.id === id) ?? null;
 }
 
 export async function listProducts(options?: {
@@ -856,6 +866,13 @@ export async function listJournalPosts() {
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
 }
 
+export async function listAdminJournalPosts() {
+  const store = await readStore();
+  return store.journalPosts.sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
+}
+
 export async function getJournalPostBySlug(slug: string): Promise<JournalPost | null> {
   const store = await readStore();
   return store.journalPosts.find((post) => post.slug === slug && post.status === "published") ?? null;
@@ -864,6 +881,13 @@ export async function getJournalPostBySlug(slug: string): Promise<JournalPost | 
 export async function getManagedPage(slug: string): Promise<ManagedPage | null> {
   const store = await readStore();
   return store.pages.find((page) => page.slug === slug && page.status === "published") ?? null;
+}
+
+export async function listManagedPages() {
+  const store = await readStore();
+  return store.pages.sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  );
 }
 
 export async function logActivity(entry: Omit<ActivityLogEntry, "id" | "timestamp">) {

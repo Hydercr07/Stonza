@@ -5,6 +5,7 @@ import {
   transitionCategoryStatusAction,
 } from "@/actions/admin";
 import { AdminMediaUploader } from "@/components/admin/media-uploader";
+import { UploadAwareSubmitButton } from "@/components/admin/upload-aware-submit-button";
 import { Button } from "@/components/shared/ui/button";
 import type { Category } from "@/types/domain";
 
@@ -172,7 +173,7 @@ export function CategoryForm({
             Open Graph image
             <input name="openGraphImage" defaultValue={category?.openGraphImage ?? category?.featuredImage} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
           </label>
-          <Button className="w-full">Save category</Button>
+          <UploadAwareSubmitButton className="w-full">Save category</UploadAwareSubmitButton>
         </div>
       </form>
     </div>

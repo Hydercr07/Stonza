@@ -34,7 +34,7 @@ import {
   settingsSchema,
 } from "@/lib/validation/admin";
 import { slugify } from "@/lib/utils";
-import type { Category, ContentLabel, HomepageSection, NavigationItem, Product, ProductMediaItem } from "@/types/domain";
+import type { Category, ContentLabel, HomepageSection, MediaAsset, NavigationItem, Product, ProductMediaItem } from "@/types/domain";
 
 function parseBoolean(value: FormDataEntryValue | null) {
   return value === "on" || value === "true";
@@ -51,6 +51,31 @@ function syncMedia(items: ProductMediaItem[]) {
     .map((item, index) => ({ ...item, featured: item.featured, sortOrder: index + 1 }));
   const featuredItem = ordered.find((item) => item.featured) ?? ordered[0];
   return ordered.map((item) => ({ ...item, featured: item.id === featuredItem?.id }));
+}
+
+function asProductMediaItem(asset: MediaAsset): ProductMediaItem {
+  return {
+    id: `product-media-${asset.id}`,
+    assetId: asset.id,
+    url: asset.publicUrl,
+    altText: asset.altText || asset.originalFilename.replace(/\.[^.]+$/, ""),
+    fileName: asset.originalFilename,
+    size: asset.size,
+    featured: true,
+    sortOrder: 1,
+  };
+}
+
+async function getRecentUploadFallback(actor: string) {
+  const store = await getStoreData();
+  const recentWindowStart = Date.now() - 10 * 60 * 1000;
+
+  return store.mediaAssets.find(
+    (asset) =>
+      asset.uploadedBy === actor &&
+      !asset.deletedAt &&
+      new Date(asset.uploadedAt).getTime() >= recentWindowStart,
+  );
 }
 
 function parseNavigation(value: FormDataEntryValue | null): NavigationItem[] {
@@ -87,7 +112,14 @@ export async function logoutAction() {
 
 export async function saveCategoryAction(formData: FormData) {
   const session = await requireAdminSession("categories:write");
-  const featuredMedia = syncMedia(parseJson<ProductMediaItem[]>(formData.get("featuredMedia"), []));
+  const fallbackAsset = await getRecentUploadFallback(session.email);
+  const featuredMedia = syncMedia(
+    parseJson<ProductMediaItem[]>(formData.get("featuredMedia"), []).length
+      ? parseJson<ProductMediaItem[]>(formData.get("featuredMedia"), [])
+      : fallbackAsset
+        ? [asProductMediaItem(fallbackAsset)]
+        : [],
+  );
   const heroMedia = syncMedia(parseJson<ProductMediaItem[]>(formData.get("heroMedia"), []));
   const mobileMedia = syncMedia(parseJson<ProductMediaItem[]>(formData.get("mobileMedia"), []));
   const payload = categorySchema.parse({
@@ -379,7 +411,9 @@ export async function saveLabelsAction(formData: FormData) {
 
 export async function saveProductAction(formData: FormData) {
   const session = await requireAdminSession("products:write");
-  const media = syncMedia(parseJson<ProductMediaItem[]>(formData.get("media"), []));
+  const parsedMedia = parseJson<ProductMediaItem[]>(formData.get("media"), []);
+  const fallbackAsset = parsedMedia.length ? null : await getRecentUploadFallback(session.email);
+  const media = syncMedia(parsedMedia.length ? parsedMedia : fallbackAsset ? [asProductMediaItem(fallbackAsset)] : []);
   const categorySlugs = Array.from(formData.keys())
     .filter((key) => key.startsWith("category:"))
     .map((key) => key.replace("category:", ""));

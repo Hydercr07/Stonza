@@ -1,5 +1,6 @@
 import "server-only";
 
+import { unstable_noStore as noStore } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { AdminRole } from "@/types/domain";
@@ -22,6 +23,7 @@ export function getOwnerPassword() {
 }
 
 export async function getAdminSession(): Promise<AdminSession | null> {
+  noStore();
   const cookieStore = await cookies();
   return parseAdminSessionCookie(cookieStore.get(ADMIN_COOKIE)?.value);
 }

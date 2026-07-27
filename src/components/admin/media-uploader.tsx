@@ -59,7 +59,24 @@ export function AdminMediaUploader({
   const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
   const dragItemId = useRef<string | null>(null);
+
+  function syncItems(
+    updater: ProductMediaItem[] | ((current: ProductMediaItem[]) => ProductMediaItem[]),
+  ) {
+    setItems((current) => {
+      const nextItems =
+        typeof updater === "function"
+          ? (updater as (current: ProductMediaItem[]) => ProductMediaItem[])(current)
+          : updater;
+      const normalized = normalizeFeatured(nextItems);
+      if (hiddenInputRef.current) {
+        hiddenInputRef.current.value = JSON.stringify(normalized);
+      }
+      return normalized;
+    });
+  }
 
   const accept = imageOnly
     ? ".jpg,.jpeg,.png,.webp,.avif"
@@ -114,21 +131,19 @@ export function AdminMediaUploader({
           xhr.send(payload);
         });
 
-        setItems((current) =>
-          normalizeFeatured([
-            ...current,
-            {
-              id: `product-media-${uploaded.id}`,
-              assetId: uploaded.id,
-              url: uploaded.publicUrl,
-              altText: uploaded.altText || file.name.replace(/\.[^.]+$/, ""),
-              fileName: uploaded.originalFilename,
-              size: uploaded.size,
-              featured: current.length === 0,
-              sortOrder: current.length + 1,
-            },
-          ]),
-        );
+        syncItems((current) => [
+          ...current,
+          {
+            id: `product-media-${uploaded.id}`,
+            assetId: uploaded.id,
+            url: uploaded.publicUrl,
+            altText: uploaded.altText || file.name.replace(/\.[^.]+$/, ""),
+            fileName: uploaded.originalFilename,
+            size: uploaded.size,
+            featured: current.length === 0,
+            sortOrder: current.length + 1,
+          },
+        ]);
       }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
@@ -139,7 +154,7 @@ export function AdminMediaUploader({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-admin-uploading={uploading ? "true" : undefined}>
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-white">{label}</p>
@@ -195,7 +210,7 @@ export function AdminMediaUploader({
 
       {error ? <p className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
 
-      <input type="hidden" name={name} value={JSON.stringify(items)} />
+      <input ref={hiddenInputRef} type="hidden" name={name} defaultValue={JSON.stringify(items)} />
 
       {items.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -209,7 +224,7 @@ export function AdminMediaUploader({
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => {
                 if (!dragItemId.current || dragItemId.current === item.id) return;
-                setItems((current) => normalizeFeatured(reorderItems(current, dragItemId.current!, item.id)));
+                syncItems((current) => reorderItems(current, dragItemId.current!, item.id));
               }}
               className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#151617]"
             >
@@ -223,11 +238,7 @@ export function AdminMediaUploader({
                 )}
                 <button
                   type="button"
-                  onClick={() =>
-                    setItems((current) =>
-                      normalizeFeatured(current.map((entry) => ({ ...entry, featured: entry.id === item.id }))),
-                    )
-                  }
+                  onClick={() => syncItems((current) => current.map((entry) => ({ ...entry, featured: entry.id === item.id })))}
                   className={cn(
                     "absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium",
                     item.featured ? "bg-[#d5c7a9] text-black" : "bg-black/65 text-white",
@@ -247,7 +258,7 @@ export function AdminMediaUploader({
                   <input
                     value={item.altText}
                     onChange={(event) =>
-                      setItems((current) =>
+                      syncItems((current) =>
                         current.map((entry) =>
                           entry.id === item.id ? { ...entry, altText: event.target.value } : entry,
                         ),
@@ -260,8 +271,7 @@ export function AdminMediaUploader({
                   <button
                     type="button"
                     onClick={() => {
-                      const next = items.filter((entry) => entry.id !== item.id);
-                      setItems(normalizeFeatured(next));
+                      syncItems((current) => current.filter((entry) => entry.id !== item.id));
                     }}
                     className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-white/70 transition hover:bg-white/6 hover:text-white"
                   >
