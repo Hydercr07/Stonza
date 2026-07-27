@@ -36,6 +36,10 @@ import {
 import { slugify } from "@/lib/utils";
 import type { Category, ContentLabel, HomepageSection, MediaAsset, NavigationItem, Product, ProductMediaItem } from "@/types/domain";
 
+export interface AdminActionState {
+  error: string | null;
+}
+
 function parseBoolean(value: FormDataEntryValue | null) {
   return value === "on" || value === "true";
 }
@@ -528,6 +532,30 @@ export async function saveProductAction(formData: FormData) {
   revalidatePath(`/stones/${nextProduct.slug}`);
   revalidatePath("/admin/products");
   redirect(`/admin/products/${nextProduct.id}`);
+}
+
+export async function saveProductFormAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    await saveProductAction(formData);
+    return { error: null };
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      typeof (error as { digest?: string }).digest === "string" &&
+      (error as { digest: string }).digest.includes("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    return {
+      error: error instanceof Error ? error.message : "Product could not be saved right now.",
+    };
+  }
 }
 
 export async function transitionProductStatusAction(formData: FormData) {

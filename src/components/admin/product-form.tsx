@@ -1,5 +1,8 @@
+"use client";
+
+import { useActionState } from "react";
 import Link from "next/link";
-import { saveProductAction, transitionProductStatusAction } from "@/actions/admin";
+import { saveProductFormAction, transitionProductStatusAction } from "@/actions/admin";
 import type { Category, Collection, Product } from "@/types/domain";
 import { Button } from "@/components/shared/ui/button";
 import { AdminMediaUploader } from "@/components/admin/media-uploader";
@@ -25,6 +28,7 @@ export function ProductForm({
   const hasCategories = activeCategories.length > 0;
   const hasCollections = collections.length > 0;
   const canSubmit = hasCategories && hasCollections;
+  const [state, formAction] = useActionState(saveProductFormAction, { error: null });
 
   return (
     <div className="space-y-6">
@@ -60,7 +64,12 @@ export function ProductForm({
           {!hasCollections ? "Create at least one collection before publishing a product." : null}
         </div>
       ) : null}
-      <form action={saveProductAction} className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+      {state.error ? (
+        <div className="rounded-[1.25rem] border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">
+          {state.error}
+        </div>
+      ) : null}
+      <form action={formAction} className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <input type="hidden" name="id" defaultValue={product?.id} />
         <div className="space-y-6">
           <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
