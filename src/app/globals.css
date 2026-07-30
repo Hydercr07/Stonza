@@ -45,6 +45,7 @@ body {
     var(--background);
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
+  min-width: 320px;
 }
 
 a,
@@ -126,12 +127,13 @@ select:focus-visible {
 
 .shop-grid {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 @media (min-width: 768px) {
   .shop-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
   }
 }
 
@@ -145,6 +147,10 @@ select:focus-visible {
   .shop-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
+
+img {
+  image-rendering: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
