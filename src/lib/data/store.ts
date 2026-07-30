@@ -129,7 +129,7 @@ function defaultSettings(): SiteSettings {
     email: "atelier@stonza.pk",
     address: "Lahore Design District, Pakistan",
     businessHours: "Mon-Sat, 10:00-19:00",
-    currency: "USD",
+    currency: "PKR",
     maintenanceMode: false,
     checkoutMode: "standard",
     shippingText:
@@ -328,7 +328,7 @@ function normalizeProduct(product: Partial<Product>): Product {
     description: product.description ?? "",
     price: product.price ?? 0,
     salePrice: product.salePrice,
-    currency: product.currency ?? "USD",
+    currency: product.currency ?? "PKR",
     costPrice: product.costPrice ?? 0,
     inventoryQuantity: product.inventoryQuantity ?? 0,
     lowStockThreshold: product.lowStockThreshold ?? 1,

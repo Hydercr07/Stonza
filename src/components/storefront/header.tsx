@@ -45,7 +45,7 @@ export function Header({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const visibleNavigation = navigation.filter((item) => item.visible);
+  const visibleNavigation = navigation.filter((item) => item.visible).slice(0, 4);
 
   return (
     <>
@@ -57,26 +57,22 @@ export function Header({
             : "border-b border-[#e8dfd1] bg-[rgba(255,250,242,0.94)]",
         )}
       >
-        <div className="hidden border-b border-[#eadfcf] bg-[#10233a] text-[#f3ebde] lg:block">
+        <div className="hidden border-b border-[#15314d] bg-[#10233a] text-[#f7ecda] lg:block">
           <div className="container-shell flex min-h-11 items-center justify-between gap-6 text-[11px] uppercase tracking-[0.24em]">
-            <p className="text-[#f3ebde]/76">Private stone appointments and collector sourcing</p>
-            <div className="flex items-center gap-6 text-[#f3ebde]/84">
+            <p className="text-[#f7ecda]/72">Original stones for interiors, collectors and statement spaces</p>
+            <div className="flex items-center gap-6 text-[#f7ecda]/84">
               <button type="button" className="inline-flex items-center gap-1.5 hover:text-white">
                 Language: English
                 <ChevronDown className="h-3.5 w-3.5" />
               </button>
-              <button type="button" className="inline-flex items-center gap-1.5 hover:text-white">
-                Currency: USD
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
               <Link href={contactHref} className="hover:text-white">
-                My Account
+                Private Appointments
               </Link>
             </div>
           </div>
         </div>
 
-        <div className="container-shell flex min-h-18 items-center justify-between gap-3 py-3 lg:min-h-24 lg:py-0">
+        <div className="container-shell grid min-h-18 grid-cols-[auto_1fr_auto] items-center gap-3 py-3 lg:min-h-24 lg:grid-cols-[1fr_auto_1fr] lg:py-0">
           <div className="flex items-center gap-3 lg:hidden">
             <button
               type="button"
@@ -89,18 +85,23 @@ export function Header({
             <Logo dark priority src={logo} alt={logoAlt} className="w-[126px] sm:w-[144px]" />
           </div>
 
-          <div className="hidden lg:flex lg:flex-1 lg:items-center lg:gap-8">
+          <div className="hidden lg:flex lg:items-center lg:justify-start">
             <Logo dark priority src={logo} alt={logoAlt} className="w-[172px] xl:w-[188px]" />
-            <nav className="flex items-center gap-6 text-[12px] uppercase tracking-[0.18em] text-black/72 xl:gap-8">
-              {visibleNavigation.map((item) => (
-                <Link key={item.href} href={item.href} className="py-8 hover:text-black">
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 lg:flex-1 lg:justify-end lg:gap-3">
+          <nav className="hidden items-center justify-center gap-2 lg:flex">
+            {visibleNavigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="rounded-full border border-[#dbc9ac] bg-white/58 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.24em] text-[#10233a] shadow-[0_10px_28px_rgba(21,17,11,0.05)] hover:-translate-y-0.5 hover:bg-[#10233a] hover:text-white"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-1.5 justify-self-end sm:gap-2 lg:justify-end lg:gap-3">
             <div className="hidden items-center gap-5 text-[11px] uppercase tracking-[0.18em] text-black/54 xl:flex">
               {utilityLinks.map((item) => (
                 <Link key={item.href} href={item.href} className="hover:text-black">
@@ -111,7 +112,7 @@ export function Header({
             {showSearch ? (
               <Link
                 href="/search"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-transparent text-black/70 hover:border-[#d9cfbf] hover:bg-white hover:text-black"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#dcc9ab] bg-white/72 text-[#10233a] hover:border-[#10233a] hover:bg-white hover:text-black"
                 aria-label="Search"
               >
                 <Search className="h-4 w-4" />
@@ -120,7 +121,7 @@ export function Header({
             {showWishlist ? (
               <Link
                 href="/wishlist"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-transparent text-black/70 hover:border-[#d9cfbf] hover:bg-white hover:text-black"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#dcc9ab] bg-white/72 text-[#10233a] hover:border-[#10233a] hover:bg-white hover:text-black"
                 aria-label="Wishlist"
               >
                 <Star className="h-4 w-4" />
@@ -129,13 +130,13 @@ export function Header({
             {showCart ? (
               <Link
                 href="/cart"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-transparent text-black/70 hover:border-[#d9cfbf] hover:bg-white hover:text-black"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#dcc9ab] bg-white/72 text-[#10233a] hover:border-[#10233a] hover:bg-white hover:text-black"
                 aria-label="Cart"
               >
                 <ShoppingBag className="h-4 w-4" />
               </Link>
             ) : null}
-            <Button asChild variant="outline" className="hidden rounded-full border-[#cdbda7] bg-white/72 px-5 lg:inline-flex">
+            <Button asChild variant="outline" className="hidden rounded-full border-[#dcc9ab] bg-white/72 px-5 lg:inline-flex">
               <Link href={contactHref}>{contactLabel}</Link>
             </Button>
           </div>

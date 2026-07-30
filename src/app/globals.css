@@ -1,19 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4efe7;
-  --foreground: #171717;
-  --card: #fffdf9;
-  --card-foreground: #171717;
-  --muted: #726b62;
-  --border: rgba(23, 23, 23, 0.1);
-  --primary: #171717;
-  --primary-foreground: #f7f2ea;
-  --accent: #b79a72;
-  --accent-strong: #a2845d;
-  --surface-2: #ece5db;
-  --surface-3: #ded4c6;
-  --surface-4: #0f1011;
+  --background: #f7f0e3;
+  --foreground: #111827;
+  --card: #fff9ef;
+  --card-foreground: #111827;
+  --muted: #62574a;
+  --border: rgba(17, 24, 39, 0.11);
+  --primary: #10233a;
+  --primary-foreground: #fff7ea;
+  --accent: #edb230;
+  --accent-strong: #cb7d2b;
+  --surface-2: #efe1c7;
+  --surface-3: #d7c1a0;
+  --surface-4: #0f2034;
   --storefront-max: 1440px;
 }
 
@@ -41,7 +41,9 @@ html {
 
 body {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.18)),
+    radial-gradient(circle at top left, rgba(237, 178, 48, 0.18), transparent 28%),
+    radial-gradient(circle at top right, rgba(16, 35, 58, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.18)),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
@@ -76,6 +78,7 @@ select:focus-visible {
 
 .text-display {
   font-family: var(--font-display), serif;
+  letter-spacing: -0.04em;
 }
 
 .container-shell {
@@ -90,11 +93,11 @@ select:focus-visible {
 
 .stone-panel {
   background:
-    radial-gradient(circle at top, rgba(183, 154, 114, 0.12), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.94)),
+    radial-gradient(circle at top, rgba(237, 178, 48, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(255, 250, 241, 0.9), rgba(255, 255, 255, 0.96)),
     var(--card);
   border: 1px solid var(--border);
-  box-shadow: 0 18px 48px rgba(26, 20, 12, 0.06);
+  box-shadow: 0 22px 56px rgba(26, 20, 12, 0.07);
 }
 
 .stone-glow {
@@ -114,15 +117,68 @@ select:focus-visible {
 
 .stone-mesh {
   background:
-    radial-gradient(circle at top left, rgba(183, 154, 114, 0.16), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.3), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(250, 245, 238, 0.96));
+    radial-gradient(circle at top left, rgba(237, 178, 48, 0.18), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.34), transparent 30%),
+    linear-gradient(180deg, rgba(255, 248, 236, 0.92), rgba(250, 241, 228, 0.98));
 }
 
 .stone-chip {
-  border: 1px solid rgba(23, 23, 23, 0.08);
-  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  background: rgba(255, 255, 255, 0.74);
   backdrop-filter: blur(16px);
+}
+
+.editorial-grid {
+  position: relative;
+}
+
+.editorial-grid::before {
+  content: "";
+  position: absolute;
+  inset: 1.25rem auto auto -0.75rem;
+  width: 6rem;
+  height: 6rem;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(237, 178, 48, 0.36), transparent 68%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.fade-up {
+  animation: fade-up 720ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.fade-up-delay-1 {
+  animation-delay: 120ms;
+}
+
+.fade-up-delay-2 {
+  animation-delay: 220ms;
+}
+
+.float-orb {
+  animation: float-orb 7s ease-in-out infinite;
+}
+
+.sheen-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.sheen-card::after {
+  content: "";
+  position: absolute;
+  inset: -30% auto auto -120%;
+  width: 45%;
+  height: 180%;
+  transform: rotate(18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
+  transition: transform 500ms ease;
+  pointer-events: none;
+}
+
+.sheen-card:hover::after {
+  transform: translateX(340%) rotate(18deg);
 }
 
 .shop-grid {
@@ -153,6 +209,29 @@ img {
   image-rendering: auto;
 }
 
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-orb {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(12px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -165,5 +244,9 @@ img {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .sheen-card::after {
+    display: none;
   }
 }

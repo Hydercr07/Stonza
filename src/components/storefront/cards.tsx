@@ -5,7 +5,7 @@ import { formatMoney } from "@/lib/utils";
 
 export function CollectionCard({ collection }: { collection: Collection }) {
   return (
-    <Link href={`/collections/${collection.slug}`} className="group block overflow-hidden rounded-[2rem] border border-[#e7dccd] bg-[#fffdfa] shadow-[0_20px_45px_rgba(23,18,12,0.05)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_26px_56px_rgba(23,18,12,0.08)]">
+    <Link href={`/collections/${collection.slug}`} className="sheen-card group block overflow-hidden rounded-[2rem] border border-[#e7dccd] bg-[#fffdfa] shadow-[0_20px_45px_rgba(23,18,12,0.05)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_26px_56px_rgba(23,18,12,0.08)]">
       <div className="relative h-80 overflow-hidden bg-[#f2ece4]">
         <Image
           src={collection.featuredImage}
@@ -25,7 +25,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
 
 export function CategoryCard({ category }: { category: Category }) {
   return (
-    <Link href={`/shop?category=${category.slug}`} className="group block overflow-hidden rounded-[1.75rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_50px_rgba(23,18,12,0.07)]">
+    <Link href={`/shop?category=${category.slug}`} className="sheen-card group block overflow-hidden rounded-[1.75rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_50px_rgba(23,18,12,0.07)]">
       <div className="relative h-72 overflow-hidden bg-[#f2ece4]">
         <Image
           src={category.featuredImage}
@@ -63,7 +63,7 @@ export function ProductCard({ product }: { product: Product }) {
               : null;
 
   return (
-    <Link href={`/stones/${product.slug}`} className="group block overflow-hidden rounded-[1.8rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_26px_56px_rgba(23,18,12,0.07)]">
+    <Link href={`/stones/${product.slug}`} className="sheen-card group block overflow-hidden rounded-[1.8rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_26px_56px_rgba(23,18,12,0.07)]">
       <div className="relative h-80 overflow-hidden bg-[#f2ece4] sm:h-96">
         <Image
           src={product.featuredImage}
@@ -87,7 +87,7 @@ export function ProductCard({ product }: { product: Product }) {
           {product.salePrice ? (
             <span className="text-black/28 line-through">{formatMoney(product.price, product.currency)}</span>
           ) : null}
-          <span className={product.salePrice ? "font-semibold text-[#171717]" : ""}>
+          <span className={product.salePrice ? "font-semibold text-[#171717]" : "font-semibold text-[#10233a]"}>
             {formatMoney(product.salePrice ?? product.price, product.currency)}
           </span>
         </div>

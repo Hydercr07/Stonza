@@ -47,13 +47,14 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="border-b border-[#eadfcf] bg-[linear-gradient(180deg,#fffaf2_0%,#fff3de_100%)]">
+      <section className="border-b border-[#eadfcf] bg-[linear-gradient(180deg,#fff8ec_0%,#f8ecd7_50%,#fffaf2_100%)]">
         <div className="container-shell py-5 lg:py-0">
-          <div className="overflow-hidden rounded-[2rem] border border-[#eadfcf] bg-[#fff8ec] shadow-[0_26px_70px_rgba(24,18,12,0.08)] lg:rounded-none lg:border-x-0 lg:border-y-0 lg:bg-transparent lg:shadow-none">
+          <div className="editorial-grid overflow-hidden rounded-[2rem] border border-[#eadfcf] bg-[#fff8ec] shadow-[0_26px_70px_rgba(24,18,12,0.08)] lg:rounded-[2.5rem]">
             <div className="grid lg:min-h-[640px] lg:grid-cols-[1.08fr_0.92fr]">
               <div className="relative min-h-[320px] bg-[#c68a20] sm:min-h-[420px] lg:min-h-full">
                 <Image src={heroImage} alt={hero.heading} fill priority className="object-cover" />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,14,10,0.04),rgba(17,14,10,0.24))]" />
+                <div className="float-orb absolute bottom-8 left-8 hidden h-20 w-20 rounded-full border border-white/30 bg-white/14 backdrop-blur-md md:block" />
                 <div className="absolute left-4 top-1/2 hidden -translate-y-1/2 lg:flex">
                   <button
                     type="button"
@@ -65,19 +66,20 @@ export default async function HomePage() {
                 </div>
               </div>
 
-              <div className="relative flex flex-col justify-center bg-[#fff3d9] px-5 py-10 sm:px-8 sm:py-12 lg:px-14 lg:py-16">
-                <div className="max-w-xl">
-                  <p className="text-xs uppercase tracking-[0.28em] text-[#8f733f]">Summer capsule</p>
-                  <h1 className="mt-5 text-[clamp(2.8rem,7vw,5rem)] font-semibold leading-[0.92] text-[#13273b]">
+              <div className="relative flex flex-col justify-center bg-[linear-gradient(180deg,#fff3d9_0%,#f8e1b7_100%)] px-5 py-10 sm:px-8 sm:py-12 lg:px-14 lg:py-16">
+                <div className="absolute right-[-2.5rem] top-[-2rem] h-28 w-28 rounded-full border border-white/50 bg-white/20 blur-sm" />
+                <div className="max-w-xl fade-up">
+                  <p className="text-xs uppercase tracking-[0.34em] text-[#8f733f]">STONZA capsule</p>
+                  <h1 className="text-display mt-5 text-[clamp(2.8rem,7vw,5.3rem)] leading-[0.88] text-[#13273b]">
                     {hero.heading}
                   </h1>
-                  <p className="mt-4 text-[clamp(2rem,6vw,3.25rem)] font-semibold leading-none text-[#d29716]">
-                    Up to 80% Off
+                  <p className="mt-4 max-w-md text-[clamp(1.75rem,4vw,2.7rem)] font-semibold leading-[0.95] text-[#cb7d2b]">
+                    Sculptural. Funky. Collector-grade.
                   </p>
                   <p className="mt-6 max-w-lg text-sm leading-7 text-black/60 sm:text-base sm:leading-8">
                     {hero.description}
                   </p>
-                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row fade-up fade-up-delay-1">
                     <Button asChild size="lg" className="rounded-full bg-[#d29716] px-8 text-[#171717] hover:bg-[#be8716]">
                       <Link href={hero.primaryCtaUrl || "/shop"}>
                         {hero.primaryCtaLabel || "Shop now"}
@@ -90,11 +92,11 @@ export default async function HomePage() {
                   </div>
                 </div>
 
-                <div className="mt-10 grid gap-4 border-t border-[#e1d4bb] pt-6 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-10 grid gap-4 border-t border-[#dcbf8e] pt-6 sm:grid-cols-2 xl:grid-cols-4 fade-up fade-up-delay-2">
                   {featureItems.map((item) => {
                     const Icon = item.icon;
                     return (
-                      <div key={item.title} className="rounded-[1.5rem] bg-white/58 px-4 py-4 backdrop-blur-sm">
+                      <div key={item.title} className="rounded-[1.5rem] border border-white/40 bg-white/54 px-4 py-4 backdrop-blur-sm">
                         <Icon className="h-5 w-5 text-[#171717]" strokeWidth={1.75} />
                         <h2 className="mt-3 text-sm font-semibold text-[#171717]">{item.title}</h2>
                         <p className="mt-1 text-xs leading-6 text-black/56">{item.body}</p>
@@ -119,8 +121,8 @@ export default async function HomePage() {
       </section>
 
       <section className="container-shell py-12 md:py-16">
-        <div className="text-center">
-          <p className="text-xs uppercase tracking-[0.28em] text-black/52">Featured Category</p>
+        <div className="fade-up text-center">
+          <p className="text-xs uppercase tracking-[0.3em] text-black/52">Featured Category</p>
           <h2 className="text-display mt-4 text-4xl text-[#171717] sm:text-5xl">Stone Families</h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-black/56 sm:text-base">
             Distinct material moods arranged for statement interiors, desk objects and collectible presentation.
@@ -141,8 +143,9 @@ export default async function HomePage() {
                 className="object-cover transition duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(18,14,10,0.02),rgba(18,14,10,0.42))]" />
-              <div className="absolute bottom-4 left-4 rounded-full bg-[#f2b51d] px-5 py-2 text-[11px] uppercase tracking-[0.22em] text-[#171717] shadow-sm">
-                {category.name}
+              <div className="absolute inset-x-4 bottom-4 rounded-[1.2rem] border border-white/30 bg-[rgba(17,24,39,0.68)] px-4 py-4 backdrop-blur-md">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-white/64">Category</p>
+                <p className="mt-2 text-display text-2xl text-white">{category.name}</p>
               </div>
             </Link>
           ))}
@@ -151,7 +154,7 @@ export default async function HomePage() {
 
       <section className="container-shell py-8 md:py-12">
         <div className="grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
-          <div className="max-w-md">
+          <div className="max-w-md fade-up">
             <p className="text-xs uppercase tracking-[0.28em] text-black/52">
               {primaryCollection?.name ?? "Latest drop"}
             </p>
@@ -166,7 +169,7 @@ export default async function HomePage() {
             </Button>
           </div>
 
-          <div className="relative min-h-[340px] sm:min-h-[420px] lg:min-h-[520px]">
+          <div className="relative min-h-[340px] sm:min-h-[420px] lg:min-h-[520px] fade-up fade-up-delay-1">
             <div className="absolute right-0 top-0 h-[78%] w-[74%] overflow-hidden rounded-[2.2rem] bg-[#c57f26]">
               <Image
                 src={primaryCollection?.featuredImage || heroImage}
@@ -188,7 +191,7 @@ export default async function HomePage() {
       </section>
 
       <section className="container-shell py-14 md:py-18">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between fade-up">
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-black/52">Latest Product</p>
             <h2 className="text-display mt-4 text-4xl text-[#171717] sm:text-5xl">Popular Stones</h2>
@@ -205,11 +208,11 @@ export default async function HomePage() {
       </section>
 
       <section className="container-shell py-8 md:py-12">
-        <div className="overflow-hidden rounded-[2.25rem] border border-[#eadfcf] bg-[linear-gradient(135deg,#10233a_0%,#183754_52%,#0f1d30_100%)] text-white shadow-[0_26px_70px_rgba(16,21,31,0.2)]">
+        <div className="overflow-hidden rounded-[2.25rem] border border-[#eadfcf] bg-[linear-gradient(135deg,#10233a_0%,#183754_52%,#0f1d30_100%)] text-white shadow-[0_26px_70px_rgba(16,21,31,0.2)] fade-up">
           <div className="grid gap-8 px-6 py-8 sm:px-8 md:px-10 md:py-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-14 lg:py-14">
             <div className="max-w-md">
               <p className="text-xs uppercase tracking-[0.28em] text-white/58">Editorial pick</p>
-              <h2 className="text-display mt-4 text-4xl leading-[0.95] text-white sm:text-5xl">
+              <h2 className="text-display mt-4 text-4xl leading-[0.92] text-white sm:text-5xl">
                 Quiet luxury in mineral form
               </h2>
               <p className="mt-5 text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
@@ -246,7 +249,7 @@ export default async function HomePage() {
       </section>
 
       <section className="container-shell py-14 md:py-18">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between fade-up">
           <div>
             <p className="text-xs uppercase tracking-[0.28em] text-black/52">New arrivals</p>
             <h2 className="text-display mt-4 text-4xl text-[#171717] sm:text-5xl">Latest Product</h2>
