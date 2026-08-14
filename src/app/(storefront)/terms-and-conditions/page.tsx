@@ -1,8 +1,25 @@
-export default function TermsPage() {
+import { permanentRedirect } from "next/navigation";
+import { RichText } from "@/components/shared/rich-text";
+import { getManagedPage } from "@/lib/data/store";
+
+export default async function TermsPage() {
+  const page = await getManagedPage("terms-and-conditions");
+  if (page?.slug && page.slug !== "terms-and-conditions" && page.slugHistory?.includes("terms-and-conditions")) {
+    permanentRedirect(`/${page.slug}`);
+  }
+
   return (
     <section className="container-shell py-16">
-      <h1 className="text-display text-5xl text-white">Terms & Conditions</h1>
-      <p className="mt-4 max-w-3xl text-sm leading-7 text-white/62">STONZA terms content will be managed from the admin content layer while keeping this route stable for SEO and future domain changes.</p>
+      <div className="rounded-[2rem] border border-[#eadfcf] bg-white/88 p-8 shadow-[0_22px_52px_rgba(26,20,12,0.08)]">
+        <p className="text-xs uppercase tracking-[0.28em] text-black/42">Policy</p>
+        <h1 className="text-display mt-3 text-5xl text-[#171717]">
+          {page?.heroHeading ?? "Terms & Conditions"}
+        </h1>
+        <RichText
+          html={page?.content ?? "<p>Terms and conditions will appear here once published from the admin portal.</p>"}
+          className="mt-8 max-w-4xl text-black/68"
+        />
+      </div>
     </section>
   );
 }

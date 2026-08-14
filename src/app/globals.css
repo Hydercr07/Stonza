@@ -37,6 +37,7 @@
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {
@@ -48,6 +49,7 @@ body {
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
   min-width: 320px;
+  overflow-x: clip;
 }
 
 a,
@@ -142,6 +144,37 @@ select:focus-visible {
   background: radial-gradient(circle, rgba(237, 178, 48, 0.36), transparent 68%);
   filter: blur(8px);
   pointer-events: none;
+}
+
+.section-noise {
+  position: relative;
+  isolation: isolate;
+}
+
+.section-noise::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.12) 0.7px, transparent 0.7px),
+    radial-gradient(rgba(16, 35, 58, 0.06) 0.7px, transparent 0.7px);
+  background-position: 0 0, 12px 12px;
+  background-size: 24px 24px;
+  opacity: 0.22;
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.angled-panel {
+  clip-path: polygon(0 0, 100% 0, 100% 92%, 93% 100%, 0 100%);
+}
+
+.spotlight-text {
+  background: linear-gradient(135deg, #10233a 0%, #cb7d2b 48%, #edb230 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .fade-up {

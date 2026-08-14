@@ -1,19 +1,6 @@
 import type { Metadata } from "next";
-import { DM_Sans, Syne } from "next/font/google";
 import "./globals.css";
 import { siteConfig } from "@/lib/site-config";
-
-const displayFont = Syne({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-});
-
-const bodyFont = DM_Sans({
-  variable: "--font-body",
-  subsets: ["latin"],
-  weight: ["400", "500", "700"],
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.siteUrl),
@@ -46,7 +33,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" className={`${displayFont.variable} ${bodyFont.variable} h-full antialiased`}>
+    <html
+      lang="en"
+      data-scroll-behavior="smooth"
+      className="h-full antialiased"
+      style={{
+        ["--font-body" as string]: '"Avenir Next", "Segoe UI", sans-serif',
+        ["--font-display" as string]: '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+      }}
+    >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

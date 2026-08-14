@@ -173,6 +173,7 @@ export function AdminMediaUploader({
         ref={fileInputRef}
         id={inputId}
         type="file"
+        form={`${inputId}-detached`}
         accept={accept}
         multiple={multiple}
         className="sr-only"

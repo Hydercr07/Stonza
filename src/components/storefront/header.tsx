@@ -1,18 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, Menu, Search, ShoppingBag, Star } from "lucide-react";
+import { ChevronDown, Menu, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { CartLink } from "@/components/storefront/cart-link";
+import { WishlistLink } from "@/components/storefront/wishlist-link";
 import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/shared/ui/button";
 import { cn } from "@/lib/utils";
 import type { NavigationItem } from "@/types/domain";
-
-const utilityLinks = [
-  { href: "/about", label: "Stone Story" },
-  { href: "/collections", label: "Curated Sets" },
-  { href: "/contact", label: "Concierge" },
-];
 
 export function Header({
   logo,
@@ -45,7 +41,7 @@ export function Header({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const visibleNavigation = navigation.filter((item) => item.visible).slice(0, 4);
+  const visibleNavigation = navigation.filter((item) => item.visible);
 
   return (
     <>
@@ -57,21 +53,6 @@ export function Header({
             : "border-b border-[#e8dfd1] bg-[rgba(255,250,242,0.94)]",
         )}
       >
-        <div className="hidden border-b border-[#15314d] bg-[#10233a] text-[#f7ecda] lg:block">
-          <div className="container-shell flex min-h-11 items-center justify-between gap-6 text-[11px] uppercase tracking-[0.24em]">
-            <p className="text-[#f7ecda]/72">Original stones for interiors, collectors and statement spaces</p>
-            <div className="flex items-center gap-6 text-[#f7ecda]/84">
-              <button type="button" className="inline-flex items-center gap-1.5 hover:text-white">
-                Language: English
-                <ChevronDown className="h-3.5 w-3.5" />
-              </button>
-              <Link href={contactHref} className="hover:text-white">
-                Private Appointments
-              </Link>
-            </div>
-          </div>
-        </div>
-
         <div className="container-shell grid min-h-18 grid-cols-[auto_1fr_auto] items-center gap-3 py-3 lg:min-h-24 lg:grid-cols-[1fr_auto_1fr] lg:py-0">
           <div className="flex items-center gap-3 lg:hidden">
             <button
@@ -91,24 +72,32 @@ export function Header({
 
           <nav className="hidden items-center justify-center gap-2 lg:flex">
             {visibleNavigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="rounded-full border border-[#dbc9ac] bg-white/58 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.24em] text-[#10233a] shadow-[0_10px_28px_rgba(21,17,11,0.05)] hover:-translate-y-0.5 hover:bg-[#10233a] hover:text-white"
-              >
-                {item.label}
-              </Link>
+              <div key={item.id} className="group relative">
+                <Link
+                  href={item.href}
+                  className="inline-flex rounded-full border border-[#dbc9ac] bg-white/58 px-5 py-3 text-[11px] font-medium uppercase tracking-[0.24em] text-[#10233a] shadow-[0_10px_28px_rgba(21,17,11,0.05)] hover:-translate-y-0.5 hover:bg-[#10233a] hover:text-white"
+                >
+                  <span>{item.label}</span>
+                  {item.children?.length ? <ChevronDown className="ml-2 h-3.5 w-3.5" /> : null}
+                </Link>
+                {item.children?.length ? (
+                  <div className="invisible absolute left-0 top-full z-20 min-w-56 translate-y-2 rounded-[1.5rem] border border-[#eadfcf] bg-[#fffaf2] p-2 opacity-0 shadow-[0_18px_40px_rgba(21,17,11,0.12)] transition group-hover:visible group-hover:translate-y-3 group-hover:opacity-100">
+                    {item.children.map((child) => (
+                      <Link
+                        key={child.id}
+                        href={child.href}
+                        className="block rounded-[1rem] px-4 py-3 text-sm text-[#10233a] hover:bg-[#10233a] hover:text-white"
+                      >
+                        {child.label}
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             ))}
           </nav>
 
           <div className="flex items-center gap-1.5 justify-self-end sm:gap-2 lg:justify-end lg:gap-3">
-            <div className="hidden items-center gap-5 text-[11px] uppercase tracking-[0.18em] text-black/54 xl:flex">
-              {utilityLinks.map((item) => (
-                <Link key={item.href} href={item.href} className="hover:text-black">
-                  {item.label}
-                </Link>
-              ))}
-            </div>
             {showSearch ? (
               <Link
                 href="/search"
@@ -119,22 +108,10 @@ export function Header({
               </Link>
             ) : null}
             {showWishlist ? (
-              <Link
-                href="/wishlist"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#dcc9ab] bg-white/72 text-[#10233a] hover:border-[#10233a] hover:bg-white hover:text-black"
-                aria-label="Wishlist"
-              >
-                <Star className="h-4 w-4" />
-              </Link>
+              <WishlistLink />
             ) : null}
             {showCart ? (
-              <Link
-                href="/cart"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#dcc9ab] bg-white/72 text-[#10233a] hover:border-[#10233a] hover:bg-white hover:text-black"
-                aria-label="Cart"
-              >
-                <ShoppingBag className="h-4 w-4" />
-              </Link>
+              <CartLink />
             ) : null}
             <Button asChild variant="outline" className="hidden rounded-full border-[#dcc9ab] bg-white/72 px-5 lg:inline-flex">
               <Link href={contactHref}>{contactLabel}</Link>
@@ -164,14 +141,30 @@ export function Header({
 
             <nav className="mt-8 flex flex-col gap-4">
               {visibleNavigation.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="border-b border-[#e8dfd1] pb-4 text-lg text-black/82"
-                >
-                  {item.label}
-                </Link>
+                <div key={item.id} className="border-b border-[#e8dfd1] pb-4">
+                  <Link
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className="flex items-center justify-between text-lg text-black/82"
+                  >
+                    <span>{item.label}</span>
+                    {item.children?.length ? <ChevronDown className="h-4 w-4" /> : null}
+                  </Link>
+                  {item.children?.length ? (
+                    <div className="mt-3 grid gap-2 pl-3">
+                      {item.children.map((child) => (
+                        <Link
+                          key={child.id}
+                          href={child.href}
+                          onClick={() => setOpen(false)}
+                          className="text-sm uppercase tracking-[0.16em] text-black/54"
+                        >
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               ))}
             </nav>
 
@@ -181,16 +174,6 @@ export function Header({
                   {contactLabel}
                 </Link>
               </Button>
-              {utilityLinks.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className="text-sm uppercase tracking-[0.16em] text-black/56"
-                >
-                  {item.label}
-                </Link>
-              ))}
             </div>
           </div>
         </div>

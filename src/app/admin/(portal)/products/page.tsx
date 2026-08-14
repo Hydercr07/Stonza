@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { listAdminProducts } from "@/lib/data/store";
-import { formatMoney } from "@/lib/utils";
+import { getProductDisplayPrice, formatMoney } from "@/lib/utils";
 
 export default async function AdminProductsPage() {
   const products = await listAdminProducts();
@@ -34,7 +34,7 @@ export default async function AdminProductsPage() {
                 </td>
                 <td className="px-5 py-4 capitalize text-white/60">{product.status.replaceAll("_", " ")}</td>
                 <td className="px-5 py-4 text-white/60">{product.inventoryQuantity}</td>
-                <td className="px-5 py-4 text-white/60">{formatMoney(product.price, product.currency)}</td>
+                <td className="px-5 py-4 text-white/60">{formatMoney(getProductDisplayPrice(product), product.currency)}</td>
               </tr>
             ))}
           </tbody>

@@ -21,3 +21,7 @@ export function validateCartQuantity(quantity: number, inventory: number, oneOfO
   if (oneOfOne && quantity > 1) return false;
   return quantity <= inventory;
 }
+
+export function hasDiscount(product: Pick<Product, "price" | "salePrice">) {
+  return getEffectivePrice(product) < product.price;
+}

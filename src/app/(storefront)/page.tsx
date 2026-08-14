@@ -1,269 +1,68 @@
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, CreditCard, Headphones, ShieldCheck, Truck } from "lucide-react";
-import { ProductCard } from "@/components/storefront/cards";
-import { Button } from "@/components/shared/ui/button";
-import { getHeroSettings, listCategories, listCollections, listProducts } from "@/lib/data/store";
-
-const featureItems = [
-  {
-    icon: Truck,
-    title: "Protected Delivery",
-    body: "White-glove regional dispatch with secure global shipping support.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Verified Provenance",
-    body: "Every stone is presented with clear material and origin detail.",
-  },
-  {
-    icon: CreditCard,
-    title: "Secure Checkout",
-    body: "Straightforward payments paired with concierge assistance.",
-  },
-  {
-    icon: Headphones,
-    title: "Private Guidance",
-    body: "Support for sourcing, styling and custom collection requests.",
-  },
-];
+import { Hero } from "@/components/storefront/hero";
+import {
+  FeaturedCategoriesSection,
+  FeaturedCollectionsSection,
+  FeaturedProductsSection,
+  StorySection,
+} from "@/components/storefront/sections";
+import {
+  getHeroSettings,
+  getHomepageSections,
+  listCategories,
+  listCollections,
+  listProducts,
+} from "@/lib/data/store";
 
 export default async function HomePage() {
-  const [hero, categories, collections, featuredProducts, newProducts] = await Promise.all([
+  const [hero, sections, categories, collections, visibleProducts] = await Promise.all([
     getHeroSettings(),
+    getHomepageSections(),
     listCategories({ featuredOnly: true }),
     listCollections(true),
-    listProducts({ featuredOnly: true }),
-    listProducts({ newOnly: true }),
+    listProducts(),
   ]);
 
-  const heroImage = hero.desktopBannerImage || featuredProducts[0]?.featuredImage || "/placeholders/hero-strata.svg";
-  const editorialProduct = featuredProducts[0] ?? newProducts[0];
-  const supportingProduct = featuredProducts[1] ?? newProducts[1] ?? editorialProduct;
-  const primaryCollection = collections[0];
-  const categoryHighlights = categories.slice(0, 3);
-  const featuredGrid = featuredProducts.slice(0, 4);
-  const latestGrid = (newProducts.length ? newProducts : featuredProducts).slice(0, 4);
+  const sectionMap = Object.fromEntries(sections.map((section) => [section.key, section]));
+  const categoriesBySlug = new Map(categories.map((category) => [category.slug, category]));
+  const collectionsBySlug = new Map(collections.map((collection) => [collection.slug, collection]));
+  const productsBySlug = new Map(visibleProducts.map((product) => [product.slug, product]));
+  const featuredCategorySelection =
+    sectionMap["featured-categories"]?.categorySlugs
+      ?.map((slug) => categoriesBySlug.get(slug))
+      .filter((category): category is NonNullable<typeof category> => Boolean(category)) ?? [];
+  const featuredCollectionSelection =
+    sectionMap["featured-collections"]?.collectionSlugs
+      ?.map((slug) => collectionsBySlug.get(slug))
+      .filter((collection): collection is NonNullable<typeof collection> => Boolean(collection)) ?? [];
+  const featuredProductSelection =
+    sectionMap["signature-stones"]?.productSlugs
+      ?.map((slug) => productsBySlug.get(slug))
+      .filter((product): product is NonNullable<typeof product> => Boolean(product)) ?? [];
 
   return (
     <>
-      <section className="border-b border-[#eadfcf] bg-[linear-gradient(180deg,#fff8ec_0%,#f8ecd7_50%,#fffaf2_100%)]">
-        <div className="container-shell py-5 lg:py-0">
-          <div className="editorial-grid overflow-hidden rounded-[2rem] border border-[#eadfcf] bg-[#fff8ec] shadow-[0_26px_70px_rgba(24,18,12,0.08)] lg:rounded-[2.5rem]">
-            <div className="grid lg:min-h-[640px] lg:grid-cols-[1.08fr_0.92fr]">
-              <div className="relative min-h-[320px] bg-[#c68a20] sm:min-h-[420px] lg:min-h-full">
-                <Image src={heroImage} alt={hero.heading} fill priority className="object-cover" />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,14,10,0.04),rgba(17,14,10,0.24))]" />
-                <div className="float-orb absolute bottom-8 left-8 hidden h-20 w-20 rounded-full border border-white/30 bg-white/14 backdrop-blur-md md:block" />
-                <div className="absolute left-4 top-1/2 hidden -translate-y-1/2 lg:flex">
-                  <button
-                    type="button"
-                    aria-label="Previous highlight"
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/84 text-[#171717] shadow-[0_10px_26px_rgba(20,16,10,0.16)]"
-                  >
-                    <ArrowRight className="h-4 w-4 rotate-180" />
-                  </button>
-                </div>
-              </div>
+      <Hero hero={hero} />
 
-              <div className="relative flex flex-col justify-center bg-[linear-gradient(180deg,#fff3d9_0%,#f8e1b7_100%)] px-5 py-10 sm:px-8 sm:py-12 lg:px-14 lg:py-16">
-                <div className="absolute right-[-2.5rem] top-[-2rem] h-28 w-28 rounded-full border border-white/50 bg-white/20 blur-sm" />
-                <div className="max-w-xl fade-up">
-                  <p className="text-xs uppercase tracking-[0.34em] text-[#8f733f]">STONZA capsule</p>
-                  <h1 className="text-display mt-5 text-[clamp(2.8rem,7vw,5.3rem)] leading-[0.88] text-[#13273b]">
-                    {hero.heading}
-                  </h1>
-                  <p className="mt-4 max-w-md text-[clamp(1.75rem,4vw,2.7rem)] font-semibold leading-[0.95] text-[#cb7d2b]">
-                    Sculptural. Funky. Collector-grade.
-                  </p>
-                  <p className="mt-6 max-w-lg text-sm leading-7 text-black/60 sm:text-base sm:leading-8">
-                    {hero.description}
-                  </p>
-                  <div className="mt-8 flex flex-col gap-3 sm:flex-row fade-up fade-up-delay-1">
-                    <Button asChild size="lg" className="rounded-full bg-[#d29716] px-8 text-[#171717] hover:bg-[#be8716]">
-                      <Link href={hero.primaryCtaUrl || "/shop"}>
-                        {hero.primaryCtaLabel || "Shop now"}
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline" size="lg" className="rounded-full border-[#ceb995] bg-white/50 px-8">
-                      <Link href={hero.secondaryCtaUrl || "/collections"}>{hero.secondaryCtaLabel || "Explore collections"}</Link>
-                    </Button>
-                  </div>
-                </div>
+      {sectionMap["featured-categories"] && featuredCategorySelection.length ? (
+        <FeaturedCategoriesSection section={sectionMap["featured-categories"]} categories={featuredCategorySelection} />
+      ) : null}
 
-                <div className="mt-10 grid gap-4 border-t border-[#dcbf8e] pt-6 sm:grid-cols-2 xl:grid-cols-4 fade-up fade-up-delay-2">
-                  {featureItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <div key={item.title} className="rounded-[1.5rem] border border-white/40 bg-white/54 px-4 py-4 backdrop-blur-sm">
-                        <Icon className="h-5 w-5 text-[#171717]" strokeWidth={1.75} />
-                        <h2 className="mt-3 text-sm font-semibold text-[#171717]">{item.title}</h2>
-                        <p className="mt-1 text-xs leading-6 text-black/56">{item.body}</p>
-                      </div>
-                    );
-                  })}
-                </div>
+      {sectionMap["featured-collections"] && featuredCollectionSelection.length ? (
+        <FeaturedCollectionsSection
+          section={sectionMap["featured-collections"]}
+          collections={featuredCollectionSelection}
+        />
+      ) : null}
 
-                <div className="absolute bottom-8 right-6 hidden lg:flex">
-                  <button
-                    type="button"
-                    aria-label="Next highlight"
-                    className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#f2b51d] text-[#171717] shadow-[0_10px_26px_rgba(20,16,10,0.16)]"
-                  >
-                    <ArrowRight className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {sectionMap["signature-stones"] && featuredProductSelection.length ? (
+        <FeaturedProductsSection
+          eyebrow="Featured Products"
+          section={sectionMap["signature-stones"]}
+          products={featuredProductSelection}
+        />
+      ) : null}
 
-      <section className="container-shell py-12 md:py-16">
-        <div className="fade-up text-center">
-          <p className="text-xs uppercase tracking-[0.3em] text-black/52">Featured Category</p>
-          <h2 className="text-display mt-4 text-4xl text-[#171717] sm:text-5xl">Stone Families</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-black/56 sm:text-base">
-            Distinct material moods arranged for statement interiors, desk objects and collectible presentation.
-          </p>
-        </div>
-
-        <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {categoryHighlights.map((category) => (
-            <Link
-              key={category.id}
-              href={`/shop?category=${category.slug}`}
-              className="group relative block min-h-[280px] overflow-hidden rounded-[1.8rem] border border-[#eadfcf] bg-[#f0d58d] shadow-[0_20px_44px_rgba(23,18,12,0.05)] sm:min-h-[340px]"
-            >
-              <Image
-                src={category.featuredImage}
-                alt={category.altText}
-                fill
-                className="object-cover transition duration-700 group-hover:scale-105"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(18,14,10,0.02),rgba(18,14,10,0.42))]" />
-              <div className="absolute inset-x-4 bottom-4 rounded-[1.2rem] border border-white/30 bg-[rgba(17,24,39,0.68)] px-4 py-4 backdrop-blur-md">
-                <p className="text-[10px] uppercase tracking-[0.28em] text-white/64">Category</p>
-                <p className="mt-2 text-display text-2xl text-white">{category.name}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="container-shell py-8 md:py-12">
-        <div className="grid gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-center">
-          <div className="max-w-md fade-up">
-            <p className="text-xs uppercase tracking-[0.28em] text-black/52">
-              {primaryCollection?.name ?? "Latest drop"}
-            </p>
-            <h2 className="text-display mt-4 text-[clamp(2.8rem,7vw,5rem)] leading-[0.94] text-[#171717]">
-              Be Always On Trend
-            </h2>
-            <p className="mt-5 text-sm leading-7 text-black/58 sm:text-base sm:leading-8">
-              Discover sculptural stones chosen for atmosphere, texture and refined presence across modern living spaces.
-            </p>
-            <Button asChild variant="outline" size="lg" className="mt-7 rounded-full border-[#cdbda7] px-8">
-              <Link href="/shop">Shop now</Link>
-            </Button>
-          </div>
-
-          <div className="relative min-h-[340px] sm:min-h-[420px] lg:min-h-[520px] fade-up fade-up-delay-1">
-            <div className="absolute right-0 top-0 h-[78%] w-[74%] overflow-hidden rounded-[2.2rem] bg-[#c57f26]">
-              <Image
-                src={primaryCollection?.featuredImage || heroImage}
-                alt={primaryCollection?.name || "Collection highlight"}
-                fill
-                className="object-cover"
-              />
-            </div>
-            <div className="absolute bottom-0 left-0 h-[56%] w-[46%] overflow-hidden rounded-[1.8rem] border-[8px] border-[#fffaf2] bg-white shadow-[0_24px_60px_rgba(24,18,12,0.12)] sm:border-[10px]">
-              <Image
-                src={editorialProduct?.featuredImage || heroImage}
-                alt={editorialProduct?.name || "Editorial stone"}
-                fill
-                className="object-cover"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container-shell py-14 md:py-18">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between fade-up">
-          <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-black/52">Latest Product</p>
-            <h2 className="text-display mt-4 text-4xl text-[#171717] sm:text-5xl">Popular Stones</h2>
-          </div>
-          <Button asChild variant="outline" className="w-fit rounded-full border-[#cdbda7] px-6">
-            <Link href="/shop">View all</Link>
-          </Button>
-        </div>
-        <div className="shop-grid">
-          {featuredGrid.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
-
-      <section className="container-shell py-8 md:py-12">
-        <div className="overflow-hidden rounded-[2.25rem] border border-[#eadfcf] bg-[linear-gradient(135deg,#10233a_0%,#183754_52%,#0f1d30_100%)] text-white shadow-[0_26px_70px_rgba(16,21,31,0.2)] fade-up">
-          <div className="grid gap-8 px-6 py-8 sm:px-8 md:px-10 md:py-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center lg:px-14 lg:py-14">
-            <div className="max-w-md">
-              <p className="text-xs uppercase tracking-[0.28em] text-white/58">Editorial pick</p>
-              <h2 className="text-display mt-4 text-4xl leading-[0.92] text-white sm:text-5xl">
-                Quiet luxury in mineral form
-              </h2>
-              <p className="mt-5 text-sm leading-7 text-white/72 sm:text-base sm:leading-8">
-                Balanced silhouettes, warm metallic undertones and deep natural textures curated for premium interiors.
-              </p>
-              <Button asChild size="lg" className="mt-7 rounded-full bg-[#f2b51d] px-8 text-[#171717] hover:bg-[#ddb11d]">
-                <Link href={editorialProduct ? `/stones/${editorialProduct.slug}` : "/shop"}>
-                  Explore feature
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[editorialProduct, supportingProduct].filter(Boolean).map((product, index) => (
-                <div
-                  key={`${product!.id}-${index}`}
-                  className="relative min-h-[220px] overflow-hidden rounded-[1.7rem] border border-white/10 bg-white/8"
-                >
-                  <Image src={product!.featuredImage} alt={product!.altText} fill className="object-cover" />
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,14,20,0.02),rgba(10,14,20,0.58))]" />
-                  <div className="absolute inset-x-4 bottom-4">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-white/68">
-                      {index === 0 ? "Editor choice" : "Collector note"}
-                    </p>
-                    <h3 className="mt-2 text-display text-2xl text-white">{product!.name}</h3>
-                    <p className="mt-1 text-sm text-white/72">{product!.origin}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container-shell py-14 md:py-18">
-        <div className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between fade-up">
-          <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-black/52">New arrivals</p>
-            <h2 className="text-display mt-4 text-4xl text-[#171717] sm:text-5xl">Latest Product</h2>
-          </div>
-          <Button asChild variant="outline" className="w-fit rounded-full border-[#cdbda7] px-6">
-            <Link href="/collections">Browse collections</Link>
-          </Button>
-        </div>
-        <div className="shop-grid">
-          {latestGrid.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
+      {sectionMap["born-beneath-earth"] ? <StorySection section={sectionMap["born-beneath-earth"]} /> : null}
     </>
   );
 }

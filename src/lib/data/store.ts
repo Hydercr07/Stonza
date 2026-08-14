@@ -4,11 +4,14 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { unstable_noStore as noStore } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getEffectivePrice } from "@/lib/commerce";
 import type {
   ActivityLogEntry,
+  CartLineInput,
   Category,
   Collection,
   ContentLabel,
+  CustomerOrderDetails,
   FooterSection,
   HeroSettings,
   HomepageSection,
@@ -16,19 +19,54 @@ import type {
   ManagedPage,
   MediaAsset,
   NavigationItem,
+  OrderItem,
+  OrderRecord,
   Product,
   ProductMediaItem,
+  ProductSizeChart,
+  ProductVariantOption,
   SiteSettings,
+  SizeChartRow,
   StoreData,
 } from "@/types/domain";
 import { slugify } from "@/lib/utils";
 import { env } from "@/lib/env";
 
-const storeSeedPath = path.join(process.cwd(), "src", "data", "dev-store.json");
 const storeRuntimeDir = path.join(process.cwd(), ".stonza", "runtime");
 const storePath = path.join(storeRuntimeDir, "dev-store.json");
 const remoteStoreBucket = "documents";
 const remoteStoreObjectPath = "runtime/dev-store.json";
+
+function createEmptyStore(): StoreData {
+  return {
+    settings: normalizeSettings(undefined),
+    hero: normalizeHero({
+      activeMode: "carousel",
+      mode: "carousel",
+      carousel: {
+        autoplay: true,
+        autoplayInterval: 3000,
+        loop: true,
+        pauseOnHover: false,
+        showArrows: false,
+        showDots: true,
+        transitionStyle: "fade",
+        slides: [],
+        status: "published",
+      },
+    }),
+    homepageSections: normalizeSections([]),
+    categories: [],
+    collections: [],
+    products: [],
+    pages: [],
+    journalPosts: [],
+    mediaAssets: [],
+    contentLabels: defaultContentLabels,
+    activityLogs: [],
+    orders: [],
+  };
+}
 
 function isReadOnlyRuntime() {
   return Boolean(process.env.VERCEL);
@@ -98,27 +136,59 @@ const defaultContentLabels: ContentLabel[] = Object.entries(defaultLabels).map((
   updatedBy: "system",
 }));
 
-const defaultHeroSlides = [
-  {
-    id: "slide-1",
-    desktopImage: "/placeholders/hero-strata.svg",
-    mobileImage: "/placeholders/hero-strata-mobile.svg",
-    eyebrow: "Original stones. Editorial rarity.",
-    heading: "Mineral luxury shaped by time, pressure and provenance.",
-    description:
-      "Discover obsidian drama, quiet platinum tones and collector-grade pieces chosen for character, origin and enduring presence.",
-    primaryCtaLabel: "Explore the stones",
-    primaryCtaUrl: "/shop",
-    secondaryCtaLabel: "Read the provenance",
-    secondaryCtaUrl: "/authenticity",
-    textAlignment: "left" as const,
-    textPosition: "center" as const,
-    overlayOpacity: 0.46,
-    focalPoint: "center",
-    active: true,
-    sortOrder: 1,
-  },
-];
+const defaultHeroSlides: HeroSettings["carousel"]["slides"] = [];
+
+const placeholderAssetPattern = /(^\/placeholders\/)|(^\/brand\/stonza-logo\.png$)/i;
+
+function isPlaceholderAsset(value: string | undefined) {
+  return Boolean(value && placeholderAssetPattern.test(value));
+}
+
+function replaceSlugValue(values: string[] | undefined, previousSlug: string, nextSlug: string) {
+  if (!values?.length) return values;
+  return [...new Set(values.map((value) => (value === previousSlug ? nextSlug : value)))];
+}
+
+function replaceNavigationHref(items: NavigationItem[], previousPath: string, nextPath: string) {
+  return items.map((item) => ({
+    ...item,
+    href: item.href === previousPath ? nextPath : item.href,
+    children: item.children?.map((child) => ({
+      ...child,
+      href: child.href === previousPath ? nextPath : child.href,
+    })),
+  }));
+}
+
+function resolveEntitySlug({
+  requestedSlug,
+  fallbackName,
+  existingSlug,
+  existingName,
+  existingId,
+  entries,
+}: {
+  requestedSlug?: string;
+  fallbackName: string;
+  existingSlug?: string;
+  existingName?: string;
+  existingId?: string;
+  entries: Array<{ id: string; slug: string }>;
+}) {
+  const normalizedRequestedSlug = requestedSlug?.trim() ? slugify(requestedSlug) : undefined;
+  const existingAutoSlug = existingName ? slugify(existingName) : undefined;
+  const shouldAutoGenerate =
+    !normalizedRequestedSlug ||
+    (existingSlug === normalizedRequestedSlug && existingAutoSlug === existingSlug);
+
+  const preferred = shouldAutoGenerate ? fallbackName : normalizedRequestedSlug ?? fallbackName;
+  return ensureUniqueSlug(
+    entries.map((entry) => entry.slug),
+    preferred,
+    existingId,
+    entries,
+  );
+}
 
 function defaultSettings(): SiteSettings {
   return {
@@ -138,9 +208,9 @@ function defaultSettings(): SiteSettings {
       "Returns are reviewed case-by-case for natural one-of-one stones after condition inspection.",
     lowStockDefault: 1,
     announcement: {
-      enabled: true,
-      text: "Private sourcing appointments now open for the July 2026 collection release.",
-      linkLabel: "Book now",
+      enabled: false,
+      text: "",
+      linkLabel: "",
       link: "/contact",
       backgroundStyle: "graphite",
     },
@@ -173,10 +243,9 @@ function defaultSettings(): SiteSettings {
       navigation: defaultNavigation,
     },
     footer: {
-      description:
-        "Natural stones selected for provenance, atmosphere and enduring presence. STONZA pairs editorial curation with transparent authenticity.",
-      newsletterHeading: "Private release notes",
-      newsletterBody: "Receive quiet release alerts, sourcing notes and collector updates.",
+      description: "",
+      newsletterHeading: "Stay connected",
+      newsletterBody: "",
       copyright: "© 2026 STONZA. All rights reserved.",
       legalLinks: [
         { id: "footer-legal-1", label: "Privacy Policy", href: "/privacy-policy", order: 1, visible: true },
@@ -212,6 +281,7 @@ function normalizeSettings(settings: Partial<SiteSettings> | undefined): SiteSet
   return {
     ...defaults,
     ...settings,
+    currency: "PKR",
     announcement: {
       ...defaults.announcement,
       ...settings?.announcement,
@@ -310,6 +380,80 @@ function normalizeProductMedia(product: Partial<Product>): ProductMediaItem[] {
   }));
 }
 
+function normalizeSlugHistory(history: string[] | undefined, currentSlug: string) {
+  return [...new Set((history ?? []).filter((entry) => entry && entry !== currentSlug))];
+}
+
+function normalizeSizeChart(sizeChart: Product["sizeChart"] | string | undefined, sizes: string[] = []): ProductSizeChart | undefined {
+  if (!sizeChart) {
+    return undefined;
+  }
+
+  if (typeof sizeChart === "string") {
+    const trimmed = sizeChart.trim();
+    if (!trimmed) return undefined;
+
+    const rows: SizeChartRow[] = sizes.map((size, index) => ({
+      id: `size-row-${index + 1}`,
+      sizeLabel: size,
+      measurement: "",
+    }));
+
+    return {
+      title: "Size Chart",
+      notes: trimmed,
+      rows,
+    };
+  }
+
+  return {
+    title: sizeChart.title?.trim() || "Size Chart",
+    notes: sizeChart.notes?.trim() || undefined,
+    rows: (sizeChart.rows ?? [])
+      .map((row, index) => ({
+        id: row.id || `size-row-${index + 1}`,
+        sizeLabel: row.sizeLabel?.trim() || `Size ${index + 1}`,
+        measurement: row.measurement?.trim() || "",
+        notes: row.notes?.trim() || undefined,
+      }))
+      .filter((row) => row.sizeLabel || row.measurement || row.notes),
+  };
+}
+
+function normalizeVariants(variants: Product["variants"] | string[] | undefined): ProductVariantOption[] {
+  if (!variants?.length) {
+    return [];
+  }
+
+  return variants
+    .map((variant, index) => {
+      if (typeof variant === "string") {
+        return {
+          id: `variant-${index + 1}`,
+          value: variant.trim(),
+          active: true,
+        } satisfies ProductVariantOption;
+      }
+
+      return {
+        id: variant.id || `variant-${index + 1}`,
+        value: variant.value.trim(),
+        label: variant.label?.trim() || undefined,
+        active: variant.active ?? true,
+      } satisfies ProductVariantOption;
+    })
+    .filter((variant) => variant.value);
+}
+
+function normalizeSpecifications(specifications: Product["specifications"] | undefined) {
+  return (specifications ?? [])
+    .map((specification) => ({
+      label: specification.label?.trim() || "",
+      value: specification.value?.trim() || "",
+    }))
+    .filter((specification) => specification.label && specification.value);
+}
+
 function normalizeProduct(product: Partial<Product>): Product {
   const media = normalizeProductMedia(product);
   const featuredItem = media.find((item) => item.featured) ?? media[0];
@@ -318,26 +462,32 @@ function normalizeProduct(product: Partial<Product>): Product {
     : product.categorySlug
       ? [product.categorySlug]
       : [];
+  const nextSlug = product.slug ?? slugify(product.name ?? "untitled-stone");
+  const sizeChart = normalizeSizeChart(product.sizeChart, product.sizes ?? []);
+  const variants = normalizeVariants(product.variants);
 
   return {
     id: product.id ?? `prd-${crypto.randomUUID()}`,
     name: product.name ?? "Untitled stone",
-    slug: product.slug ?? slugify(product.name ?? "untitled-stone"),
+    slug: nextSlug,
+    slugHistory: normalizeSlugHistory(product.slugHistory, nextSlug),
     sku: product.sku ?? "STONZA-DRAFT",
     shortDescription: product.shortDescription ?? "",
     description: product.description ?? "",
     price: product.price ?? 0,
     salePrice: product.salePrice,
-    currency: product.currency ?? "PKR",
+    currency: "PKR",
     costPrice: product.costPrice ?? 0,
     inventoryQuantity: product.inventoryQuantity ?? 0,
     lowStockThreshold: product.lowStockThreshold ?? 1,
     oneOfOne: product.oneOfOne ?? false,
     allowEnquiry: product.allowEnquiry ?? true,
     allowCartPurchase: product.allowCartPurchase ?? true,
+    visibility: product.visibility ?? "visible",
     stoneType: product.stoneType ?? "",
     categorySlug: categorySlugs[0] ?? product.categorySlug ?? "",
     categorySlugs,
+    subcategorySlug: product.subcategorySlug ?? "",
     collectionSlug: product.collectionSlug ?? "",
     weight: product.weight ?? "0 kg",
     carat: product.carat ?? 0,
@@ -353,7 +503,7 @@ function normalizeProduct(product: Partial<Product>): Product {
     certificateNumber: product.certificateNumber,
     certificateImage: product.certificateImage,
     certificatePdf: product.certificatePdf,
-    featuredImage: featuredItem?.url ?? product.featuredImage ?? "/placeholders/product-obsidian.svg",
+    featuredImage: featuredItem?.url ?? product.featuredImage ?? "",
     galleryImages: media.map((item) => item.url),
     media,
     productVideo: product.productVideo,
@@ -367,6 +517,11 @@ function normalizeProduct(product: Partial<Product>): Product {
     relatedProductSlugs: product.relatedProductSlugs ?? [],
     tags: product.tags ?? [],
     searchKeywords: product.searchKeywords ?? [],
+    sizes: product.sizes ?? [],
+    variantLabel: product.variantLabel?.trim() || undefined,
+    variants,
+    sizeChart,
+    specifications: normalizeSpecifications(product.specifications),
     seoTitle: product.seoTitle,
     seoDescription: product.seoDescription,
     canonicalOverride: product.canonicalOverride,
@@ -378,17 +533,38 @@ function normalizeProduct(product: Partial<Product>): Product {
   };
 }
 
+function normalizeCollection(collection: Partial<Collection>): Collection {
+  const nextSlug = collection.slug ?? slugify(collection.name ?? "untitled-collection");
+  return {
+    id: collection.id ?? `col-${crypto.randomUUID()}`,
+    name: collection.name ?? "Untitled collection",
+    slug: nextSlug,
+    slugHistory: normalizeSlugHistory(collection.slugHistory, nextSlug),
+    description: collection.description ?? "",
+    featuredImage: collection.featuredImage ?? "",
+    heroMedia: collection.heroMedia ?? collection.featuredImage ?? "",
+    active: collection.active ?? true,
+    featured: collection.featured ?? false,
+    sortOrder: collection.sortOrder ?? 0,
+    seoTitle: collection.seoTitle,
+    seoDescription: collection.seoDescription,
+    openGraphImage: collection.openGraphImage ?? collection.featuredImage,
+  };
+}
+
 function normalizeCategory(category: Partial<Category>): Category {
   const now = new Date().toISOString();
+  const nextSlug = category.slug ?? slugify(category.name ?? "untitled-category");
   return {
     id: category.id ?? `cat-${crypto.randomUUID()}`,
     name: category.name ?? "Untitled category",
-    slug: category.slug ?? slugify(category.name ?? "untitled-category"),
+    slug: nextSlug,
+    slugHistory: normalizeSlugHistory(category.slugHistory, nextSlug),
     shortDescription: category.shortDescription ?? category.description ?? "",
     description: category.description ?? category.shortDescription ?? "",
-    featuredImage: category.featuredImage ?? "/placeholders/category-statement.svg",
-    heroImage: category.heroImage ?? category.featuredImage ?? "/placeholders/category-statement.svg",
-    mobileImage: category.mobileImage ?? category.featuredImage ?? "/placeholders/category-statement.svg",
+    featuredImage: category.featuredImage ?? "",
+    heroImage: category.heroImage ?? category.featuredImage ?? "",
+    mobileImage: category.mobileImage ?? category.featuredImage ?? "",
     video: category.video,
     altText: category.altText ?? category.name ?? "STONZA category",
     parentCategorySlug: category.parentCategorySlug,
@@ -404,6 +580,26 @@ function normalizeCategory(category: Partial<Category>): Category {
     createdBy: category.createdBy ?? "system",
     updatedBy: category.updatedBy ?? "system",
     deletedAt: category.deletedAt,
+  };
+}
+
+function normalizeManagedPage(page: Partial<ManagedPage>): ManagedPage {
+  const now = new Date().toISOString();
+  const nextSlug = page.slug ?? slugify(page.title ?? "page");
+
+  return {
+    id: page.id ?? `page-${crypto.randomUUID()}`,
+    title: page.title ?? "Untitled page",
+    slug: nextSlug,
+    slugHistory: normalizeSlugHistory(page.slugHistory, nextSlug),
+    heroHeading: page.heroHeading ?? page.title ?? "Untitled page",
+    heroMedia: page.heroMedia,
+    content: page.content ?? "",
+    status: page.status ?? "draft",
+    seoTitle: page.seoTitle,
+    seoDescription: page.seoDescription,
+    openGraphImage: page.openGraphImage,
+    updatedAt: page.updatedAt ?? now,
   };
 }
 
@@ -430,7 +626,7 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     showScrollIndicator: hero?.showScrollIndicator ?? true,
     model3d: hero?.model3d,
     splineUrl: hero?.splineUrl,
-    backgroundImage: hero?.desktopBannerImage ?? "/placeholders/hero-strata.svg",
+    backgroundImage: hero?.desktopBannerImage,
     status: "published" as const,
   };
 
@@ -438,11 +634,11 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     id: hero?.id ?? "hero-1",
     mode: activeMode,
     activeMode,
-    desktopBannerImage: hero?.desktopBannerImage ?? "/placeholders/hero-strata.svg",
-    mobileBannerImage: hero?.mobileBannerImage ?? "/placeholders/hero-strata-mobile.svg",
+    desktopBannerImage: hero?.desktopBannerImage,
+    mobileBannerImage: hero?.mobileBannerImage,
     desktopBackgroundVideo: hero?.desktopBackgroundVideo,
     mobileBackgroundVideo: hero?.mobileBackgroundVideo,
-    videoPoster: hero?.videoPoster ?? "/placeholders/hero-poster.svg",
+    videoPoster: hero?.videoPoster,
     model3d: hero?.model3d,
     splineUrl: hero?.splineUrl,
     eyebrow: interactive3d.eyebrow,
@@ -466,10 +662,10 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     status: hero?.status ?? "published",
     carousel: {
       autoplay: true,
-      autoplayInterval: 6500,
+      autoplayInterval: 3000,
       loop: true,
-      pauseOnHover: true,
-      showArrows: true,
+      pauseOnHover: false,
+      showArrows: false,
       showDots: true,
       transitionStyle: "fade",
       slides: hero?.carousel?.slides?.length ? hero.carousel.slides : defaultHeroSlides,
@@ -478,8 +674,8 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     video: {
       desktopVideo: hero?.video?.desktopVideo ?? hero?.desktopBackgroundVideo,
       mobileVideo: hero?.video?.mobileVideo ?? hero?.mobileBackgroundVideo,
-      posterImage: hero?.video?.posterImage ?? hero?.videoPoster ?? "/placeholders/hero-poster.svg",
-      mobilePosterImage: hero?.video?.mobilePosterImage ?? hero?.mobileBannerImage ?? "/placeholders/hero-poster.svg",
+      posterImage: hero?.video?.posterImage ?? hero?.videoPoster,
+      mobilePosterImage: hero?.video?.mobilePosterImage ?? hero?.mobileBannerImage,
       heading: hero?.video?.heading ?? interactive3d.heading,
       description: hero?.video?.description ?? interactive3d.description,
       primaryCtaLabel: hero?.video?.primaryCtaLabel ?? interactive3d.primaryCtaLabel,
@@ -501,8 +697,8 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     },
     hybrid: {
       ...interactive3d,
-      desktopImage: hero?.hybrid?.desktopImage ?? hero?.desktopBannerImage ?? "/placeholders/hero-strata.svg",
-      mobileImage: hero?.hybrid?.mobileImage ?? hero?.mobileBannerImage ?? "/placeholders/hero-strata-mobile.svg",
+      desktopImage: hero?.hybrid?.desktopImage ?? hero?.desktopBannerImage,
+      mobileImage: hero?.hybrid?.mobileImage ?? hero?.mobileBannerImage,
       status: hero?.hybrid?.status ?? "draft",
     },
     updatedAt: hero?.updatedAt ?? now,
@@ -556,17 +752,48 @@ function normalizeStore(store: Partial<StoreData>): StoreData {
   const settings = normalizeSettings(store.settings);
   return {
     settings,
-    hero: normalizeHero(store.hero),
+    hero: normalizeHero(
+      store.hero
+        ? {
+            ...store.hero,
+            activeMode: "carousel",
+            mode: "carousel",
+            carousel: {
+              ...store.hero.carousel,
+              autoplay: true,
+              autoplayInterval: 3000,
+              loop: true,
+              pauseOnHover: false,
+              showArrows: false,
+              showDots: true,
+              transitionStyle: "fade",
+            },
+          }
+        : undefined,
+    ),
     homepageSections: normalizeSections(store.homepageSections).sort((a, b) => a.order - b.order),
     categories: (store.categories ?? []).map(normalizeCategory).sort((a, b) => a.sortOrder - b.sortOrder),
-    collections: (store.collections ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
+    collections: (store.collections ?? []).map(normalizeCollection).sort((a, b) => a.sortOrder - b.sortOrder),
     products: (store.products ?? []).map(normalizeProduct),
-    pages: store.pages ?? [],
+    pages: (store.pages ?? []).map(normalizeManagedPage),
     journalPosts: store.journalPosts ?? [],
     mediaAssets: (store.mediaAssets ?? []).filter((asset) => !asset.deletedAt),
     contentLabels: store.contentLabels?.length ? store.contentLabels : defaultContentLabels,
     activityLogs: (store.activityLogs ?? []) as ActivityLogEntry[],
+    orders: (store.orders ?? [])
+      .map((order) => ({
+        ...order,
+        currency: "PKR",
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   };
+}
+
+function getRequestedQuantityForProduct(
+  lines: CartLineInput[],
+  productId: string,
+) {
+  return lines.reduce((total, line) => (line.productId === productId ? total + line.quantity : total), 0);
 }
 
 async function readStore(): Promise<StoreData> {
@@ -594,8 +821,17 @@ async function writeStore(store: StoreData) {
   await fs.writeFile(storePath, payload, "utf8");
 }
 
+async function persistLocalMirror(payload: string) {
+  if (isReadOnlyRuntime()) {
+    return;
+  }
+
+  await fs.mkdir(storeRuntimeDir, { recursive: true });
+  await fs.writeFile(storePath, payload, "utf8");
+}
+
 function shouldUseRemoteStore() {
-  return Boolean(process.env.VERCEL && env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+  return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 async function readLocalStore() {
@@ -607,14 +843,14 @@ async function readLocalStore() {
       throw error;
     }
 
-    const seed = await fs.readFile(storeSeedPath, "utf8");
+    const emptyStore = `${JSON.stringify(createEmptyStore(), null, 2)}\n`;
 
     if (!isReadOnlyRuntime()) {
       await fs.mkdir(storeRuntimeDir, { recursive: true });
-      await fs.writeFile(storePath, seed, "utf8");
+      await fs.writeFile(storePath, emptyStore, "utf8");
     }
 
-    return seed;
+    return emptyStore;
   }
 }
 
@@ -624,13 +860,19 @@ async function readStoreSource() {
   }
 
   try {
-    return await readRemoteStore();
+    const remote = await readRemoteStore();
+    await persistLocalMirror(remote);
+    return remote;
   } catch (error) {
     const message = error instanceof Error ? error.message.toLowerCase() : "";
     if (message.includes("not found") || message.includes("404")) {
       const seed = await readLocalStore();
       await writeRemoteStore(seed);
       return seed;
+    }
+
+     if (!isReadOnlyRuntime() && (message.includes("fetch failed") || message.includes("timeout"))) {
+      return readLocalStore();
     }
 
     throw error;
@@ -668,6 +910,8 @@ async function writeRemoteStore(payload: string) {
 
     throw new Error(`Supabase store write failed: ${error.message}`);
   }
+
+  await persistLocalMirror(payload);
 }
 
 async function ensureRemoteStoreBucket() {
@@ -697,11 +941,71 @@ async function ensureRemoteStoreBucket() {
 }
 
 function visibleCategory(category: Category) {
-  return category.active && category.status === "published" && !category.deletedAt;
+  return category.active && category.status === "published" && !category.deletedAt && !isLikelyDemoRecord(category);
 }
 
 function visibleProduct(product: Product) {
-  return ["published", "reserved", "out_of_stock", "sold"].includes(product.status);
+  return (
+    product.visibility !== "hidden" &&
+    ["published", "reserved", "out_of_stock", "sold"].includes(product.status) &&
+    !isLikelyDemoRecord(product)
+  );
+}
+
+function visibleCollection(collection: Collection) {
+  return collection.active && !isLikelyDemoRecord(collection);
+}
+
+function isLikelyDemoRecord(record: { name?: string; title?: string; featuredImage?: string; heroImage?: string; heroMedia?: string }) {
+  const title = `${record.name ?? record.title ?? ""}`.toLowerCase();
+  return (
+    title.includes("playwright") ||
+    title.includes("demo") ||
+    title.includes("sample") ||
+    title.includes("dummy") ||
+    title.includes("placeholder") ||
+    title.includes("test") ||
+    isPlaceholderAsset(record.featuredImage) ||
+    isPlaceholderAsset(record.heroImage) ||
+    isPlaceholderAsset(record.heroMedia)
+  );
+}
+
+function ensureUniqueSlug(existingSlugs: string[], preferred: string, currentId?: string, entries?: Array<{ id: string; slug: string }>) {
+  const base = slugify(preferred) || "item";
+  const taken = new Set(
+    entries
+      ? entries.filter((entry) => entry.id !== currentId).map((entry) => entry.slug)
+      : existingSlugs,
+  );
+  if (!taken.has(base)) return base;
+  let index = 2;
+  while (taken.has(`${base}-${index}`)) {
+    index += 1;
+  }
+  return `${base}-${index}`;
+}
+
+function buildCategoryNavigation(categories: Category[]) {
+  const visibleCategories = categories.filter(visibleCategory).sort((a, b) => a.sortOrder - b.sortOrder);
+  return visibleCategories
+    .filter((category) => !category.parentCategorySlug)
+    .map((category, index) => ({
+      id: `nav-category-${category.id}`,
+      label: category.name,
+      href: `/categories/${category.slug}`,
+      order: index + 1,
+      visible: true,
+      children: visibleCategories
+        .filter((child) => child.parentCategorySlug === category.slug)
+        .map((child, childIndex) => ({
+          id: `nav-category-${child.id}`,
+          label: child.name,
+          href: `/categories/${child.slug}`,
+          order: childIndex + 1,
+          visible: true,
+        })),
+    }));
 }
 
 export async function getStoreData() {
@@ -719,6 +1023,20 @@ export async function getMediaAssetById(id: string) {
 }
 
 export async function getSiteSettings() {
+  const store = await readStore();
+  return {
+    ...store.settings,
+    header: {
+      ...store.settings.header,
+      navigation: [
+        ...buildCategoryNavigation(store.categories),
+        ...store.settings.header.navigation.filter((item) => item.visible && item.href !== "/shop"),
+      ],
+    },
+  };
+}
+
+export async function getAdminSiteSettings() {
   const store = await readStore();
   return store.settings;
 }
@@ -778,7 +1096,7 @@ export async function listCategories(options?: {
 
 export async function getCategoryBySlug(slug: string) {
   const categories = await listCategories();
-  return categories.find((category) => category.slug === slug) ?? null;
+  return categories.find((category) => category.slug === slug || category.slugHistory?.includes(slug)) ?? null;
 }
 
 export async function getCategoryById(id: string) {
@@ -789,7 +1107,7 @@ export async function getCategoryById(id: string) {
 export async function listCollections(featuredOnly = false): Promise<Collection[]> {
   const store = await readStore();
   return store.collections
-    .filter((collection) => collection.active && (!featuredOnly || collection.featured))
+    .filter((collection) => visibleCollection(collection) && (!featuredOnly || collection.featured))
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
@@ -800,7 +1118,7 @@ export async function listAdminCollections(): Promise<Collection[]> {
 
 export async function getCollectionBySlug(slug: string) {
   const collections = await listCollections(false);
-  return collections.find((collection) => collection.slug === slug) ?? null;
+  return collections.find((collection) => collection.slug === slug || collection.slugHistory?.includes(slug)) ?? null;
 }
 
 export async function getCollectionById(id: string) {
@@ -813,6 +1131,7 @@ export async function listProducts(options?: {
   newOnly?: boolean;
   collectionSlug?: string;
   categorySlug?: string;
+  subcategorySlug?: string;
   search?: string;
 }) {
   const store = await readStore();
@@ -824,6 +1143,9 @@ export async function listProducts(options?: {
   if (options?.categorySlug) {
     items = items.filter((product) => product.categorySlugs?.includes(options.categorySlug!) || product.categorySlug === options.categorySlug);
   }
+  if (options?.subcategorySlug) {
+    items = items.filter((product) => product.subcategorySlug === options.subcategorySlug);
+  }
   if (options?.search) {
     const query = options.search.toLowerCase();
     items = items.filter((product) =>
@@ -832,6 +1154,9 @@ export async function listProducts(options?: {
         product.shortDescription,
         product.stoneType,
         product.origin,
+        product.sku,
+        product.variantLabel,
+        ...(product.variants ?? []).map((variant) => variant.value),
         ...product.searchKeywords,
         ...(product.categorySlugs ?? []),
       ]
@@ -844,14 +1169,32 @@ export async function listProducts(options?: {
   return items;
 }
 
+export async function listOrders() {
+  const store = await readStore();
+  return [...(store.orders ?? [])].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  );
+}
+
+export async function getOrderByNumber(orderNumber: string) {
+  const store = await readStore();
+  return store.orders?.find((order) => order.orderNumber === orderNumber) ?? null;
+}
+
 export async function listAdminProducts() {
   const store = await readStore();
-  return store.products;
+  return [...store.products].sort(
+    (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+  );
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const store = await readStore();
-  return store.products.find((product) => product.slug === slug) ?? null;
+  return (
+    store.products.find(
+      (product) => visibleProduct(product) && (product.slug === slug || product.slugHistory?.includes(slug)),
+    ) ?? null
+  );
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
@@ -875,12 +1218,19 @@ export async function listAdminJournalPosts() {
 
 export async function getJournalPostBySlug(slug: string): Promise<JournalPost | null> {
   const store = await readStore();
-  return store.journalPosts.find((post) => post.slug === slug && post.status === "published") ?? null;
+  return (
+    store.journalPosts.find(
+      (post) => (post.slug === slug || post.slugHistory?.includes(slug)) && post.status === "published",
+    ) ?? null
+  );
 }
 
 export async function getManagedPage(slug: string): Promise<ManagedPage | null> {
   const store = await readStore();
-  return store.pages.find((page) => page.slug === slug && page.status === "published") ?? null;
+  return (
+    store.pages.find((page) => (page.slug === slug || page.slugHistory?.includes(slug)) && page.status === "published") ??
+    null
+  );
 }
 
 export async function listManagedPages() {
@@ -904,13 +1254,54 @@ export async function logActivity(entry: Omit<ActivityLogEntry, "id" | "timestam
 
 export async function upsertCategory(payload: Partial<Category> & Pick<Category, "name">) {
   const store = await readStore();
-  const nextCategory = normalizeCategory(payload);
+  const existing = payload.id ? store.categories.find((item) => item.id === payload.id) : null;
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.name,
+    existingSlug: existing?.slug,
+    existingName: existing?.name,
+    existingId: payload.id,
+    entries: store.categories,
+  });
+  const nextCategory = normalizeCategory({
+    ...(existing ?? {}),
+    ...payload,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
   const index = store.categories.findIndex((item) => item.id === nextCategory.id);
 
   if (index >= 0) {
     store.categories[index] = nextCategory;
   } else {
     store.categories.push(nextCategory);
+  }
+
+  if (existing && existing.slug !== nextCategory.slug) {
+    store.categories = store.categories.map((item) =>
+      item.parentCategorySlug === existing.slug
+        ? normalizeCategory({ ...item, parentCategorySlug: nextCategory.slug, updatedAt: new Date().toISOString() })
+        : item,
+    );
+    store.products = store.products.map((product) => {
+      if (product.categorySlug !== existing.slug && !product.categorySlugs?.includes(existing.slug)) {
+        return product;
+      }
+
+      const nextCategorySlugs = replaceSlugValue(product.categorySlugs ?? [product.categorySlug], existing.slug, nextCategory.slug) ?? [];
+      return normalizeProduct({
+        ...product,
+        categorySlug: nextCategorySlugs[0] ?? nextCategory.slug,
+        categorySlugs: nextCategorySlugs,
+      });
+    });
+    store.homepageSections = store.homepageSections.map((section) => ({
+      ...section,
+      categorySlugs: replaceSlugValue(section.categorySlugs, existing.slug, nextCategory.slug) ?? [],
+    }));
   }
 
   await writeStore(store);
@@ -954,15 +1345,44 @@ export async function duplicateCategory(id: string, actor: string) {
 
 export async function upsertCollection(payload: Omit<Collection, "id" | "slug"> & { id?: string; slug?: string }) {
   const store = await readStore();
+  const existing = payload.id ? store.collections.find((item) => item.id === payload.id) : null;
   const id = payload.id ?? `col-${crypto.randomUUID()}`;
-  const slug = payload.slug || slugify(payload.name);
-  const nextCollection: Collection = { ...payload, id, slug };
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.name,
+    existingSlug: existing?.slug,
+    existingName: existing?.name,
+    existingId: payload.id,
+    entries: store.collections,
+  });
+  const nextCollection: Collection = normalizeCollection({
+    ...(existing ?? {}),
+    ...payload,
+    id,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
   const index = store.collections.findIndex((item) => item.id === id);
 
   if (index >= 0) {
     store.collections[index] = nextCollection;
   } else {
     store.collections.push(nextCollection);
+  }
+
+  if (existing && existing.slug !== nextCollection.slug) {
+    store.products = store.products.map((product) =>
+      product.collectionSlug === existing.slug
+        ? normalizeProduct({ ...product, collectionSlug: nextCollection.slug })
+        : product,
+    );
+    store.homepageSections = store.homepageSections.map((section) => ({
+      ...section,
+      collectionSlugs: replaceSlugValue(section.collectionSlugs, existing.slug, nextCollection.slug) ?? [],
+    }));
   }
 
   await writeStore(store);
@@ -1003,7 +1423,24 @@ export async function updateContentLabels(labels: ContentLabel[]) {
 
 export async function upsertProduct(payload: Product) {
   const store = await readStore();
-  const nextProduct = normalizeProduct(payload);
+  const existing = payload.id ? store.products.find((item) => item.id === payload.id) : null;
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.name,
+    existingSlug: existing?.slug,
+    existingName: existing?.name,
+    existingId: payload.id,
+    entries: store.products,
+  });
+  const nextProduct = normalizeProduct({
+    ...(existing ?? {}),
+    ...payload,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
   const index = store.products.findIndex((product) => product.id === nextProduct.id);
 
   if (index >= 0) {
@@ -1012,8 +1449,168 @@ export async function upsertProduct(payload: Product) {
     store.products.push(nextProduct);
   }
 
+  if (existing && existing.slug !== nextProduct.slug) {
+    store.products = store.products.map((product) =>
+      product.id === nextProduct.id
+        ? product
+        : normalizeProduct({
+            ...product,
+            relatedProductSlugs: replaceSlugValue(product.relatedProductSlugs, existing.slug, nextProduct.slug) ?? [],
+          }),
+    );
+    store.homepageSections = store.homepageSections.map((section) => ({
+      ...section,
+      productSlugs: replaceSlugValue(section.productSlugs, existing.slug, nextProduct.slug) ?? [],
+    }));
+  }
+
   await writeStore(store);
   return nextProduct;
+}
+
+export async function upsertManagedPage(payload: Partial<ManagedPage> & Pick<ManagedPage, "title" | "slug" | "content" | "heroHeading" | "status">) {
+  const store = await readStore();
+  const existing = payload.id ? store.pages.find((item) => item.id === payload.id) : null;
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.title,
+    existingSlug: existing?.slug,
+    existingName: existing?.title,
+    existingId: payload.id,
+    entries: store.pages,
+  });
+  const nextPage = normalizeManagedPage({
+    ...(existing ?? {}),
+    ...payload,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
+  const index = store.pages.findIndex((page) => page.id === nextPage.id);
+
+  if (index >= 0) {
+    store.pages[index] = nextPage;
+  } else {
+    store.pages.push(nextPage);
+  }
+
+  if (existing && existing.slug !== nextPage.slug) {
+    const previousPath = `/${existing.slug}`;
+    const nextPath = `/${nextPage.slug}`;
+    store.settings = normalizeSettings({
+      ...store.settings,
+      header: {
+        ...store.settings.header,
+        navigation: replaceNavigationHref(store.settings.header.navigation, previousPath, nextPath),
+      },
+      footer: {
+        ...store.settings.footer,
+        legalLinks: replaceNavigationHref(store.settings.footer.legalLinks, previousPath, nextPath),
+        sections: store.settings.footer.sections.map((section) => ({
+          ...section,
+          links: section.links.map((link) => ({
+            ...link,
+            href: link.href === previousPath ? nextPath : link.href,
+          })),
+        })),
+      },
+      announcement: {
+        ...store.settings.announcement,
+        link: store.settings.announcement.link === previousPath ? nextPath : store.settings.announcement.link,
+      },
+      contactButton: {
+        ...store.settings.contactButton,
+        destination:
+          store.settings.contactButton.destination === previousPath
+            ? nextPath
+            : store.settings.contactButton.destination,
+      },
+    });
+  }
+
+  await writeStore(store);
+  return nextPage;
+}
+
+export async function deleteCollection(id: string) {
+  const store = await readStore();
+  const collection = store.collections.find((item) => item.id === id);
+  if (!collection) throw new Error("Collection not found");
+
+  store.collections = store.collections.filter((item) => item.id !== id);
+  store.products = store.products.map((product) =>
+    product.collectionSlug === collection.slug ? normalizeProduct({ ...product, collectionSlug: "" }) : product,
+  );
+
+  await writeStore(store);
+  return collection;
+}
+
+export async function assignProductsToCollection(collectionSlug: string, productSlugs: string[]) {
+  const store = await readStore();
+  const selected = new Set(productSlugs);
+  store.products = store.products.map((product) => {
+    if (product.collectionSlug === collectionSlug && !selected.has(product.slug)) {
+      return normalizeProduct({ ...product, collectionSlug: "" });
+    }
+
+    if (selected.has(product.slug)) {
+      return normalizeProduct({ ...product, collectionSlug });
+    }
+
+    return product;
+  });
+
+  await writeStore(store);
+}
+
+export async function assignProductsToCategory(categorySlug: string, productSlugs: string[]) {
+  const store = await readStore();
+  const category = store.categories.find((item) => item.slug === categorySlug);
+
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  const selected = new Set(productSlugs);
+  store.products = store.products.map((product) => {
+    const currentCategorySlugs = [...new Set(product.categorySlugs?.length ? product.categorySlugs : [product.categorySlug])];
+    const belongsToCategory = currentCategorySlugs.includes(categorySlug);
+
+    if (selected.has(product.slug) && !belongsToCategory) {
+      const nextCategorySlugs = [...currentCategorySlugs, categorySlug];
+      return normalizeProduct({
+        ...product,
+        categorySlug: nextCategorySlugs[0] ?? categorySlug,
+        categorySlugs: nextCategorySlugs,
+      });
+    }
+
+    if (!selected.has(product.slug) && belongsToCategory) {
+      const nextCategorySlugs = currentCategorySlugs.filter((slug) => slug !== categorySlug);
+      return normalizeProduct({
+        ...product,
+        categorySlug: nextCategorySlugs[0] ?? "",
+        categorySlugs: nextCategorySlugs,
+      });
+    }
+
+    return product;
+  });
+
+  await writeStore(store);
+}
+
+export async function deleteProduct(id: string) {
+  const store = await readStore();
+  const product = store.products.find((entry) => entry.id === id);
+  if (!product) throw new Error("Product not found");
+
+  store.products = store.products.filter((entry) => entry.id !== id);
+  await writeStore(store);
+  return product;
 }
 
 export async function addMediaAsset(asset: MediaAsset) {
@@ -1053,4 +1650,160 @@ export async function setProductStatus(id: string, status: Product["status"]) {
   product.updatedAt = new Date().toISOString();
   await writeStore(store);
   return product;
+}
+
+export async function createOrder(payload: {
+  customer: CustomerOrderDetails;
+  cartLines: CartLineInput[];
+  paymentMethod: string;
+  submissionToken?: string;
+}) {
+  const store = await readStore();
+  const existingOrder = payload.submissionToken
+    ? (store.orders ?? []).find((order) => order.submissionToken === payload.submissionToken)
+    : null;
+
+  if (existingOrder) {
+    return existingOrder;
+  }
+
+  const requestedQuantities = new Map<string, number>();
+  for (const line of payload.cartLines) {
+    requestedQuantities.set(line.productId, getRequestedQuantityForProduct(payload.cartLines, line.productId));
+  }
+
+  const lines = payload.cartLines.map((line) => {
+    const product = store.products.find((entry) => entry.id === line.productId);
+    if (!product) {
+      throw new Error("A product in your cart is no longer available.");
+    }
+
+    if (!visibleProduct(product) || !product.allowCartPurchase) {
+      throw new Error(`${product.name} is not currently available for checkout.`);
+    }
+
+    const requestedQuantity = requestedQuantities.get(product.id) ?? line.quantity;
+
+    if (product.oneOfOne && requestedQuantity > 1) {
+      throw new Error(`${product.name} is a one-of-one piece and can only be ordered once.`);
+    }
+
+    if (product.inventoryQuantity < requestedQuantity) {
+      throw new Error(`Only ${product.inventoryQuantity} unit(s) of ${product.name} remain in stock.`);
+    }
+
+    if (product.sizes?.length && !line.selectedSize) {
+      throw new Error(`Please select a size for ${product.name}.`);
+    }
+
+    if (line.selectedSize && product.sizes?.length && !product.sizes.includes(line.selectedSize)) {
+      throw new Error(`The selected size for ${product.name} is unavailable.`);
+    }
+
+    if (product.variants?.length && !line.selectedVariant) {
+      throw new Error(`Please select a ${product.variantLabel?.toLowerCase() || "variant"} for ${product.name}.`);
+    }
+
+    if (
+      line.selectedVariant &&
+      product.variants?.length &&
+      !product.variants.some((variant) => variant.active && variant.value === line.selectedVariant)
+    ) {
+      throw new Error(`The selected ${product.variantLabel?.toLowerCase() || "variant"} for ${product.name} is unavailable.`);
+    }
+
+    return { product, line };
+  });
+
+  const subtotal = lines.reduce((total, entry) => total + getEffectivePrice(entry.product) * entry.line.quantity, 0);
+  const shipping = subtotal > 0 ? 0 : 0;
+  const discount = 0;
+  const total = subtotal + shipping - discount;
+  const now = new Date().toISOString();
+  const orderNumber = generateOrderNumber(store.orders ?? []);
+  const items: OrderItem[] = lines.map(({ product, line }) => ({
+    id: `item-${crypto.randomUUID()}`,
+    productId: product.id,
+    productName: product.name,
+    productSlug: product.slug,
+    sku: product.sku,
+    image: product.featuredImage,
+    quantity: line.quantity,
+    unitPrice: getEffectivePrice(product),
+    selectedSize: line.selectedSize,
+    selectedVariant: line.selectedVariant,
+  }));
+
+  for (const { product, line } of lines) {
+    product.inventoryQuantity -= line.quantity;
+    if (product.inventoryQuantity <= 0) {
+      product.inventoryQuantity = 0;
+      product.status = "out_of_stock";
+    }
+    product.updatedAt = now;
+  }
+
+  const order: OrderRecord = {
+    id: `ord-${crypto.randomUUID()}`,
+    orderNumber,
+    submissionToken: payload.submissionToken,
+    status: "pending",
+    paymentStatus: payload.paymentMethod.toLowerCase().includes("cash") ? "cod" : "pending",
+    paymentMethod: payload.paymentMethod,
+    currency: "PKR",
+    subtotal,
+    shipping,
+    discount,
+    total,
+    items,
+    customer: payload.customer,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  store.activityLogs.unshift({
+    id: `log-${crypto.randomUUID()}`,
+    action: "order_created",
+    actor: payload.customer.email,
+    entity: "order",
+    entityId: order.id,
+    detail: order.orderNumber,
+    timestamp: now,
+  });
+  store.orders = [order, ...(store.orders ?? [])];
+  await writeStore(store);
+  return order;
+}
+
+export async function updateOrderStatus(orderNumber: string, status: OrderRecord["status"]) {
+  const store = await readStore();
+  const order = store.orders?.find((entry) => entry.orderNumber === orderNumber);
+  if (!order) {
+    throw new Error("Order not found");
+  }
+  if (status === "cancelled" && order.status !== "cancelled") {
+    for (const item of order.items) {
+      const product = store.products.find((entry) => entry.id === item.productId);
+      if (!product) continue;
+      product.inventoryQuantity += item.quantity;
+      if (["out_of_stock", "sold"].includes(product.status) && product.inventoryQuantity > 0) {
+        product.status = "published";
+      }
+      product.updatedAt = new Date().toISOString();
+    }
+  }
+  order.status = status;
+  order.updatedAt = new Date().toISOString();
+  await writeStore(store);
+  return order;
+}
+
+function generateOrderNumber(existingOrders: OrderRecord[]) {
+  const today = new Date();
+  const y = today.getUTCFullYear();
+  const m = String(today.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(today.getUTCDate()).padStart(2, "0");
+  const prefix = `STZ-${y}${m}${d}`;
+  const count = existingOrders.filter((order) => order.orderNumber.startsWith(prefix)).length + 1;
+  return `${prefix}-${String(count).padStart(3, "0")}`;
 }

@@ -18,12 +18,12 @@ export default function AdminLoginPage() {
       <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-[#141516] p-8">
         <div className="mb-8 space-y-5 text-center">
           <div className="flex justify-center">
-            <Logo light href="" />
+            <Logo light href="/admin/login" />
           </div>
           <div>
             <h1 className="text-display text-4xl text-white">Admin access</h1>
             <p className="mt-3 text-sm leading-7 text-white/60">
-              Local demo auth is active until Supabase credentials are configured.
+              Secure owner credential sign-in is enabled for the STONZA operations portal.
             </p>
           </div>
         </div>

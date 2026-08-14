@@ -5,11 +5,11 @@ STONZA is a luxury natural-stones commerce platform built with Next.js App Route
 ## What Is Implemented
 - Branded luxury storefront with the official STONZA logo in `public/brand/stonza-logo.png`
 - Separate storefront and admin route groups with separate layouts and navigation
-- Cinematic homepage preview with a procedural 3D gemstone hero
+- Homepage hero banner carousel managed from the admin portal
 - Data-backed collections, products, journal, and managed content routes
 - Protected admin login and portal shell with working local demo auth
 - Functional admin mutations for categories, collections, products, hero settings, homepage sections, site settings, and media uploads
-- Local repository persistence through `src/data/dev-store.json` for development-safe operation without external credentials
+- Local repository persistence through `.stonza/runtime/dev-store.json` for development-safe operation without external credentials
 - Supabase-ready helper scaffolding, SQL migrations, seed assets, and environment templates
 - Unit tests and Playwright end-to-end tests for the critical admin/storefront flow
 
@@ -58,11 +58,9 @@ src/
     shared/
     storefront/
     three/
-  data/
   lib/
     auth/
     data/
-    seo/
     supabase/
     validation/
   types/
@@ -83,6 +81,7 @@ public/
 2. Add the environment values from `.env.example` to `.env.local` and Vercel project settings.
 3. Apply migrations from `supabase/migrations`.
 4. Run `supabase/seed.sql`.
+   The seed script bootstraps roles and permissions only. Add real catalogue and content records through the admin portal or a dedicated migration.
 5. Create storage buckets:
    - `images`
    - `videos`
@@ -98,7 +97,7 @@ public/
 ## Database Migration Workflow
 - Add forward-only SQL files under `supabase/migrations`.
 - Keep the TypeScript validation and repository types aligned with schema changes.
-- Re-run seed data when editorial placeholders need refresh.
+- Keep placeholder merchandising out of seed workflows. Use admin-managed content or dedicated migrations for live catalogue data.
 - Revalidate affected routes after published content changes.
 
 ## Deployment To Vercel
@@ -138,5 +137,4 @@ public/
 
 ## Known Current Limitations
 - Local development currently uses a file-backed repository and demo admin auth until Supabase credentials are configured.
-- Commerce checkout, enquiries, full page CMS, journal authoring, and role-management UIs are scaffolded but not yet fully expanded to the Supabase-backed production layer.
-- The admin media page can upload locally now; the Supabase Storage swap-in is documented and scaffolded but still credential-dependent.
+- A live online card gateway is not enabled until valid third-party merchant credentials are supplied.

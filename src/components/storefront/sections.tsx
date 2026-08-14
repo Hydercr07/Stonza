@@ -93,27 +93,11 @@ export function FeaturedProductsSection({
 
 export function StorySection({ section }: { section: HomepageSection }) {
   return (
-    <section className="container-shell grid gap-8 py-18 lg:grid-cols-[0.9fr_1.1fr]">
-      <div
-        className="min-h-[22rem] rounded-[2rem] border border-black/8 bg-cover bg-center shadow-[0_18px_44px_rgba(26,20,12,0.08)]"
-        style={{ backgroundImage: "linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.46)), url('/placeholders/story-mineral.svg')" }}
-      />
-      <div className="stone-panel rounded-[2rem] p-8 md:p-12">
-        <p className="mb-4 text-xs uppercase tracking-[0.28em] text-[#a2845d]">Brand Story</p>
-        <h2 className="text-display text-4xl text-[#171717] md:text-5xl">{section.heading}</h2>
+    <section className="container-shell py-18">
+      <div className="stone-panel min-h-[22rem] rounded-[2rem] p-8 md:p-12">
+        <p className="text-xs uppercase tracking-[0.28em] text-[#a2845d]">{section.eyebrow ?? "Editorial"}</p>
+        <h2 className="text-display mt-4 text-4xl text-[#171717] md:text-5xl">{section.heading}</h2>
         <p className="mt-6 max-w-2xl text-base leading-8 text-black/62">{section.body}</p>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {[
-            { label: "Sourcing", value: "Private collector network" },
-            { label: "Selection", value: "Editorially curated inventory" },
-            { label: "Delivery", value: "Protected regional and global dispatch" },
-          ].map((item) => (
-            <div key={item.label} className="rounded-[1.5rem] border border-black/8 bg-[rgba(255,255,255,0.68)] p-4">
-              <p className="text-[10px] uppercase tracking-[0.24em] text-black/42">{item.label}</p>
-              <p className="mt-2 text-sm text-black/72">{item.value}</p>
-            </div>
-          ))}
-        </div>
         {section.ctaLabel && section.ctaUrl ? (
           <Button asChild variant="outline" className="mt-8">
             <Link href={section.ctaUrl}>{section.ctaLabel}</Link>

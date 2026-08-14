@@ -6,6 +6,7 @@ export type Permission =
   | "products:publish"
   | "categories:write"
   | "collections:write"
+  | "orders:write"
   | "homepage:write"
   | "hero:write"
   | "settings:write"
@@ -18,6 +19,7 @@ export const rolePermissions: Record<AdminRole, Permission[]> = {
     "products:publish",
     "categories:write",
     "collections:write",
+    "orders:write",
     "homepage:write",
     "hero:write",
     "settings:write",
@@ -29,6 +31,7 @@ export const rolePermissions: Record<AdminRole, Permission[]> = {
     "products:publish",
     "categories:write",
     "collections:write",
+    "orders:write",
     "homepage:write",
     "hero:write",
     "settings:write",
@@ -36,7 +39,7 @@ export const rolePermissions: Record<AdminRole, Permission[]> = {
   ],
   product_manager: ["dashboard:view", "products:write", "products:publish", "categories:write", "collections:write", "media:write"],
   content_editor: ["dashboard:view", "homepage:write", "hero:write", "settings:write"],
-  order_manager: ["dashboard:view"],
+  order_manager: ["dashboard:view", "orders:write"],
   inventory_manager: ["dashboard:view", "products:write"],
 };
 

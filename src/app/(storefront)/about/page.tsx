@@ -1,8 +1,12 @@
+import { permanentRedirect } from "next/navigation";
 import { RichText } from "@/components/shared/rich-text";
 import { getManagedPage } from "@/lib/data/store";
 
 export default async function AboutPage() {
   const page = await getManagedPage("about");
+  if (page?.slug && page.slug !== "about" && page.slugHistory?.includes("about")) {
+    permanentRedirect(`/${page.slug}`);
+  }
   return (
     <section className="container-shell py-16">
       <h1 className="text-display text-5xl text-white">{page?.heroHeading ?? "About STONZA"}</h1>

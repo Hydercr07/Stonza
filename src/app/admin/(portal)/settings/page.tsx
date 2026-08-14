@@ -1,9 +1,9 @@
 import { saveSettingsAction } from "@/actions/admin";
 import { Button } from "@/components/shared/ui/button";
-import { getSiteSettings } from "@/lib/data/store";
+import { getAdminSiteSettings } from "@/lib/data/store";
 
 export default async function SettingsPage() {
-  const settings = await getSiteSettings();
+  const settings = await getAdminSiteSettings();
 
   return (
     <form action={saveSettingsAction} className="grid gap-6 xl:grid-cols-[1fr_1fr]">

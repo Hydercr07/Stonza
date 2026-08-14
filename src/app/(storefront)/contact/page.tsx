@@ -1,8 +1,15 @@
+import { permanentRedirect } from "next/navigation";
 import { Button } from "@/components/shared/ui/button";
 import { getManagedPage, getSiteSettings } from "@/lib/data/store";
 
 export default async function ContactPage() {
   const [page, settings] = await Promise.all([getManagedPage("contact"), getSiteSettings()]);
+  if (page?.slug && page.slug !== "contact" && page.slugHistory?.includes("contact")) {
+    permanentRedirect(`/${page.slug}`);
+  }
+  const whatsappHref = settings.whatsappNumber
+    ? `https://wa.me/${settings.whatsappNumber.replace(/[^\d]/g, "")}`
+    : settings.contactButton.destination;
 
   return (
     <section className="container-shell py-16">
@@ -10,7 +17,9 @@ export default async function ContactPage() {
         <div className="space-y-5">
           <p className="text-xs uppercase tracking-[0.28em] text-accent">Contact</p>
           <h1 className="text-display text-5xl text-white">{page?.heroHeading ?? "Contact STONZA"}</h1>
-          <p className="text-sm leading-7 text-white/65">{page?.content.replace(/<[^>]+>/g, "")}</p>
+          <p className="text-sm leading-7 text-white/65">
+            {page?.content?.replace(/<[^>]+>/g, "") ?? "Speak with STONZA for sourcing requests, certifications, and private appointments."}
+          </p>
         </div>
         <div className="stone-panel rounded-[2rem] p-8">
           <div className="grid gap-4 text-sm text-white/72">
@@ -18,7 +27,11 @@ export default async function ContactPage() {
             <div><span className="block text-white/40">Address</span>{settings.address}</div>
             <div><span className="block text-white/40">Hours</span>{settings.businessHours}</div>
           </div>
-          <Button className="mt-8">Open WhatsApp concierge</Button>
+          <Button className="mt-8" asChild>
+            <a href={whatsappHref} target="_blank" rel="noreferrer">
+              Open WhatsApp concierge
+            </a>
+          </Button>
         </div>
       </div>
     </section>

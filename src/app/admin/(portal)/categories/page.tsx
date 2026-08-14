@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { installRequestedTaxonomyAction } from "@/actions/admin";
 import { listCategories, listProducts } from "@/lib/data/store";
 import { Button } from "@/components/shared/ui/button";
 
@@ -33,9 +34,14 @@ export default async function AdminCategoriesPage({
             Manage the stone families that appear across product forms, homepage selections and public storefront filtering.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/categories/new">New category</Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <form action={installRequestedTaxonomyAction}>
+            <Button variant="outline">Install requested taxonomy</Button>
+          </form>
+          <Button asChild>
+            <Link href="/admin/categories/new">New category</Link>
+          </Button>
+        </div>
       </div>
 
       <form className="grid gap-4 rounded-[1.75rem] border border-white/10 bg-[#111213] p-5 md:grid-cols-[1fr_180px_180px]">

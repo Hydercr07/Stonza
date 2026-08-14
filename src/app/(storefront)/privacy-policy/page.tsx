@@ -1,8 +1,23 @@
-export default function PrivacyPolicyPage() {
+import { permanentRedirect } from "next/navigation";
+import { RichText } from "@/components/shared/rich-text";
+import { getManagedPage } from "@/lib/data/store";
+
+export default async function PrivacyPolicyPage() {
+  const page = await getManagedPage("privacy-policy");
+  if (page?.slug && page.slug !== "privacy-policy" && page.slugHistory?.includes("privacy-policy")) {
+    permanentRedirect(`/${page.slug}`);
+  }
+
   return (
     <section className="container-shell py-16">
-      <h1 className="text-display text-5xl text-white">Privacy Policy</h1>
-      <p className="mt-4 max-w-3xl text-sm leading-7 text-white/62">Draft policy content is ready to be managed through the content CMS layer. This public page is reserved with the final route and metadata behavior in place.</p>
+      <div className="rounded-[2rem] border border-[#eadfcf] bg-white/88 p-8 shadow-[0_22px_52px_rgba(26,20,12,0.08)]">
+        <p className="text-xs uppercase tracking-[0.28em] text-black/42">Policy</p>
+        <h1 className="text-display mt-3 text-5xl text-[#171717]">{page?.heroHeading ?? "Privacy Policy"}</h1>
+        <RichText
+          html={page?.content ?? "<p>Privacy details will appear here once published from the admin portal.</p>"}
+          className="mt-8 max-w-4xl text-black/68"
+        />
+      </div>
     </section>
   );
 }

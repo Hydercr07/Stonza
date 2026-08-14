@@ -13,7 +13,7 @@ export default async function AdminUsersPage() {
         <p className="text-xs uppercase tracking-[0.28em] text-white/42">Access</p>
         <h1 className="text-display mt-3 text-4xl">Admin users</h1>
         <p className="mt-3 max-w-xl text-sm leading-7 text-white/58">
-          The current portal runs in protected demo mode with one owner account. Permissions are enforced server-side for every admin route and mutation.
+          The current portal is protected with a single owner account, and permissions are enforced server-side for every admin route and mutation.
         </p>
 
         <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-black/15 p-5">
@@ -21,7 +21,7 @@ export default async function AdminUsersPage() {
           <p className="mt-3 text-lg font-medium text-white">{session?.email ?? ownerEmail}</p>
           <p className="mt-1 text-sm capitalize text-white/58">Role: {role.replaceAll("_", " ")}</p>
           <p className="mt-4 text-sm text-white/52">
-            Auth mode: <span className="text-white">demo session</span>
+            Auth mode: <span className="text-white">owner credential session</span>
           </p>
         </div>
       </div>

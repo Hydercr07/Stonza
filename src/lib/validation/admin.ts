@@ -19,6 +19,31 @@ export const productMediaItemSchema = z.object({
   sortOrder: z.coerce.number().int().min(1),
 });
 
+export const sizeChartRowSchema = z.object({
+  id: z.string(),
+  sizeLabel: z.string().min(1),
+  measurement: z.string(),
+  notes: z.string().optional(),
+});
+
+export const productSizeChartSchema = z.object({
+  title: z.string().min(1),
+  notes: z.string().optional(),
+  rows: z.array(sizeChartRowSchema).default([]),
+});
+
+export const productVariantSchema = z.object({
+  id: z.string(),
+  value: z.string().min(1),
+  label: z.string().optional(),
+  active: z.boolean().default(true),
+});
+
+export const productSpecificationSchema = z.object({
+  label: z.string().min(1),
+  value: z.string().min(1),
+});
+
 export const categorySchema = z.object({
   id: z.string().optional(),
   name: z.string().min(2),
@@ -45,16 +70,20 @@ export const collectionSchema = z.object({
   name: z.string().min(2),
   slug: z.string().optional().transform((value) => (value ? slugify(value) : undefined)),
   description: z.string().min(8),
-  featuredImage: z.string().min(1),
-  heroMedia: z.string().min(1),
+  featuredImage: z.string().optional(),
+  heroMedia: z.string().optional(),
   active: z.boolean(),
   featured: z.boolean(),
   sortOrder: z.coerce.number().int().min(0),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  openGraphImage: z.string().optional(),
 });
 
 export const productSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(2),
+  slug: z.string().optional().transform((value) => (value ? slugify(value) : undefined)),
   sku: z.string().min(3),
   shortDescription: z.string().min(12),
   description: z.string().min(20),
@@ -63,35 +92,117 @@ export const productSchema = z.object({
   inventoryQuantity: z.coerce.number().int().min(0),
   categorySlug: z.string().min(1),
   categorySlugs: z.array(z.string().min(1)).min(1),
-  collectionSlug: z.string().min(1),
+  subcategorySlug: z.string().optional(),
+  collectionSlug: z.string().optional().default(""),
   stoneType: z.string().min(2),
   origin: z.string().min(2),
   featuredImage: z.string().min(1),
   media: z.array(productMediaItemSchema).min(1),
+  sizes: z.array(z.string().min(1)).default([]),
+  variantLabel: z.string().optional(),
+  variants: z.array(productVariantSchema).default([]),
+  sizeChart: productSizeChartSchema.optional(),
+  specifications: z.array(productSpecificationSchema).default([]),
   status: z.enum(["draft", "published", "scheduled", "reserved", "out_of_stock", "sold", "archived", "trash"]),
+  visibility: z.enum(["visible", "hidden"]).default("visible"),
   featured: z.boolean(),
   newArrival: z.boolean(),
   allowCartPurchase: z.boolean(),
   allowEnquiry: z.boolean(),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  openGraphImage: z.string().optional(),
+}).superRefine((value, ctx) => {
+  if (typeof value.salePrice === "number" && value.salePrice > value.price) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["salePrice"],
+      message: "Sale price cannot be greater than the base price.",
+    });
+  }
+
+  if (value.sizes.length && value.sizeChart && !value.sizeChart.rows.length) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sizeChart", "rows"],
+      message: "Add at least one size chart row when sizes are configured.",
+    });
+  }
+
+  if (!value.sizes.length && value.sizeChart?.rows.length) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["sizes"],
+      message: "Add at least one size before saving a size chart.",
+    });
+  }
+
+  if (value.variantLabel?.trim() && value.variants.length === 0) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["variants"],
+      message: "Add at least one variant option when a variant label is provided.",
+    });
+  }
+
+  if (!value.variantLabel?.trim() && value.variants.length > 0) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["variantLabel"],
+      message: "Add a variant label to describe the configured options.",
+    });
+  }
+});
+
+export const checkoutSchema = z.object({
+  fullName: z.string().min(2),
+  email: z.email(),
+  phone: z.string().min(6),
+  country: z.string().min(2),
+  city: z.string().min(2),
+  addressLine1: z.string().min(5),
+  addressLine2: z.string().optional(),
+  postalCode: z.string().optional(),
+  orderNotes: z.string().optional(),
+  paymentMethod: z.string().min(2),
+  submissionToken: z.string().min(8).optional(),
+  cartLines: z
+    .array(
+      z.object({
+        productId: z.string().min(1),
+        quantity: z.coerce.number().int().min(1),
+        selectedSize: z.string().optional(),
+        selectedVariant: z.string().optional(),
+      }),
+    )
+    .min(1),
 });
 
 export const heroSlideSchema = z.object({
   id: z.string(),
   desktopImage: z.string().optional(),
   mobileImage: z.string().optional(),
-  eyebrow: z.string().min(2),
-  heading: z.string().min(6),
-  description: z.string().min(8),
-  primaryCtaLabel: z.string().min(2),
-  primaryCtaUrl: z.string().min(1),
-  secondaryCtaLabel: z.string().min(2),
-  secondaryCtaUrl: z.string().min(1),
+  eyebrow: z.string().default(""),
+  heading: z.string().default(""),
+  description: z.string().default(""),
+  primaryCtaLabel: z.string().default(""),
+  primaryCtaUrl: z.string().default(""),
+  secondaryCtaLabel: z.string().default(""),
+  secondaryCtaUrl: z.string().default(""),
   textAlignment: z.enum(["left", "center"]),
   textPosition: z.enum(["start", "center", "end"]),
   overlayOpacity: z.coerce.number().min(0).max(1),
   focalPoint: z.string().min(1),
   active: z.boolean(),
   sortOrder: z.coerce.number().int().min(1),
+}).superRefine((value, ctx) => {
+  if (!value.desktopImage?.trim() && !value.mobileImage?.trim()) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["desktopImage"],
+      message: "Each banner slide needs at least one image.",
+    });
+  }
 });
 
 const heroThreeSchema = z.object({
@@ -254,4 +365,17 @@ export const settingsSchema = z.object({
     destination: z.string().min(1),
     enabled: z.boolean(),
   }),
+});
+
+export const managedPageSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(2),
+  slug: z.string().optional().transform((value) => (value ? slugify(value) : undefined)),
+  heroHeading: z.string().min(2),
+  heroMedia: z.string().optional(),
+  content: z.string().min(8),
+  status: z.enum(["draft", "published"]),
+  seoTitle: z.string().optional(),
+  seoDescription: z.string().optional(),
+  openGraphImage: z.string().optional(),
 });
