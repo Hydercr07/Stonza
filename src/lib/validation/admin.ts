@@ -374,8 +374,13 @@ export const managedPageSchema = z.object({
   heroHeading: z.string().min(2),
   heroMedia: z.string().optional(),
   content: z.string().min(8),
-  status: z.enum(["draft", "published"]),
+  status: z.enum(["draft", "published", "archived", "trash"]),
   seoTitle: z.string().optional(),
   seoDescription: z.string().optional(),
   openGraphImage: z.string().optional(),
+});
+
+export const journalPostSchema = managedPageSchema.extend({
+  excerpt: z.string().min(12),
+  publishedAt: z.string().min(4),
 });

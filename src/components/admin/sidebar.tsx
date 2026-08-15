@@ -1,5 +1,18 @@
 import Link from "next/link";
-import { ChartNoAxesColumn, FileText, Gem, ImageIcon, Layers3, LayoutDashboard, Settings, ShoppingBag, Users } from "lucide-react";
+import {
+  BookOpenText,
+  ChartNoAxesColumn,
+  FileText,
+  Gem,
+  ImageIcon,
+  Layers3,
+  LayoutDashboard,
+  Package2,
+  ReceiptText,
+  Settings,
+  ShoppingBag,
+  Users,
+} from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/shared/ui/button";
 import { logoutAction } from "@/actions/admin";
@@ -7,11 +20,16 @@ import { logoutAction } from "@/actions/admin";
 const adminLinks = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/products", label: "Products", icon: Gem },
+  { href: "/admin/inventory", label: "Inventory", icon: Package2 },
   { href: "/admin/categories", label: "Categories", icon: Layers3 },
   { href: "/admin/collections", label: "Collections", icon: ShoppingBag },
+  { href: "/admin/orders", label: "Orders", icon: ReceiptText },
   { href: "/admin/media", label: "Media", icon: ImageIcon },
   { href: "/admin/hero", label: "Hero", icon: FileText },
   { href: "/admin/homepage", label: "Homepage", icon: ChartNoAxesColumn },
+  { href: "/admin/navigation", label: "Navigation", icon: Layers3 },
+  { href: "/admin/pages", label: "Pages", icon: FileText },
+  { href: "/admin/journal", label: "Journal", icon: BookOpenText },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/users", label: "Users", icon: Users },
 ];

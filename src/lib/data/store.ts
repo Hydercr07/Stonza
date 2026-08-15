@@ -603,6 +603,15 @@ function normalizeManagedPage(page: Partial<ManagedPage>): ManagedPage {
   };
 }
 
+function normalizeJournalPost(post: Partial<JournalPost>): JournalPost {
+  const base = normalizeManagedPage(post);
+  return {
+    ...base,
+    excerpt: post.excerpt?.trim() || "",
+    publishedAt: post.publishedAt ?? new Date().toISOString(),
+  };
+}
+
 function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
   const now = new Date().toISOString();
   const activeMode = hero?.activeMode ?? (hero?.mode ?? "interactive-3d");
@@ -776,7 +785,7 @@ function normalizeStore(store: Partial<StoreData>): StoreData {
     collections: (store.collections ?? []).map(normalizeCollection).sort((a, b) => a.sortOrder - b.sortOrder),
     products: (store.products ?? []).map(normalizeProduct),
     pages: (store.pages ?? []).map(normalizeManagedPage),
-    journalPosts: store.journalPosts ?? [],
+    journalPosts: (store.journalPosts ?? []).map(normalizeJournalPost),
     mediaAssets: (store.mediaAssets ?? []).filter((asset) => !asset.deletedAt),
     contentLabels: store.contentLabels?.length ? store.contentLabels : defaultContentLabels,
     activityLogs: (store.activityLogs ?? []) as ActivityLogEntry[],
@@ -1216,6 +1225,11 @@ export async function listAdminJournalPosts() {
   );
 }
 
+export async function getJournalPostById(id: string): Promise<JournalPost | null> {
+  const store = await readStore();
+  return store.journalPosts.find((post) => post.id === id) ?? null;
+}
+
 export async function getJournalPostBySlug(slug: string): Promise<JournalPost | null> {
   const store = await readStore();
   return (
@@ -1238,6 +1252,11 @@ export async function listManagedPages() {
   return store.pages.sort(
     (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
   );
+}
+
+export async function getManagedPageById(id: string): Promise<ManagedPage | null> {
+  const store = await readStore();
+  return store.pages.find((page) => page.id === id) ?? null;
 }
 
 export async function logActivity(entry: Omit<ActivityLogEntry, "id" | "timestamp">) {
@@ -1534,6 +1553,41 @@ export async function upsertManagedPage(payload: Partial<ManagedPage> & Pick<Man
   return nextPage;
 }
 
+export async function upsertJournalPost(
+  payload: Partial<JournalPost> &
+    Pick<JournalPost, "title" | "slug" | "content" | "heroHeading" | "status" | "excerpt" | "publishedAt">,
+) {
+  const store = await readStore();
+  const existing = payload.id ? store.journalPosts.find((item) => item.id === payload.id) : null;
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.title,
+    existingSlug: existing?.slug,
+    existingName: existing?.title,
+    existingId: payload.id,
+    entries: store.journalPosts,
+  });
+  const nextPost = normalizeJournalPost({
+    ...(existing ?? {}),
+    ...payload,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
+  const index = store.journalPosts.findIndex((post) => post.id === nextPost.id);
+
+  if (index >= 0) {
+    store.journalPosts[index] = nextPost;
+  } else {
+    store.journalPosts.push(nextPost);
+  }
+
+  await writeStore(store);
+  return nextPost;
+}
+
 export async function deleteCollection(id: string) {
   const store = await readStore();
   const collection = store.collections.find((item) => item.id === id);
@@ -1546,6 +1600,26 @@ export async function deleteCollection(id: string) {
 
   await writeStore(store);
   return collection;
+}
+
+export async function deleteManagedPage(id: string) {
+  const store = await readStore();
+  const page = store.pages.find((entry) => entry.id === id);
+  if (!page) throw new Error("Page not found");
+
+  store.pages = store.pages.filter((entry) => entry.id !== id);
+  await writeStore(store);
+  return page;
+}
+
+export async function deleteJournalPost(id: string) {
+  const store = await readStore();
+  const post = store.journalPosts.find((entry) => entry.id === id);
+  if (!post) throw new Error("Journal post not found");
+
+  store.journalPosts = store.journalPosts.filter((entry) => entry.id !== id);
+  await writeStore(store);
+  return post;
 }
 
 export async function assignProductsToCollection(collectionSlug: string, productSlugs: string[]) {

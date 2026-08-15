@@ -8,6 +8,8 @@ import {
   assignProductsToCategory,
   assignProductsToCollection,
   deleteCollection,
+  deleteJournalPost,
+  deleteManagedPage,
   deleteProduct,
   deleteMediaAsset,
   duplicateCategory,
@@ -15,6 +17,7 @@ import {
   getCategoryById,
   getContentLabels,
   getHeroSettings,
+  getJournalPostById,
   getProductById,
   getStoreData,
   logActivity,
@@ -30,6 +33,7 @@ import {
   upsertCategory,
   upsertCollection,
   upsertHero,
+  upsertJournalPost,
   upsertProduct,
 } from "@/lib/data/store";
 import { canTransitionProductStatus } from "@/lib/permissions";
@@ -37,6 +41,7 @@ import {
   categorySchema,
   collectionSchema,
   heroSchema,
+  journalPostSchema,
   loginSchema,
   managedPageSchema,
   productSchema,
@@ -801,6 +806,83 @@ export async function saveManagedPageAction(formData: FormData) {
 
   revalidatePath(`/${page.slug}`);
   revalidatePath("/admin/pages");
+}
+
+export async function deleteManagedPageAction(formData: FormData) {
+  const session = await requireAdminSession("settings:write");
+  const id = String(formData.get("id"));
+  const page = await deleteManagedPage(id);
+
+  await logActivity({
+    action: "page_deleted",
+    actor: session.email,
+    entity: "page",
+    entityId: page.id,
+    detail: page.slug,
+  });
+
+  revalidatePath(`/${page.slug}`);
+  revalidatePath("/admin/pages");
+  redirect("/admin/pages");
+}
+
+export async function saveJournalPostAction(formData: FormData) {
+  const session = await requireAdminSession("settings:write");
+  const payload = journalPostSchema.parse({
+    id: formData.get("id") || undefined,
+    title: formData.get("title"),
+    slug: formData.get("slug") || undefined,
+    heroHeading: formData.get("heroHeading"),
+    heroMedia: String(formData.get("heroMedia") ?? "") || undefined,
+    content: formData.get("content"),
+    status: formData.get("status"),
+    seoTitle: String(formData.get("seoTitle") ?? ""),
+    seoDescription: String(formData.get("seoDescription") ?? ""),
+    openGraphImage: String(formData.get("openGraphImage") ?? ""),
+    excerpt: formData.get("excerpt"),
+    publishedAt: String(formData.get("publishedAt") ?? "") || new Date().toISOString(),
+  });
+
+  const existing = payload.id ? await getJournalPostById(payload.id) : null;
+  const post = await upsertJournalPost({
+    ...existing,
+    ...payload,
+    slug: payload.slug ?? slugify(payload.title),
+    updatedAt: new Date().toISOString(),
+    publishedAt: payload.publishedAt || existing?.publishedAt || new Date().toISOString(),
+  });
+
+  await logActivity({
+    action: existing ? "journal_updated" : "journal_created",
+    actor: session.email,
+    entity: "journal",
+    entityId: post.id,
+    detail: post.slug,
+  });
+
+  revalidatePath("/journal");
+  revalidatePath(`/journal/${post.slug}`);
+  revalidatePath("/admin/journal");
+  redirect("/admin/journal");
+}
+
+export async function deleteJournalPostAction(formData: FormData) {
+  const session = await requireAdminSession("settings:write");
+  const id = String(formData.get("id"));
+  const post = await deleteJournalPost(id);
+
+  await logActivity({
+    action: "journal_deleted",
+    actor: session.email,
+    entity: "journal",
+    entityId: post.id,
+    detail: post.slug,
+  });
+
+  revalidatePath("/journal");
+  revalidatePath(`/journal/${post.slug}`);
+  revalidatePath("/admin/journal");
+  redirect("/admin/journal");
 }
 
 export async function installRequestedTaxonomyAction() {

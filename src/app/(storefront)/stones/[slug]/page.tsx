@@ -5,7 +5,7 @@ import { ProductGallery } from "@/components/storefront/product-gallery";
 import { ProductPurchase } from "@/components/storefront/product-purchase";
 import { RichText } from "@/components/shared/rich-text";
 import { hasDiscount } from "@/lib/commerce";
-import { getLabelMap, getProductBySlug, getSiteSettings, listCategories, listAdminCollections, listProducts } from "@/lib/data/store";
+import { getLabelMap, getProductBySlug, getSiteSettings, listCategories, listCollections, listProducts } from "@/lib/data/store";
 import { getProductDisplayPrice, formatMoney } from "@/lib/utils";
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -20,17 +20,25 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     getLabelMap(),
     getSiteSettings(),
     listCategories(),
-    listAdminCollections(),
+    listCollections(),
     listProducts(),
   ]);
+  const productGallery = Array.isArray(product.galleryImages) && product.galleryImages.length
+    ? product.galleryImages.filter((image): image is string => typeof image === "string" && image.trim().length > 0)
+    : product.featuredImage
+      ? [product.featuredImage]
+      : [];
+  const relatedProductSlugs = Array.isArray(product.relatedProductSlugs) ? product.relatedProductSlugs : [];
+  const productVariants = Array.isArray(product.variants) ? product.variants : [];
+  const productSpecifications = Array.isArray(product.specifications) ? product.specifications : [];
   const collectionLabel =
     collections.find((item) => item.slug === product.collectionSlug)?.name ?? null;
   const related =
     relatedProducts
       .filter((item) => item.id !== product.id)
       .filter((item) =>
-        product.relatedProductSlugs.length
-          ? product.relatedProductSlugs.includes(item.slug)
+        relatedProductSlugs.length
+          ? relatedProductSlugs.includes(item.slug)
           : item.collectionSlug === product.collectionSlug ||
             item.subcategorySlug === product.subcategorySlug ||
             item.categorySlug === product.categorySlug,
@@ -63,7 +71,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <span className="text-black/68">{product.name}</span>
       </div>
       <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
-        <ProductGallery images={product.galleryImages} altText={product.altText} />
+        <ProductGallery images={productGallery} altText={product.altText || product.name} />
         <div className="space-y-6 lg:sticky lg:top-28 lg:self-start">
           <div className="rounded-[2.1rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,253,249,0.96),rgba(248,237,214,0.78))] p-7 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
             <p className="text-xs uppercase tracking-[0.32em] text-[#a2845d]">{product.stoneType}</p>
@@ -87,9 +95,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   {collectionLabel}
                 </span>
               ) : null}
-              {product.variants?.length ? (
+              {productVariants.length ? (
                 <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-xs uppercase tracking-[0.22em] text-black/58">
-                  {product.variants.length} {product.variantLabel || "variants"}
+                  {productVariants.length} {product.variantLabel || "variants"}
                 </span>
               ) : null}
             </div>
@@ -114,13 +122,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
           <RichText html={product.description} className="max-w-none text-black/64" />
-          {product.specifications?.length ? (
+          {productSpecifications.length ? (
             <div className="grid gap-4 rounded-[1.7rem] border border-[#eadfcf] bg-[rgba(255,253,249,0.8)] p-6 text-sm text-black/64">
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-black/42">Specifications</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                {product.specifications.map((specification) => (
+                {productSpecifications.map((specification) => (
                   <div key={`${specification.label}-${specification.value}`} className="rounded-[1.1rem] border border-[#eadfcf] bg-white/70 px-4 py-3">
                     <p className="text-xs uppercase tracking-[0.18em] text-black/42">{specification.label}</p>
                     <p className="mt-2 text-sm text-[#171717]">{specification.value}</p>

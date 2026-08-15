@@ -335,7 +335,7 @@ export interface ManagedPage {
   heroHeading: string;
   heroMedia?: string;
   content: string;
-  status: "draft" | "published";
+  status: "draft" | "published" | "archived" | "trash";
   seoTitle?: string;
   seoDescription?: string;
   openGraphImage?: string;
