@@ -52,7 +52,7 @@ export default async function HomePage() {
       body: "Freshly published products surfaced in a denser, faster-to-scan rail inspired by fashion storefront merchandising.",
       layout: "product-rail",
       background: "ivory",
-      ctaLabel: "View all",
+      ctaLabel: "View All",
       ctaUrl: "/shop?sort=newest",
     } satisfies typeof sections[number]);
   const bestsellingSection =
@@ -67,7 +67,7 @@ export default async function HomePage() {
       body: "High-intent products highlighted with tighter cards, stronger pricing hierarchy and Quick Buy access.",
       layout: "product-rail",
       background: "white",
-      ctaLabel: "Browse shop",
+      ctaLabel: "View All",
       ctaUrl: "/shop",
     } satisfies typeof sections[number]);
 
