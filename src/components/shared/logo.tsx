@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
-  href?: string;
+  href?: string | false;
   light?: boolean;
   dark?: boolean;
   className?: string;

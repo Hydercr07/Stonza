@@ -26,12 +26,6 @@ export default async function StorefrontLayout({
           <Header
             logo={settings.brand.lightLogo}
             logoAlt={`${settings.brand.name} ${settings.brand.tagline}`}
-            contactLabel={settings.header.contactButton.label}
-            contactHref={settings.header.contactButton.destination}
-            navigation={settings.header.navigation}
-            showSearch={settings.header.showSearch}
-            showWishlist={settings.header.showWishlist}
-            showCart={settings.header.showCart}
             sticky={settings.header.sticky}
           />
           <main className="flex-1">{children}</main>
