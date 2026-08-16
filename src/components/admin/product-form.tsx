@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   deleteProductAction,
@@ -17,6 +17,7 @@ import type {
 import { Button } from "@/components/shared/ui/button";
 import { AdminMediaUploader } from "@/components/admin/media-uploader";
 import { UploadAwareSubmitButton } from "@/components/admin/upload-aware-submit-button";
+import { AdminBadge } from "@/components/admin/ui";
 
 type ProductSpecification = NonNullable<Product["specifications"]>[number];
 
@@ -41,6 +42,10 @@ export function ProductForm({
   const hasCollections = collections.length > 0;
   const canSubmit = hasCategories;
   const [state, formAction] = useActionState(saveProductFormAction, { error: null });
+  const [activeTab, setActiveTab] = useState<
+    "general" | "media" | "pricing" | "inventory" | "description" | "seo" | "advanced"
+  >("general");
+  const [dirty, setDirty] = useState(false);
   const [sizeChart, setSizeChart] = useState<ProductSizeChart>(
     product?.sizeChart ?? {
       title: "",
@@ -61,6 +66,28 @@ export function ProductForm({
     parentName: categories.find((entry) => entry.slug === category.parentCategorySlug)?.name ?? "Parent",
   }));
 
+  useEffect(() => {
+    if (!dirty) return;
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [dirty]);
+
+  const tabs = [
+    { id: "general", label: "General" },
+    { id: "media", label: "Media" },
+    { id: "pricing", label: "Pricing" },
+    { id: "inventory", label: "Inventory" },
+    { id: "description", label: "Description" },
+    { id: "seo", label: "SEO" },
+    { id: "advanced", label: "Advanced" },
+  ] as const;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -70,6 +97,10 @@ export function ProductForm({
           <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">
             Manage catalogue data, storefront visibility, imagery, sizing, variants, pricing and SEO from one place.
           </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <AdminBadge tone="neutral">{product?.status ?? "draft"}</AdminBadge>
+            {dirty ? <AdminBadge tone="warning">You have unsaved changes</AdminBadge> : null}
+          </div>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button asChild variant="outline">
@@ -109,7 +140,26 @@ export function ProductForm({
           {state.error}
         </div>
       ) : null}
-      <form action={formAction} className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+      <div className="flex flex-wrap gap-2 rounded-[1.5rem] border border-white/10 bg-[#111213] p-3">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`rounded-full px-4 py-2 text-sm ${
+              activeTab === tab.id ? "bg-white text-black" : "text-white/60 hover:bg-white/8 hover:text-white"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      <form
+        action={formAction}
+        onChangeCapture={() => setDirty(true)}
+        onReset={() => setDirty(false)}
+        className="space-y-6"
+      >
         <input type="hidden" name="id" defaultValue={product?.id} />
         <input
           type="hidden"
@@ -132,8 +182,9 @@ export function ProductForm({
           name="specificationsData"
           value={specifications.length ? JSON.stringify(specifications) : ""}
         />
-        <div className="space-y-6">
-          <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
+        {activeTab === "general" ? (
+          <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
             <label className="grid gap-2 text-sm">
               Title
               <input
@@ -177,7 +228,106 @@ export function ProductForm({
                 className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
               />
             </label>
+            </div>
+            <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm">
+                  Visibility
+                  <select
+                    name="visibility"
+                    defaultValue={product?.visibility ?? "visible"}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                  >
+                    <option value="visible">Visible on storefront</option>
+                    <option value="hidden">Hidden from storefront</option>
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm">
+                  Status
+                  <select
+                    name="status"
+                    defaultValue={product?.status ?? "draft"}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="reserved">Reserved</option>
+                    <option value="out_of_stock">Out of stock</option>
+                    <option value="sold">Sold</option>
+                    <option value="archived">Archived</option>
+                    <option value="trash">Trash</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid gap-3">
+                <p className="text-sm font-medium text-white">Categories</p>
+                <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-black/15 p-4">
+                  {parentCategories.map((category) => (
+                    <label key={category.id} className="flex items-center gap-3 text-sm text-white/80">
+                      <input
+                        type="checkbox"
+                        name={`category:${category.slug}`}
+                        defaultChecked={selectedCategorySlugs.includes(category.slug)}
+                        className="h-4 w-4 rounded border-white/20 bg-black/30"
+                      />
+                      <span>{category.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <label className="grid gap-2 text-sm">
+                Subcategory
+                <select
+                  name="subcategorySlug"
+                  defaultValue={product?.subcategorySlug ?? ""}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                >
+                  <option value="">No subcategory</option>
+                  {childCategoryOptions.map((category) => (
+                    <option key={category.id} value={category.slug}>
+                      {category.parentName} / {category.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm">
+                Collection
+                {hasCollections ? (
+                  <select
+                    name="collectionSlug"
+                    defaultValue={product?.collectionSlug ?? ""}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                  >
+                    <option value="">No collection</option>
+                    {collections.map((collection) => (
+                      <option key={collection.id} value={collection.slug}>
+                        {collection.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
+                    <input type="hidden" name="collectionSlug" value="" />
+                    <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/55">
+                      No collections yet. This product can be saved without a collection.
+                    </div>
+                  </>
+                )}
+              </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex items-center gap-3 text-sm">
+                  <input type="checkbox" name="featured" defaultChecked={product?.featured} /> Featured
+                </label>
+                <label className="flex items-center gap-3 text-sm">
+                  <input type="checkbox" name="newArrival" defaultChecked={product?.newArrival} /> New arrival
+                </label>
+              </div>
+            </div>
           </div>
+        ) : null}
+
+        {activeTab === "media" ? (
           <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
             <AdminMediaUploader
               name="media"
@@ -186,62 +336,12 @@ export function ProductForm({
               initialItems={product?.media}
             />
           </div>
-          <div className="space-y-4 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
-            <div>
-              <p className="text-sm font-medium text-white">Specifications</p>
-              <p className="mt-2 text-xs leading-6 text-white/45">
-                Add product details like material, setting, finish, dimensions, or provenance notes.
-              </p>
-            </div>
-            <div className="space-y-3">
-              {specifications.map((specification, index) => (
-                <div key={`${specification.label}-${index}`} className="grid gap-3 rounded-[1.1rem] border border-white/8 bg-black/15 p-3 md:grid-cols-[1fr_1fr_auto]">
-                  <input
-                    value={specification.label}
-                    onChange={(event) =>
-                      setSpecifications((current) =>
-                        current.map((entry, entryIndex) =>
-                          entryIndex === index ? { ...entry, label: event.target.value } : entry,
-                        ),
-                      )
-                    }
-                    placeholder="Label"
-                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-                  />
-                  <input
-                    value={specification.value}
-                    onChange={(event) =>
-                      setSpecifications((current) =>
-                        current.map((entry, entryIndex) =>
-                          entryIndex === index ? { ...entry, value: event.target.value } : entry,
-                        ),
-                      )
-                    }
-                    placeholder="Value"
-                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setSpecifications((current) => current.filter((_, entryIndex) => entryIndex !== index))}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setSpecifications((current) => [...current, { label: "", value: "" }])}
-            >
-              Add specification
-            </Button>
-          </div>
-        </div>
+        ) : null}
 
-        <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
-          <div className="grid gap-4 sm:grid-cols-2">
+        {activeTab === "pricing" ? (
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
+              <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm">
               Price
               <input
@@ -260,118 +360,52 @@ export function ProductForm({
                 className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
               />
             </label>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm">
-              Inventory
-              <input
-                name="inventoryQuantity"
-                type="number"
-                defaultValue={product?.inventoryQuantity ?? 1}
-                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-              />
-            </label>
-            <label className="grid gap-2 text-sm">
-              Visibility
-              <select
-                name="visibility"
-                defaultValue={product?.visibility ?? "visible"}
-                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-              >
-                <option value="visible">Visible on storefront</option>
-                <option value="hidden">Hidden from storefront</option>
-              </select>
-            </label>
-          </div>
-          <label className="grid gap-2 text-sm">
-            Stone type
-            <input
-              name="stoneType"
-              defaultValue={product?.stoneType ?? ""}
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Origin
-            <input
-              name="origin"
-              defaultValue={product?.origin ?? ""}
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            />
-          </label>
-
-          <div className="grid gap-3">
-            <p className="text-sm font-medium text-white">Categories</p>
-            <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-black/15 p-4">
-              {parentCategories.map((category) => (
-                <label key={category.id} className="flex items-center gap-3 text-sm text-white/80">
-                  <input
-                    type="checkbox"
-                    name={`category:${category.slug}`}
-                    defaultChecked={selectedCategorySlugs.includes(category.slug)}
-                    className="h-4 w-4 rounded border-white/20 bg-black/30"
-                  />
-                  <span>{category.name}</span>
-                </label>
-              ))}
             </div>
-            <p className="text-xs leading-6 text-white/45">
-              Primary categories drive shop filters and storefront navigation.
-            </p>
+            </div>
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
+              <p className="text-sm leading-7 text-white/58">
+                Use compare pricing by keeping a higher regular price and a lower sale price. Leave sale price empty to
+                remove the markdown.
+              </p>
+            </div>
           </div>
+        ) : null}
 
-          <label className="grid gap-2 text-sm">
-            Subcategory
-            <select
-              name="subcategorySlug"
-              defaultValue={product?.subcategorySlug ?? ""}
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            >
-              <option value="">No subcategory</option>
-              {childCategoryOptions.map((category) => (
-                <option key={category.id} value={category.slug}>
-                  {category.parentName} / {category.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="grid gap-2 text-sm">
-            Collection
-            {hasCollections ? (
-              <select
-                name="collectionSlug"
-                defaultValue={product?.collectionSlug ?? ""}
-                className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-              >
-                <option value="">No collection</option>
-                {collections.map((collection) => (
-                  <option key={collection.id} value={collection.slug}>
-                    {collection.name}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <>
-                <input type="hidden" name="collectionSlug" value="" />
-                <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/55">
-                  No collections yet. This product can be saved without a collection.
-                </div>
-              </>
-            )}
-          </label>
-
-          <label className="grid gap-2 text-sm">
-            Sizes
-            <input
-              name="sizes"
-              defaultValue={product?.sizes?.join(", ") ?? ""}
-              placeholder="e.g. 6, 7, 8"
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            />
-          </label>
-
-          <div className="grid gap-2 text-sm">
+        {activeTab === "inventory" ? (
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-2 text-sm">
+                  Inventory
+                  <input
+                    name="inventoryQuantity"
+                    type="number"
+                    defaultValue={product?.inventoryQuantity ?? 1}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                  />
+                </label>
+                <label className="grid gap-2 text-sm">
+                  Sizes
+                  <input
+                    name="sizes"
+                    defaultValue={product?.sizes?.join(", ") ?? ""}
+                    placeholder="e.g. 6, 7, 8"
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                  />
+                </label>
+              </div>
+              <label className="grid gap-2 text-sm">
+                Variant label
+                <input
+                  name="variantLabel"
+                  defaultValue={product?.variantLabel ?? ""}
+                  placeholder="e.g. Finish, Stone tone, Metal"
+                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                />
+              </label>
+            </div>
+            <div className="grid gap-6">
+              <div className="grid gap-2 text-sm">
             <span>Size chart</span>
             <div className="space-y-4 rounded-[1.4rem] border border-white/10 bg-black/15 p-4">
               <input
@@ -469,19 +503,8 @@ export function ProductForm({
                 Add size row
               </Button>
             </div>
-          </div>
-
-          <label className="grid gap-2 text-sm">
-            Variant label
-            <input
-              name="variantLabel"
-              defaultValue={product?.variantLabel ?? ""}
-              placeholder="e.g. Finish, Stone tone, Metal"
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            />
-          </label>
-
-          <div className="space-y-4 rounded-[1.4rem] border border-white/10 bg-black/15 p-4">
+              </div>
+              <div className="space-y-4 rounded-[1.4rem] border border-white/10 bg-black/15 p-4">
             <div>
               <p className="text-sm font-medium text-white">Variant options</p>
               <p className="mt-2 text-xs leading-6 text-white/45">
@@ -544,65 +567,151 @@ export function ProductForm({
               Add variant
             </Button>
           </div>
+            </div>
+          </div>
+        ) : null}
 
-          <label className="grid gap-2 text-sm">
-            SEO title
-            <input
-              name="seoTitle"
-              defaultValue={product?.seoTitle ?? ""}
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Meta description
-            <textarea
-              name="seoDescription"
-              defaultValue={product?.seoDescription ?? ""}
-              rows={4}
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Open Graph image
-            <input
-              name="openGraphImage"
-              defaultValue={product?.openGraphImage ?? product?.featuredImage ?? ""}
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            />
-          </label>
-          <label className="grid gap-2 text-sm">
-            Status
-            <select
-              name="status"
-              defaultValue={product?.status ?? "draft"}
-              className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
-            >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="scheduled">Scheduled</option>
-              <option value="reserved">Reserved</option>
-              <option value="out_of_stock">Out of stock</option>
-              <option value="sold">Sold</option>
-              <option value="archived">Archived</option>
-              <option value="trash">Trash</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-3 text-sm">
-            <input type="checkbox" name="featured" defaultChecked={product?.featured} /> Featured
-          </label>
-          <label className="flex items-center gap-3 text-sm">
-            <input type="checkbox" name="newArrival" defaultChecked={product?.newArrival} /> New arrival
-          </label>
-          <label className="flex items-center gap-3 text-sm">
-            <input type="checkbox" name="allowCartPurchase" defaultChecked={product?.allowCartPurchase ?? true} />{" "}
-            Allow cart purchase
-          </label>
-          <label className="flex items-center gap-3 text-sm">
-            <input type="checkbox" name="allowEnquiry" defaultChecked={product?.allowEnquiry ?? true} /> Allow enquiry
-          </label>
-          <UploadAwareSubmitButton className="w-full" disabled={!canSubmit}>
-            Save product
-          </UploadAwareSubmitButton>
+        {activeTab === "description" ? (
+          <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+            <div className="space-y-4 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
+              <div>
+                <p className="text-sm font-medium text-white">Specifications</p>
+                <p className="mt-2 text-xs leading-6 text-white/45">
+                  Add product details like material, setting, finish, dimensions, or provenance notes.
+                </p>
+              </div>
+              <div className="space-y-3">
+                {specifications.map((specification, index) => (
+                  <div key={`${specification.label}-${index}`} className="grid gap-3 rounded-[1.1rem] border border-white/8 bg-black/15 p-3 md:grid-cols-[1fr_1fr_auto]">
+                    <input
+                      value={specification.label}
+                      onChange={(event) =>
+                        setSpecifications((current) =>
+                          current.map((entry, entryIndex) =>
+                            entryIndex === index ? { ...entry, label: event.target.value } : entry,
+                          ),
+                        )
+                      }
+                      placeholder="Label"
+                      className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                    />
+                    <input
+                      value={specification.value}
+                      onChange={(event) =>
+                        setSpecifications((current) =>
+                          current.map((entry, entryIndex) =>
+                            entryIndex === index ? { ...entry, value: event.target.value } : entry,
+                          ),
+                        )
+                      }
+                      placeholder="Value"
+                      className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setSpecifications((current) => current.filter((_, entryIndex) => entryIndex !== index))}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSpecifications((current) => [...current, { label: "", value: "" }])}
+              >
+                Add specification
+              </Button>
+            </div>
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-6 text-sm leading-7 text-white/58">
+              Use this area for richer product storytelling, care notes, provenance detail, or merchandising notes that
+              should appear on the product page.
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === "seo" ? (
+          <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+            <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
+              <label className="grid gap-2 text-sm">
+                SEO title
+                <input
+                  name="seoTitle"
+                  defaultValue={product?.seoTitle ?? ""}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                />
+              </label>
+              <label className="grid gap-2 text-sm">
+                Meta description
+                <textarea
+                  name="seoDescription"
+                  defaultValue={product?.seoDescription ?? ""}
+                  rows={4}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                />
+              </label>
+              <label className="grid gap-2 text-sm">
+                Open Graph image
+                <input
+                  name="openGraphImage"
+                  defaultValue={product?.openGraphImage ?? product?.featuredImage ?? ""}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                />
+              </label>
+            </div>
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-6 text-sm leading-7 text-white/58">
+              Keep titles concise, describe the stone naturally, and use a polished featured image for sharing.
+            </div>
+          </div>
+        ) : null}
+
+        {activeTab === "advanced" ? (
+          <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+            <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
+              <label className="grid gap-2 text-sm">
+                Stone type
+                <input
+                  name="stoneType"
+                  defaultValue={product?.stoneType ?? ""}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                />
+              </label>
+              <label className="grid gap-2 text-sm">
+                Origin
+                <input
+                  name="origin"
+                  defaultValue={product?.origin ?? ""}
+                  className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                />
+              </label>
+              <label className="flex items-center gap-3 text-sm">
+                <input type="checkbox" name="allowCartPurchase" defaultChecked={product?.allowCartPurchase ?? true} />
+                Allow cart purchase
+              </label>
+              <label className="flex items-center gap-3 text-sm">
+                <input type="checkbox" name="allowEnquiry" defaultChecked={product?.allowEnquiry ?? true} /> Allow enquiry
+              </label>
+            </div>
+            <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-6 text-sm leading-7 text-white/58">
+              Advanced controls stay tucked away here so everyday catalog editing stays calm and focused.
+            </div>
+          </div>
+        ) : null}
+
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-[#111213] p-4 shadow-[0_14px_40px_rgba(0,0,0,0.2)]">
+          <p className="text-sm text-white/65">
+            {dirty ? "You have unsaved changes." : "All changes saved or unchanged."}
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Button type="reset" variant="outline">
+              Discard
+            </Button>
+            <UploadAwareSubmitButton disabled={!canSubmit}>
+              Save product
+            </UploadAwareSubmitButton>
+          </div>
         </div>
       </form>
     </div>

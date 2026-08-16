@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { clearAdminSession, getOwnerEmail, getOwnerPassword, requireAdminSession, setAdminSession } from "@/lib/auth/session";
 import {
+  adjustProductInventory,
   assignProductsToCategory,
   assignProductsToCollection,
   deleteCollection,
@@ -12,6 +13,7 @@ import {
   deleteManagedPage,
   deleteProduct,
   deleteMediaAsset,
+  duplicateProduct,
   duplicateCategory,
   getAdminSiteSettings,
   getCategoryById,
@@ -680,6 +682,146 @@ export async function deleteProductAction(formData: FormData) {
   revalidatePath("/shop");
   revalidatePath("/admin/products");
   redirect("/admin/products");
+}
+
+export async function duplicateProductAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const id = String(formData.get("id"));
+  const product = await duplicateProduct(id);
+  await logActivity({
+    action: "product_duplicated",
+    actor: session.email,
+    entity: "product",
+    entityId: product.id,
+    detail: product.name,
+  });
+  revalidatePath("/shop");
+  revalidatePath("/admin/products");
+  redirect(`/admin/products/${product.id}`);
+}
+
+export async function quickUpdateProductAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const id = String(formData.get("id"));
+  const existing = await getProductById(id);
+  if (!existing) {
+    throw new Error("Product not found.");
+  }
+
+  const price = formData.get("price");
+  const salePrice = formData.get("salePrice");
+  const inventoryQuantity = formData.get("inventoryQuantity");
+  const status = formData.get("status");
+  const featured = formData.get("featured");
+  const categorySlug = formData.get("categorySlug");
+
+  const nextProduct: Product = {
+    ...existing,
+    price: price !== null && String(price).length ? Number(price) : existing.price,
+    salePrice:
+      salePrice !== null
+        ? String(salePrice).trim()
+          ? Number(salePrice)
+          : undefined
+        : existing.salePrice,
+    inventoryQuantity:
+      inventoryQuantity !== null && String(inventoryQuantity).length
+        ? Number(inventoryQuantity)
+        : existing.inventoryQuantity,
+    status: status ? (String(status) as Product["status"]) : existing.status,
+    featured: featured ? featured === "true" : existing.featured,
+    categorySlug: categorySlug ? String(categorySlug) : existing.categorySlug,
+    categorySlugs: categorySlug ? [String(categorySlug)] : existing.categorySlugs,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await upsertProduct(nextProduct);
+  await logActivity({
+    action: "product_quick_updated",
+    actor: session.email,
+    entity: "product",
+    entityId: nextProduct.id,
+    detail: nextProduct.name,
+  });
+  revalidatePath("/shop");
+  revalidatePath(`/stones/${nextProduct.slug}`);
+  revalidatePath("/admin/products");
+}
+
+export async function bulkUpdateProductsAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const ids = Array.from(formData.keys())
+    .filter((key) => key.startsWith("product:"))
+    .map((key) => key.replace("product:", ""));
+  const action = String(formData.get("bulkAction") ?? "");
+  const value = String(formData.get("bulkValue") ?? "");
+
+  if (!ids.length) {
+    throw new Error("Select at least one product.");
+  }
+
+  for (const id of ids) {
+    const existing = await getProductById(id);
+    if (!existing) continue;
+
+    if (action === "delete") {
+      await deleteProduct(id);
+      continue;
+    }
+
+    const nextProduct: Product = {
+      ...existing,
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (action === "publish") nextProduct.status = "published";
+    if (action === "draft") nextProduct.status = "draft";
+    if (action === "archive") nextProduct.status = "archived";
+    if (action === "feature") nextProduct.featured = true;
+    if (action === "unfeature") nextProduct.featured = false;
+    if (action === "set-category" && value) {
+      nextProduct.categorySlug = value;
+      nextProduct.categorySlugs = [value];
+    }
+    if (action === "set-collection") {
+      nextProduct.collectionSlug = value;
+    }
+
+    await upsertProduct(nextProduct);
+  }
+
+  await logActivity({
+    action: "products_bulk_updated",
+    actor: session.email,
+    entity: "product",
+    entityId: ids.join(","),
+    detail: action,
+  });
+  revalidatePath("/shop");
+  revalidatePath("/admin/products");
+}
+
+export async function adjustInventoryAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const id = String(formData.get("id"));
+  const delta = Number(formData.get("delta") ?? 0);
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!delta) {
+    throw new Error("Enter a stock adjustment amount.");
+  }
+
+  const product = await adjustProductInventory(id, delta);
+  await logActivity({
+    action: "inventory_adjusted",
+    actor: session.email,
+    entity: "product",
+    entityId: product.id,
+    detail: `${product.name}: ${delta > 0 ? "+" : ""}${delta}${reason ? ` (${reason})` : ""}`,
+  });
+  revalidatePath("/shop");
+  revalidatePath("/admin/inventory");
+  revalidatePath("/admin/products");
 }
 
 export async function saveProductFormAction(

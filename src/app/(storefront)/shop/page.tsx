@@ -37,31 +37,6 @@ export default async function ShopPage({
     return Number(right.featured) - Number(left.featured);
   });
 
-  function buildShopHref(next: {
-    category?: string;
-    subcategory?: string;
-    collection?: string;
-    sort?: string;
-    q?: string;
-  }) {
-    const query = new URLSearchParams();
-    const values = {
-      category: next.category ?? category,
-      subcategory: next.subcategory ?? subcategory,
-      collection: next.collection ?? collection,
-      sort: next.sort ?? sort,
-      q: next.q ?? search,
-    };
-
-    if (values.category) query.set("category", values.category);
-    if (values.subcategory) query.set("subcategory", values.subcategory);
-    if (values.collection) query.set("collection", values.collection);
-    if (values.sort && values.sort !== "featured") query.set("sort", values.sort);
-    if (values.q) query.set("q", values.q);
-
-    return query.size ? `/shop?${query.toString()}` : "/shop";
-  }
-
   return (
     <section className="section-noise bg-white">
       {/* Header Section */}

@@ -1487,6 +1487,53 @@ export async function upsertProduct(payload: Product) {
   return nextProduct;
 }
 
+export async function duplicateProduct(id: string) {
+  const store = await readStore();
+  const original = store.products.find((entry) => entry.id === id);
+  if (!original) throw new Error("Product not found");
+
+  const clone = normalizeProduct({
+    ...original,
+    id: `prd-${crypto.randomUUID()}`,
+    name: `${original.name} Copy`,
+    slug: `${original.slug}-copy`,
+    sku: `${original.sku}-COPY`,
+    status: "draft",
+    visibility: "hidden",
+    featured: false,
+    newArrival: false,
+    bestseller: false,
+    inventoryQuantity: original.inventoryQuantity,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  store.products.unshift(clone);
+  await writeStore(store);
+  return clone;
+}
+
+export async function adjustProductInventory(id: string, delta: number) {
+  const store = await readStore();
+  const product = store.products.find((entry) => entry.id === id);
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  const nextQuantity = Math.max(0, product.inventoryQuantity + delta);
+  product.inventoryQuantity = nextQuantity;
+
+  if (nextQuantity <= 0) {
+    product.status = "out_of_stock";
+  } else if (product.status === "out_of_stock") {
+    product.status = "published";
+  }
+
+  product.updatedAt = new Date().toISOString();
+  await writeStore(store);
+  return product;
+}
+
 export async function upsertManagedPage(payload: Partial<ManagedPage> & Pick<ManagedPage, "title" | "slug" | "content" | "heroHeading" | "status">) {
   const store = await readStore();
   const existing = payload.id ? store.pages.find((item) => item.id === payload.id) : null;
