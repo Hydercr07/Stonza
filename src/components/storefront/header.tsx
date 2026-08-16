@@ -32,7 +32,7 @@ export function Header({
           : "border-b border-[#e8dfd1] bg-[rgba(255,250,242,0.94)]",
       )}
     >
-      <div className="container-shell flex min-h-18 items-center justify-center py-3 lg:min-h-24 lg:py-0">
+      <div className="container-shell flex min-h-18 items-center justify-start py-3 lg:min-h-24 lg:py-0">
         <Link href="/">
           <Logo dark href="" priority src={logo} alt={logoAlt} className="w-[126px] sm:w-[144px] lg:w-[172px] xl:w-[188px]" />
         </Link>
