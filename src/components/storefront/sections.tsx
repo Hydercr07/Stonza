@@ -82,9 +82,11 @@ export function FeaturedProductsSection({
   return (
     <section className="container-shell py-18">
       <SectionHeading eyebrow={section.eyebrow ?? eyebrow} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="shop-grid">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+      <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 lg:grid-cols-4">
+        {products.map((product, index) => (
+          <div key={product.id} className="min-w-[16.5rem] snap-start md:min-w-0">
+            <ProductCard product={product} priorityImage={index < 2} />
+          </div>
         ))}
       </div>
     </section>

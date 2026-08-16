@@ -45,7 +45,13 @@ export function Hero({ hero }: { hero: HeroSettings }) {
             aria-hidden={slideIndex !== index}
           >
             <Image
-              src={slide.desktopImage || hero.desktopBannerImage || "/brand/stonza-logo.png"}
+              src={
+                slide.desktopImage ||
+                slide.mobileImage ||
+                hero.desktopBannerImage ||
+                hero.mobileBannerImage ||
+                "/brand/stonza-logo.png"
+              }
               alt={slide.heading || "STONZA banner"}
               fill
               priority={slideIndex === 0}

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
 import { hasDiscount } from "@/lib/commerce";
 import type { Category, Collection, Product } from "@/types/domain";
-import { getProductDisplayPrice, formatMoney, isRemoteAsset } from "@/lib/utils";
+import { cn, getProductDisplayPrice, formatMoney, isRemoteAsset } from "@/lib/utils";
+import { QuickBuyModal } from "@/components/storefront/quick-buy-modal";
 
 function VisualFallback({ label }: { label: string }) {
   return (
@@ -83,66 +84,105 @@ export function ProductCard({
 }) {
   const isUnavailable = product.status === "out_of_stock" || product.status === "sold";
   const effectivePrice = getProductDisplayPrice(product);
+  const secondImage = product.galleryImages.find((image) => image && image !== product.featuredImage);
+  const discountPercentage = hasDiscount(product)
+    ? Math.round(((product.price - effectivePrice) / product.price) * 100)
+    : 0;
   const badge =
     product.status === "sold"
-      ? "Sold"
+      ? "Sold Out"
       : product.status === "out_of_stock"
-        ? "Out of stock"
+        ? "Sold Out"
         : product.newArrival
-          ? "New arrival"
+          ? "New"
           : product.bestseller
-            ? "Best seller"
+            ? "Best Seller"
             : product.oneOfOne
-              ? "One of one"
+              ? "Limited"
               : null;
 
   return (
-    <Link href={`/stones/${product.slug}`} className="sheen-card group block overflow-hidden rounded-[1.8rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_26px_56px_rgba(23,18,12,0.07)]">
-      <div className="relative h-80 overflow-hidden bg-[#f2ece4] sm:h-96">
+    <article className="sheen-card group overflow-hidden rounded-[1.35rem] border border-black/8 bg-white shadow-[0_14px_36px_rgba(20,22,26,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_52px_rgba(20,22,26,0.09)]">
+      <div className="relative h-[18rem] overflow-hidden bg-[#f2eee8] sm:h-[21rem]">
+        <Link href={`/stones/${product.slug}`} className="absolute inset-0 z-10" aria-label={product.name} />
         {product.featuredImage ? (
-          <Image
-            src={product.featuredImage}
-            alt={product.altText}
-            fill
-            priority={priorityImage}
-            loading={priorityImage ? "eager" : "lazy"}
-            fetchPriority={priorityImage ? "high" : undefined}
-            className="object-cover transition duration-700 group-hover:scale-105 group-hover:opacity-90"
-            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
-            unoptimized={isRemoteAsset(product.featuredImage)}
-          />
+          <>
+            <Image
+              src={product.featuredImage}
+              alt={product.altText}
+              fill
+              priority={priorityImage}
+              loading={priorityImage ? "eager" : "lazy"}
+              fetchPriority={priorityImage ? "high" : undefined}
+              className={cn(
+                "object-cover transition duration-500 group-hover:scale-[1.03]",
+                secondImage ? "group-hover:opacity-0" : "group-hover:opacity-95",
+              )}
+              sizes="(max-width: 768px) 60vw, (max-width: 1280px) 33vw, 20vw"
+              unoptimized={isRemoteAsset(product.featuredImage)}
+            />
+            {secondImage ? (
+              <Image
+                src={secondImage}
+                alt={product.altText}
+                fill
+                className="object-cover opacity-0 transition duration-500 group-hover:scale-[1.03] group-hover:opacity-100"
+                sizes="(max-width: 768px) 60vw, (max-width: 1280px) 33vw, 20vw"
+                unoptimized={isRemoteAsset(secondImage)}
+              />
+            ) : null}
+          </>
         ) : (
           <VisualFallback label="Product" />
         )}
-        {badge ? (
-          <span className="absolute left-4 top-4 rounded-full bg-white/92 px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-black/72 shadow-sm">
-            {badge}
-          </span>
-        ) : null}
-        <div className="absolute inset-x-4 bottom-4 flex items-center justify-between rounded-full bg-[rgba(255,248,237,0.9)] px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-black/58 shadow-sm backdrop-blur-md">
-          <span>{product.origin}</span>
-          <span>{product.carat} ct</span>
+        <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
+          {badge ? (
+            <span className="rounded-full bg-[#141414] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+              {badge}
+            </span>
+          ) : null}
+          {discountPercentage > 0 ? (
+            <span className="rounded-full bg-[#f4b234] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#161616]">
+              Save {discountPercentage}%
+            </span>
+          ) : null}
+        </div>
+        <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between gap-3 rounded-full bg-white/94 px-3 py-2 shadow-[0_10px_24px_rgba(12,16,22,0.12)] backdrop-blur-md transition duration-300 group-hover:translate-y-0 lg:translate-y-4 lg:opacity-0 lg:group-hover:opacity-100">
+          <div className="min-w-0">
+            <p className="truncate text-[10px] uppercase tracking-[0.18em] text-black/42">{product.origin || product.categorySlug || product.sku}</p>
+            <p className="truncate text-xs font-medium text-black/72">
+              {product.variants?.length ? `${product.variants.length} options` : product.sizes?.length ? `${product.sizes.length} sizes` : "Ready to ship"}
+            </p>
+          </div>
+          {!isUnavailable ? (
+            <QuickBuyModal product={product} />
+          ) : (
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Unavailable</span>
+          )}
         </div>
       </div>
-      <div className="space-y-3 px-5 py-5">
-        <h3 className="text-display text-[1.9rem] leading-none text-[#171717]">{product.name}</h3>
-        <div className="flex items-center gap-2 text-[1.02rem] text-black/72">
+      <div className="space-y-3 px-4 py-4 sm:px-5">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-black/40">
+            <span>{product.collectionSlug || product.categorySlug}</span>
+            {product.variants?.slice(0, 2).map((variant) => (
+              <span key={variant.id} className="rounded-full bg-[#f6f2ea] px-2 py-1">
+                {variant.label || variant.value}
+              </span>
+            ))}
+          </div>
+          <Link href={`/stones/${product.slug}`} className="line-clamp-2 text-sm font-semibold uppercase tracking-[0.13em] text-black/86 hover:text-black">
+            {product.name}
+          </Link>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-black/72">
           {hasDiscount(product) ? (
             <span className="text-black/28 line-through">{formatMoney(product.price, product.currency)}</span>
           ) : null}
-          <span className={hasDiscount(product) ? "font-semibold text-[#171717]" : "font-semibold text-[#10233a]"}>
-            {formatMoney(effectivePrice, product.currency)}
-          </span>
+          <span className="font-semibold text-black">{formatMoney(effectivePrice, product.currency)}</span>
         </div>
-        <p className="text-sm leading-7 text-black/52">{product.shortDescription}</p>
-        <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-black/38">
-          <span>{product.sizes?.length ? `${product.sizes.length} sizes` : "No size selection"}</span>
-          {product.variants?.length ? <span>{product.variants.length} variants</span> : null}
-        </div>
-        <p className="text-[11px] uppercase tracking-[0.18em] text-black/38">
-          {product.allowCartPurchase && !isUnavailable ? "Ready to purchase" : "Concierge order"}
-        </p>
+        <p className="line-clamp-2 text-sm leading-6 text-black/52">{product.shortDescription}</p>
       </div>
-    </Link>
+    </article>
   );
 }

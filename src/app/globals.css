@@ -42,9 +42,7 @@ html {
 
 body {
   background:
-    radial-gradient(circle at top left, rgba(237, 178, 48, 0.18), transparent 28%),
-    radial-gradient(circle at top right, rgba(16, 35, 58, 0.08), transparent 26%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.18)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)),
     var(--background);
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
@@ -217,6 +215,15 @@ select:focus-visible {
 .shop-grid {
   display: grid;
   gap: 1.25rem;
+}
+
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
 }
 
 @media (min-width: 768px) {

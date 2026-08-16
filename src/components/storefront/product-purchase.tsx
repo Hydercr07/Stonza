@@ -4,14 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Ruler, X } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/shared/ui/button";
 import { useCart } from "@/components/storefront/cart-store";
 import { useWishlist } from "@/components/storefront/wishlist-store";
 import type { Product } from "@/types/domain";
 
 export function ProductPurchase({ product, whatsappLabel }: { product: Product; whatsappLabel: string }) {
-  const router = useRouter();
   const { addItem } = useCart();
   const { has, toggle } = useWishlist();
   const [selectedSize, setSelectedSize] = useState("");
@@ -162,7 +160,7 @@ export function ProductPurchase({ product, whatsappLabel }: { product: Product; 
               return;
             }
             setMessage("Added to cart.");
-            router.push("/cart");
+            window.dispatchEvent(new CustomEvent("stonza:cart-open"));
           }}
         >
           Add to cart

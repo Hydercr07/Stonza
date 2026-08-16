@@ -21,6 +21,8 @@ export default async function HomePage() {
     listCollections(true),
     listProducts(),
   ]);
+  const newArrivals = visibleProducts.filter((product) => product.newArrival).slice(0, 8);
+  const bestsellingProducts = visibleProducts.filter((product) => product.bestseller).slice(0, 8);
 
   const sectionMap = Object.fromEntries(sections.map((section) => [section.key, section]));
   const categoriesBySlug = new Map(categories.map((category) => [category.slug, category]));
@@ -38,6 +40,36 @@ export default async function HomePage() {
     sectionMap["signature-stones"]?.productSlugs
       ?.map((slug) => productsBySlug.get(slug))
       .filter((product): product is NonNullable<typeof product> => Boolean(product)) ?? [];
+  const newArrivalSection =
+    sectionMap["new-arrivals"] ??
+    ({
+      id: "new-arrivals-fallback",
+      key: "new-arrivals",
+      enabled: true,
+      order: 2,
+      heading: "New Arrivals",
+      eyebrow: "Just Landed",
+      body: "Freshly published products surfaced in a denser, faster-to-scan rail inspired by fashion storefront merchandising.",
+      layout: "product-rail",
+      background: "ivory",
+      ctaLabel: "View all",
+      ctaUrl: "/shop?sort=newest",
+    } satisfies typeof sections[number]);
+  const bestsellingSection =
+    sectionMap["best-sellers"] ??
+    ({
+      id: "best-sellers-fallback",
+      key: "best-sellers",
+      enabled: true,
+      order: 3,
+      heading: "Editor Favorites",
+      eyebrow: "Best Sellers",
+      body: "High-intent products highlighted with tighter cards, stronger pricing hierarchy and Quick Buy access.",
+      layout: "product-rail",
+      background: "white",
+      ctaLabel: "Browse shop",
+      ctaUrl: "/shop",
+    } satisfies typeof sections[number]);
 
   return (
     <>
@@ -54,12 +86,20 @@ export default async function HomePage() {
         />
       ) : null}
 
+      {newArrivals.length ? (
+        <FeaturedProductsSection eyebrow="New Arrivals" section={newArrivalSection} products={newArrivals} />
+      ) : null}
+
       {sectionMap["signature-stones"] && featuredProductSelection.length ? (
         <FeaturedProductsSection
           eyebrow="Featured Products"
           section={sectionMap["signature-stones"]}
           products={featuredProductSelection}
         />
+      ) : null}
+
+      {bestsellingProducts.length ? (
+        <FeaturedProductsSection eyebrow="Best Sellers" section={bestsellingSection} products={bestsellingProducts} />
       ) : null}
 
       {sectionMap["born-beneath-earth"] ? <StorySection section={sectionMap["born-beneath-earth"]} /> : null}
