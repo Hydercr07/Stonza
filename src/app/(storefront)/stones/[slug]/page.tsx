@@ -80,6 +80,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     product.subcategorySlug
       ? categories.find((item) => item.slug === product.subcategorySlug)?.name ?? product.subcategorySlug
       : null;
+  const whatsappHref = settings.whatsappNumber
+    ? `https://wa.me/${settings.whatsappNumber.replace(/[^\d]/g, "")}`
+    : "https://wa.me/923058599096";
 
   return (
     <section className="section-noise container-shell py-14">
@@ -142,7 +145,11 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <div><span className="block text-black/38">Shape</span>{product.shape}</div>
               <div><span className="block text-black/38">Clarity</span>{product.clarity}</div>
             </div>
-            <ProductPurchase product={product} whatsappLabel={labels.productWhatsappLabel} />
+            <ProductPurchase
+              product={product}
+              whatsappLabel={labels.productWhatsappLabel}
+              whatsappHref={whatsappHref}
+            />
             <div className="mt-6 grid gap-3 text-sm text-black/56">
               <p>Protected shipping and collector-safe packaging.</p>
               <p>Transparent provenance and treatment disclosure.</p>

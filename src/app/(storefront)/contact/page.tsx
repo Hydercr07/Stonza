@@ -27,11 +27,11 @@ export default async function ContactPage() {
             <div><span className="block text-white/40">Address</span>{settings.address}</div>
             <div><span className="block text-white/40">Hours</span>{settings.businessHours}</div>
           </div>
-          <Button className="mt-8" asChild>
-            <a href={whatsappHref} target="_blank" rel="noreferrer">
-              Open WhatsApp concierge
-            </a>
-          </Button>
+            <Button className="mt-8" asChild>
+              <a href={whatsappHref} target="_blank" rel="noreferrer">
+                WHATSAPP
+              </a>
+            </Button>
         </div>
       </div>
     </section>

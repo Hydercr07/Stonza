@@ -123,7 +123,7 @@ const defaultLabels: Record<string, string> = {
   productShippingHeading: "Shipping",
   productReturnsHeading: "Returns",
   productEnquiryLabel: "Request Details",
-  productWhatsappLabel: "WhatsApp Concierge",
+  productWhatsappLabel: "WHATSAPP",
   productCertificateHeading: "Certificate & Provenance",
   notFoundTitle: "The stone you were looking for could not be found.",
 };
@@ -236,8 +236,8 @@ function defaultSettings(): SiteSettings {
       showWishlist: true,
       showCart: true,
       contactButton: {
-        label: "WhatsApp Concierge",
-        destination: "/contact",
+        label: "WHATSAPP",
+        destination: "https://wa.me/923058599096",
         enabled: true,
       },
       navigation: defaultNavigation,
@@ -269,8 +269,8 @@ function defaultSettings(): SiteSettings {
     },
     labels: defaultLabels,
     contactButton: {
-      label: "WhatsApp Concierge",
-      destination: "/contact",
+      label: "WHATSAPP",
+      destination: "https://wa.me/923058599096",
       enabled: true,
     },
   };

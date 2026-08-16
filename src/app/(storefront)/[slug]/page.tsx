@@ -41,7 +41,7 @@ export default async function ManagedPageRoute({
             </div>
             <Button className="mt-8" asChild>
               <a href={whatsappHref} target="_blank" rel="noreferrer">
-                Open WhatsApp concierge
+                WHATSAPP
               </a>
             </Button>
           </div>

@@ -9,7 +9,15 @@ import { useCart } from "@/components/storefront/cart-store";
 import { useWishlist } from "@/components/storefront/wishlist-store";
 import type { Product } from "@/types/domain";
 
-export function ProductPurchase({ product, whatsappLabel }: { product: Product; whatsappLabel: string }) {
+export function ProductPurchase({
+  product,
+  whatsappLabel,
+  whatsappHref,
+}: {
+  product: Product;
+  whatsappLabel: string;
+  whatsappHref: string;
+}) {
   const { addItem } = useCart();
   const { has, toggle } = useWishlist();
   const [selectedSize, setSelectedSize] = useState("");
@@ -166,7 +174,9 @@ export function ProductPurchase({ product, whatsappLabel }: { product: Product; 
           Add to cart
         </Button>
         <Button variant="outline" className="flex-1" asChild>
-          <Link href="/contact">{whatsappLabel}</Link>
+          <a href={whatsappHref} target="_blank" rel="noreferrer">
+            {whatsappLabel}
+          </a>
         </Button>
       </div>
 
