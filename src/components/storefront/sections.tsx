@@ -17,16 +17,27 @@ export function SectionHeading({
   ctaHref?: string;
 }) {
   return (
-    <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-      <div className="max-w-2xl space-y-4">
-        <p className="text-xs uppercase tracking-[0.3em] text-[#a2845d]">{eyebrow}</p>
-        <h2 className="section-title text-[#171717]">{title}</h2>
-        <p className="text-sm leading-7 text-black/58 md:text-base">{body}</p>
+    <div className="mb-10">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl space-y-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-[#a2845d]">{eyebrow}</p>
+          <h2 className="section-title text-[#171717]">{title}</h2>
+          <p className="text-sm leading-7 text-black/58 md:text-base">{body}</p>
+        </div>
+        {ctaLabel && ctaHref ? (
+          <div className="hidden lg:flex lg:shrink-0 lg:justify-end">
+            <Button asChild variant="outline">
+              <Link href={ctaHref}>{ctaLabel}</Link>
+            </Button>
+          </div>
+        ) : null}
       </div>
       {ctaLabel && ctaHref ? (
-        <Button asChild variant="outline">
-          <Link href={ctaHref}>{ctaLabel}</Link>
-        </Button>
+        <div className="mt-6 lg:hidden">
+          <Button asChild variant="outline" className="flex w-full justify-center sm:w-auto sm:min-w-[13rem]">
+            <Link href={ctaHref}>{ctaLabel}</Link>
+          </Button>
+        </div>
       ) : null}
     </div>
   );
@@ -60,19 +71,18 @@ export function FeaturedCategoriesSection({
 }) {
   return (
     <section className="container-shell storefront-section">
-      <SectionHeading eyebrow={section.eyebrow ?? "Categories"} title={section.heading} body={section.body} />
+      <SectionHeading
+        eyebrow={section.eyebrow ?? "Categories"}
+        title={section.heading}
+        body={section.body}
+        ctaLabel="View All"
+        ctaHref={section.ctaUrl}
+      />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         {categories.map((category) => (
           <CategoryCard key={category.id} category={category} />
         ))}
       </div>
-      {section.ctaUrl ? (
-        <div className="mt-6 flex justify-center">
-          <Button asChild variant="outline" className="min-w-[13rem]">
-            <Link href={section.ctaUrl}>View All</Link>
-          </Button>
-        </div>
-      ) : null}
     </section>
   );
 }
