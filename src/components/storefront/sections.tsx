@@ -32,13 +32,26 @@ export function SectionHeading({
           </div>
         ) : null}
       </div>
-      {ctaLabel && ctaHref ? (
-        <div className="mt-6 lg:hidden">
-          <Button asChild variant="outline" className="flex w-full justify-center sm:w-auto sm:min-w-[13rem]">
-            <Link href={ctaHref}>{ctaLabel}</Link>
-          </Button>
-        </div>
-      ) : null}
+    </div>
+  );
+}
+
+function MobileSectionCta({
+  ctaLabel,
+  ctaHref,
+}: {
+  ctaLabel?: string;
+  ctaHref?: string;
+}) {
+  if (!ctaLabel || !ctaHref) {
+    return null;
+  }
+
+  return (
+    <div className="mt-6 lg:hidden">
+      <Button asChild variant="outline" className="flex w-full justify-center sm:w-auto sm:min-w-[13rem]">
+        <Link href={ctaHref}>{ctaLabel}</Link>
+      </Button>
     </div>
   );
 }
@@ -58,6 +71,7 @@ export function FeaturedCollectionsSection({
           <CollectionCard key={collection.id} collection={collection} />
         ))}
       </div>
+      <MobileSectionCta ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
     </section>
   );
 }
@@ -83,6 +97,7 @@ export function FeaturedCategoriesSection({
           <CategoryCard key={category.id} category={category} />
         ))}
       </div>
+      <MobileSectionCta ctaLabel="View All" ctaHref={section.ctaUrl} />
     </section>
   );
 }
@@ -106,6 +121,7 @@ export function FeaturedProductsSection({
           </div>
         ))}
       </div>
+      <MobileSectionCta ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
     </section>
   );
 }
