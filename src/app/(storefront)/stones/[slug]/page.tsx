@@ -1,4 +1,6 @@
+import { cache } from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ProductCard } from "@/components/storefront/cards";
 import { ProductGallery } from "@/components/storefront/product-gallery";
@@ -8,9 +10,35 @@ import { hasDiscount } from "@/lib/commerce";
 import { getLabelMap, getProductBySlug, getSiteSettings, listCategories, listCollections, listProducts } from "@/lib/data/store";
 import { getProductDisplayPrice, formatMoney } from "@/lib/utils";
 
+const getCachedProductBySlug = cache(async (slug: string) => getProductBySlug(slug));
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getCachedProductBySlug(slug);
+
+  if (!product) {
+    notFound();
+  }
+
+  return {
+    title: product.seoTitle || `${product.name} | STONZA`,
+    description: product.seoDescription || product.shortDescription || undefined,
+    openGraph: {
+      title: product.seoTitle || `${product.name} | STONZA`,
+      description: product.seoDescription || product.shortDescription || undefined,
+      images: product.openGraphImage || product.featuredImage ? [product.openGraphImage || product.featuredImage] : undefined,
+    },
+    twitter: {
+      title: product.seoTitle || `${product.name} | STONZA`,
+      description: product.seoDescription || product.shortDescription || undefined,
+      images: product.openGraphImage || product.featuredImage ? [product.openGraphImage || product.featuredImage] : undefined,
+    },
+  };
+}
+
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await getCachedProductBySlug(slug);
   if (!product) notFound();
   if (product.slug !== slug && product.slugHistory?.includes(slug)) {
     permanentRedirect(`/stones/${product.slug}`);

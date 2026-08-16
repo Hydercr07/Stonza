@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Reverting previous change: removed webpack externalization for jsdom
 };
 
 export default nextConfig;
