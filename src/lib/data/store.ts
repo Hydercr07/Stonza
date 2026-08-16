@@ -195,7 +195,7 @@ function defaultSettings(): SiteSettings {
     siteTitle: "STONZA",
     siteDescription:
       "Original natural stones, elevated through cinematic curation and authentic provenance.",
-    whatsappNumber: "+923001112233",
+    whatsappNumber: "+923058599096",
     email: "atelier@stonza.pk",
     address: "Lahore Design District, Pakistan",
     businessHours: "Mon-Sat, 10:00-19:00",

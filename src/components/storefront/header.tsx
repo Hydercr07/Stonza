@@ -6,13 +6,24 @@ import { ChevronDown, Menu, Search, ShoppingBag, X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Logo } from "@/components/shared/logo";
 import { cn } from "@/lib/utils";
-import type { Category, Product, SiteSettings } from "@/types/domain";
+import type { Category, NavigationItem, Product, SiteSettings } from "@/types/domain";
 import { SearchDrawer } from "@/components/storefront/search-drawer";
 import { CartDrawer } from "@/components/storefront/cart-drawer";
 
 type NavGroup = {
   category: Category;
   children: Category[];
+};
+
+type DrawerLinkItem = {
+  id: string;
+  label: string;
+  href: string;
+  children?: Array<{
+    id: string;
+    label: string;
+    href: string;
+  }>;
 };
 
 function buildNavGroups(categories: Category[]) {
@@ -40,6 +51,67 @@ function buildNavGroups(categories: Category[]) {
   return [...groups.values()].sort((left, right) => left.category.sortOrder - right.category.sortOrder);
 }
 
+function buildDrawerItems(navGroups: NavGroup[], navigationItems: NavigationItem[]) {
+  const categoryItems: DrawerLinkItem[] = navGroups.map((group) => ({
+    id: group.category.id,
+    label: group.category.name,
+    href: `/categories/${group.category.slug}`,
+    children: group.children.length
+      ? group.children
+          .sort((left, right) => left.sortOrder - right.sortOrder)
+          .map((child) => ({
+            id: child.id,
+            label: child.name,
+            href: `/categories/${child.slug}`,
+          }))
+      : undefined,
+  }));
+
+  const categoryHrefs = new Set(categoryItems.map((item) => item.href));
+  const utilityItems: DrawerLinkItem[] = navigationItems
+    .filter((item) => item.visible && !categoryHrefs.has(item.href))
+    .sort((left, right) => left.order - right.order)
+    .map((item) => ({
+      id: item.id,
+      label: item.label,
+      href: item.href,
+      children: item.children
+        ?.filter((child) => child.visible)
+        .sort((left, right) => left.order - right.order)
+        .map((child) => ({
+          id: child.id,
+          label: child.label,
+          href: child.href,
+        })),
+    }));
+
+  return {
+    categoryItems,
+    utilityItems,
+  };
+}
+
+function HeaderIconButton({
+  onClick,
+  label,
+  children,
+}: {
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex h-9 w-9 items-center justify-center border border-black/12 bg-white text-black hover:border-black/22"
+      aria-label={label}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function Header({
   settings,
   categories,
@@ -53,17 +125,9 @@ export function Header({
   const [searchOpen, setSearchOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const navGroups = useMemo(() => buildNavGroups(categories), [categories]);
-  const categoryHrefs = useMemo(
-    () => new Set(navGroups.map((group) => `/categories/${group.category.slug}`)),
-    [navGroups],
-  );
-  const utilityLinks = useMemo(
-    () =>
-      settings.header.navigation
-        .filter((item) => item.visible && !categoryHrefs.has(item.href))
-        .sort((left, right) => left.order - right.order)
-        .slice(0, 6),
-    [categoryHrefs, settings.header.navigation],
+  const drawerItems = useMemo(
+    () => buildDrawerItems(navGroups, settings.header.navigation),
+    [navGroups, settings.header.navigation],
   );
 
   useEffect(() => {
@@ -83,57 +147,55 @@ export function Header({
       <header
         className={cn(
           settings.header.sticky ? "sticky top-0" : "relative",
-          "z-40 border-b border-black/8 bg-white/95 backdrop-blur-xl transition duration-200",
-          scrolled ? "shadow-[0_10px_24px_rgba(15,18,24,0.06)]" : "shadow-none",
+          "z-40 border-b border-black/10 bg-white/95 backdrop-blur-xl transition duration-200",
+          scrolled ? "shadow-[0_8px_22px_rgba(15,18,24,0.04)]" : "shadow-none",
         )}
       >
         <div className="container-shell">
-          <div className="grid min-h-16 grid-cols-[5.5rem_1fr_5.5rem] items-center gap-2 sm:min-h-[4.6rem]">
-            <div className="flex items-center justify-start">
+          <div className="relative flex min-h-16 items-center justify-between sm:min-h-[4.6rem]">
+            <div className="flex min-w-[3.25rem] items-center justify-start">
               <NavigationDrawer
                 brandName={settings.brand.name}
                 brandTagline={settings.brand.tagline}
                 logoSrc={settings.brand.logo || settings.brand.lightLogo}
-                navGroups={navGroups}
-                utilityLinks={utilityLinks}
+                categoryItems={drawerItems.categoryItems}
+                utilityItems={drawerItems.utilityItems}
               />
             </div>
 
-            <div className="flex justify-center">
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <Logo
                 dark
                 href="/"
                 priority
                 src={settings.brand.logo || settings.brand.lightLogo}
                 alt={`${settings.brand.name} ${settings.brand.tagline}`}
-                className="w-[88px] sm:w-[102px] lg:w-[112px]"
+                className="pointer-events-auto w-[88px] sm:w-[102px] lg:w-[108px]"
               />
             </div>
 
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-black/72 hover:border-black/18 hover:text-black"
-                aria-label="Open search"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setCartOpen(true)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-black/72 hover:border-black/18 hover:text-black"
-                aria-label="Open cart"
-              >
-                <ShoppingBag className="h-4 w-4" />
-              </button>
+            <div className="ml-auto flex min-w-[4.75rem] items-center justify-end gap-1 sm:min-w-[5.25rem]">
+              {settings.header.showSearch ? (
+                <HeaderIconButton onClick={() => setSearchOpen(true)} label="Open search">
+                  <Search className="h-4 w-4 stroke-[1.85]" />
+                </HeaderIconButton>
+              ) : null}
+              {settings.header.showCart ? (
+                <HeaderIconButton onClick={() => setCartOpen(true)} label="Open cart">
+                  <ShoppingBag className="h-4 w-4 stroke-[1.85]" />
+                </HeaderIconButton>
+              ) : null}
             </div>
           </div>
         </div>
       </header>
 
-      <SearchDrawer open={searchOpen} onOpenChange={setSearchOpen} products={products} />
-      <CartDrawer open={cartOpen} onOpenChange={setCartOpen} products={products} />
+      {settings.header.showSearch ? (
+        <SearchDrawer open={searchOpen} onOpenChange={setSearchOpen} products={products} />
+      ) : null}
+      {settings.header.showCart ? (
+        <CartDrawer open={cartOpen} onOpenChange={setCartOpen} products={products} />
+      ) : null}
     </>
   );
 }
@@ -142,15 +204,16 @@ function NavigationDrawer({
   brandName,
   brandTagline,
   logoSrc,
-  navGroups,
-  utilityLinks,
+  categoryItems,
+  utilityItems,
 }: {
   brandName: string;
   brandTagline: string;
   logoSrc: string;
-  navGroups: NavGroup[];
-  utilityLinks: SiteSettings["header"]["navigation"];
+  categoryItems: DrawerLinkItem[];
+  utilityItems: DrawerLinkItem[];
 }) {
+  const [open, setOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
 
   function toggleGroup(slug: string) {
@@ -161,103 +224,140 @@ function NavigationDrawer({
 
   return (
     <Dialog.Root
+      open={open}
       onOpenChange={(open) => {
+        setOpen(open);
         if (!open) setExpandedGroups([]);
       }}
     >
       <Dialog.Trigger asChild>
         <button
           type="button"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-black/72 hover:border-black/18 hover:text-black"
+          className="inline-flex h-9 w-9 items-center justify-center border border-black/12 bg-white text-black hover:border-black/22"
           aria-label="Open navigation menu"
         >
-          <Menu className="h-4 w-4" />
+          <Menu className="h-4 w-4 stroke-[1.85]" />
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/32" />
-        <Dialog.Content className="fixed inset-y-0 left-0 z-50 w-[min(92vw,26rem)] max-w-[26rem] overflow-hidden bg-white shadow-[0_16px_48px_rgba(18,20,24,0.12)] lg:w-[24rem]">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/24 backdrop-blur-[1px]" />
+        <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex w-[min(92vw,30rem)] max-w-[30rem] flex-col overflow-hidden border-r border-black/8 bg-white">
           <div className="flex min-h-full flex-col">
-            <div className="flex items-start justify-between border-b border-black/8 px-6 py-5">
-              <div>
-                <Logo dark href="/" src={logoSrc} alt={`${brandName} ${brandTagline}`} className="w-[104px]" />
-                <p className="mt-3 text-[10px] uppercase tracking-[0.24em] text-black/42">{brandTagline}</p>
+            <div className="flex items-start justify-between border-b border-black/8 px-5 py-4 sm:px-6 sm:py-5">
+              <div className="pr-4">
+                <Dialog.Title className="sr-only">{brandName} navigation</Dialog.Title>
+                <Logo dark href="/" src={logoSrc} alt={`${brandName} ${brandTagline}`} className="w-[102px]" />
+                <p className="mt-2 text-[10px] uppercase tracking-[0.24em] text-black/42">{brandTagline}</p>
               </div>
               <Dialog.Close asChild>
                 <button
                   type="button"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-black/10 bg-white text-black/72"
+                  className="inline-flex h-9 w-9 items-center justify-center border border-black/12 bg-white text-black hover:border-black/22"
                   aria-label="Close navigation menu"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-4 w-4 stroke-[1.85]" />
                 </button>
               </Dialog.Close>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5">
-              <nav className="space-y-1">
-                {navGroups.map((group) => {
-                  const isExpanded = expandedGroups.includes(group.category.slug);
-                  const hasChildren = group.children.length > 0;
-
-                  return (
-                    <div key={group.category.id} className="border-b border-black/6 py-1">
-                      <div className="flex items-center justify-between gap-3">
-                        <Link
-                          href={`/categories/${group.category.slug}`}
-                          className="flex-1 py-3 text-[15px] font-medium tracking-[0.01em] text-[#171717]"
-                        >
-                          {group.category.name}
-                        </Link>
-                        {hasChildren ? (
-                          <button
-                            type="button"
-                            onClick={() => toggleGroup(group.category.slug)}
-                            className="inline-flex h-8 w-8 items-center justify-center text-black/46"
-                            aria-label={`${isExpanded ? "Collapse" : "Expand"} ${group.category.name}`}
-                            aria-expanded={isExpanded}
-                          >
-                            <ChevronDown
-                              className={cn("h-4 w-4 transition-transform duration-200", isExpanded ? "rotate-180" : "")}
-                            />
-                          </button>
-                        ) : null}
-                      </div>
-
-                      {hasChildren && isExpanded ? (
-                        <div className="pb-3 pl-4">
-                          {group.children.map((child) => (
-                            <Link
-                              key={child.id}
-                              href={`/categories/${child.slug}`}
-                              className="block py-2 text-sm text-black/68"
-                            >
-                              {child.name}
-                            </Link>
-                          ))}
-                        </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
+            <div className="flex-1 overflow-y-auto px-5 py-4 sm:px-6 sm:py-5">
+              <nav className="space-y-0" aria-label="Store categories">
+                {categoryItems.map((item) => (
+                  <DrawerNavItem
+                    key={item.id}
+                    item={item}
+                    expanded={expandedGroups.includes(item.id)}
+                    onToggle={() => toggleGroup(item.id)}
+                    onNavigate={() => setOpen(false)}
+                  />
+                ))}
               </nav>
 
-              {utilityLinks.length ? (
-                <div className="mt-8 border-t border-black/8 pt-5">
-                  <p className="mb-3 text-[10px] uppercase tracking-[0.24em] text-black/42">More</p>
-                  <div className="space-y-1">
-                    {utilityLinks.map((item) => (
-                      <Link key={item.id} href={item.href} className="block py-2 text-sm text-black/68">
-                        {item.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+              {utilityItems.length ? (
+                <nav className="mt-6 border-t border-black/8 pt-4" aria-label="Store links">
+                  {utilityItems.map((item) => (
+                    <DrawerNavItem
+                      key={item.id}
+                      item={item}
+                      expanded={expandedGroups.includes(item.id)}
+                      onToggle={() => toggleGroup(item.id)}
+                      onNavigate={() => setOpen(false)}
+                    />
+                  ))}
+                </nav>
               ) : null}
             </div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+function DrawerNavItem({
+  item,
+  expanded,
+  onToggle,
+  onNavigate,
+}: {
+  item: DrawerLinkItem;
+  expanded: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
+}) {
+  const hasChildren = Boolean(item.children?.length);
+
+  if (!hasChildren) {
+    return (
+      <Link
+        href={item.href}
+        onClick={onNavigate}
+        className="block border-b border-black/6 py-3 text-[15px] font-medium tracking-[0.01em] text-[#171717]"
+      >
+        {item.label}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="border-b border-black/6">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 py-3 text-left text-[15px] font-medium tracking-[0.01em] text-[#171717]"
+        aria-expanded={expanded}
+        aria-label={`${expanded ? "Collapse" : "Expand"} ${item.label}`}
+      >
+        <span>{item.label}</span>
+        <ChevronDown className={cn("h-4 w-4 shrink-0 text-black/52 transition-transform duration-150", expanded ? "rotate-180" : "")} />
+      </button>
+
+      <div
+        className={cn(
+          "grid overflow-hidden pl-4 transition-[grid-template-rows,opacity] duration-150 ease-out",
+          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+      >
+        <div className="overflow-hidden pb-3">
+          <Link
+            href={item.href}
+            onClick={onNavigate}
+            className="block py-2 text-sm text-black/74"
+          >
+            View all {item.label}
+          </Link>
+          {item.children?.map((child) => (
+            <Link
+              key={child.id}
+              href={child.href}
+              onClick={onNavigate}
+              className="block py-2 text-sm text-black/74"
+            >
+              {child.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
