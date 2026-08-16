@@ -85,7 +85,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     : "https://wa.me/923058599096";
 
   return (
-    <section className="section-noise container-shell py-14">
+    <section className="section-noise container-shell page-section">
       <div className="mb-8 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.24em] text-black/42">
         <Link href="/shop" className="hover:text-black">Shop</Link>
         <span>/</span>
@@ -101,12 +101,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         <span>/</span>
         <span className="text-black/68">{product.name}</span>
       </div>
-      <div className="grid gap-10 lg:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-10 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
         <ProductGallery images={productGallery} altText={product.altText || product.name} />
         <div className="space-y-6 lg:sticky lg:top-28 lg:self-start">
           <div className="rounded-[2.1rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,253,249,0.96),rgba(248,237,214,0.78))] p-7 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
             <p className="text-xs uppercase tracking-[0.32em] text-[#a2845d]">{product.stoneType}</p>
-            <h1 className="text-display mt-3 text-5xl leading-[0.92] text-[#171717]">{product.name}</h1>
+            <h1 className="page-title mt-3 text-[#171717]">{product.name}</h1>
             <div className="mt-5 flex items-end gap-4 text-lg">
               <span className="spotlight-text text-2xl font-semibold">{price}</span>
               {compareAt ? <span className="text-black/32 line-through">{compareAt}</span> : null}

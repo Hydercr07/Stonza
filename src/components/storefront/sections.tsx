@@ -20,7 +20,7 @@ export function SectionHeading({
     <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
       <div className="max-w-2xl space-y-4">
         <p className="text-xs uppercase tracking-[0.3em] text-[#a2845d]">{eyebrow}</p>
-        <h2 className="text-display text-4xl text-[#171717] md:text-5xl">{title}</h2>
+        <h2 className="section-title text-[#171717]">{title}</h2>
         <p className="text-sm leading-7 text-black/58 md:text-base">{body}</p>
       </div>
       {ctaLabel && ctaHref ? (
@@ -61,7 +61,7 @@ export function FeaturedCategoriesSection({
   return (
     <section className="container-shell storefront-section">
       <SectionHeading eyebrow={section.eyebrow ?? "Categories"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         {categories.map((category) => (
           <CategoryCard key={category.id} category={category} />
         ))}
@@ -96,9 +96,9 @@ export function FeaturedProductsSection({
 export function StorySection({ section }: { section: HomepageSection }) {
   return (
     <section className="container-shell storefront-section">
-      <div className="stone-panel min-h-[22rem] rounded-[2rem] p-8 md:p-12">
+      <div className="stone-panel min-h-[18rem] rounded-[2rem] p-6 sm:p-8 md:min-h-[22rem] md:p-12">
         <p className="text-xs uppercase tracking-[0.28em] text-[#a2845d]">{section.eyebrow ?? "Editorial"}</p>
-        <h2 className="text-display mt-4 text-4xl text-[#171717] md:text-5xl">{section.heading}</h2>
+        <h2 className="section-title mt-4 text-[#171717]">{section.heading}</h2>
         <p className="mt-6 max-w-2xl text-base leading-8 text-black/62">{section.body}</p>
         {section.ctaLabel && section.ctaUrl ? (
           <Button asChild variant="outline" className="mt-8">

@@ -8,9 +8,11 @@ export default async function AuthenticityPage() {
     permanentRedirect(`/${page.slug}`);
   }
   return (
-    <section className="container-shell py-16">
-      <h1 className="text-display text-5xl text-white">{page?.heroHeading ?? "Authenticity"}</h1>
-      <RichText html={page?.content ?? "<p>Content coming soon.</p>"} className="prose prose-invert mt-8 max-w-3xl text-white/70" />
+    <section className="container-shell page-section">
+      <div className="page-panel">
+        <h1 className="page-title text-[#171717]">{page?.heroHeading ?? "Authenticity"}</h1>
+        <RichText html={page?.content ?? "<p>Content coming soon.</p>"} className="prose-copy mt-8 max-w-3xl" />
+      </div>
     </section>
   );
 }

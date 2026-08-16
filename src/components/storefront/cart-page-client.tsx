@@ -31,9 +31,9 @@ export function CartPageClient({ products }: { products: Product[] }) {
 
   if (!cartItems.length) {
     return (
-      <section className="container-shell py-16">
-        <div className="rounded-[2rem] border border-[#eadfcf] bg-white/82 p-8 text-center">
-          <h1 className="text-display text-4xl text-[#171717]">Your cart is empty</h1>
+      <section className="container-shell page-section">
+        <div className="page-panel text-center">
+          <h1 className="section-title text-[#171717]">Your cart is empty</h1>
           <p className="mt-4 text-sm leading-7 text-black/58">
             Add a product from the storefront to begin checkout.
           </p>
@@ -46,23 +46,23 @@ export function CartPageClient({ products }: { products: Product[] }) {
   }
 
   return (
-    <section className="container-shell py-16">
+    <section className="container-shell page-section">
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.28em] text-black/42">Shopping cart</p>
-          <h1 className="text-display mt-3 text-5xl text-[#171717]">Review your pieces</h1>
+          <h1 className="page-title mt-3 text-[#171717]">Review your pieces</h1>
         </div>
         <Button asChild variant="outline">
           <Link href="/shop">Continue shopping</Link>
         </Button>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-4">
           {cartItems.map((entry) => (
             <div
               key={`${entry!.product.id}-${entry!.line.selectedSize ?? "default"}-${entry!.line.selectedVariant ?? "default"}`}
-              className="grid gap-4 rounded-[1.8rem] border border-[#eadfcf] bg-white/86 p-5 sm:grid-cols-[140px_1fr]"
+              className="grid gap-4 rounded-[1.8rem] border border-[#eadfcf] bg-white/86 p-5 sm:grid-cols-[140px_minmax(0,1fr)]"
             >
               <div className="relative min-h-36 overflow-hidden rounded-[1.4rem] bg-[#efe8dc]">
                 <Image
@@ -76,7 +76,7 @@ export function CartPageClient({ products }: { products: Product[] }) {
               </div>
               <div className="flex flex-col justify-between gap-4">
                 <div>
-                  <Link href={`/stones/${entry!.product.slug}`} className="text-display text-2xl text-[#171717]">
+                  <Link href={`/stones/${entry!.product.slug}`} className="text-display text-xl text-[#171717] sm:text-2xl">
                     {entry!.product.name}
                   </Link>
                   <p className="mt-2 text-sm text-black/58">{formatMoney(getProductDisplayPrice(entry!.product))}</p>
@@ -122,7 +122,7 @@ export function CartPageClient({ products }: { products: Product[] }) {
           ))}
         </div>
 
-        <div className="h-fit rounded-[1.8rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,253,249,0.96),rgba(248,237,214,0.82))] p-6 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
+        <div className="h-fit rounded-[1.8rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,253,249,0.96),rgba(248,237,214,0.82))] p-5 sm:p-6 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
           <h2 className="text-display text-3xl text-[#171717]">Order summary</h2>
           <div className="mt-6 space-y-3 text-sm text-black/62">
             <div className="flex items-center justify-between">

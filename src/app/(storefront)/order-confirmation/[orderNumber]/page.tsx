@@ -18,16 +18,16 @@ export default async function OrderConfirmationPage({
   }
 
   return (
-    <section className="container-shell py-16">
+    <section className="container-shell page-section">
       <OrderConfirmationClient />
-      <div className="rounded-[2rem] border border-[#eadfcf] bg-white/88 p-8 shadow-[0_22px_52px_rgba(26,20,12,0.08)]">
+      <div className="rounded-[2rem] border border-[#eadfcf] bg-white/88 p-5 sm:p-8 shadow-[0_22px_52px_rgba(26,20,12,0.08)]">
         <p className="text-xs uppercase tracking-[0.28em] text-black/42">Order confirmed</p>
-        <h1 className="text-display mt-3 text-5xl text-[#171717]">Thank you for your order</h1>
+        <h1 className="page-title mt-3 text-[#171717]">Thank you for your order</h1>
         <p className="mt-4 text-sm leading-7 text-black/58">
           Order number <span className="font-medium text-[#171717]">{order.orderNumber}</span>
         </p>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_360px]">
+        <div className="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="space-y-4">
             {order.items.map((item) => (
               <div key={item.id} className="rounded-[1.5rem] border border-[#eadfcf] bg-[rgba(255,253,249,0.9)] p-5">
@@ -59,7 +59,7 @@ export default async function OrderConfirmationPage({
               </div>
               <div className="flex items-start justify-between gap-4">
                 <span>Address</span>
-                <span className="max-w-[14rem] text-right">
+                <span className="max-w-[14rem] break-words text-right">
                   {order.customer.addressLine1}
                   {order.customer.addressLine2 ? `, ${order.customer.addressLine2}` : ""}
                   {`, ${order.customer.city}, ${order.customer.country}`}

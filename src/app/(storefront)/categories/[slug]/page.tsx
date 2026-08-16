@@ -27,10 +27,10 @@ export default async function CategoryDetailPage({
   const children = categories.filter((entry) => entry.parentCategorySlug === category.slug);
 
   return (
-    <section className="container-shell py-16">
-      <div className="rounded-[2rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,252,246,0.96),rgba(248,237,214,0.82))] p-8 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
+    <section className="container-shell page-section">
+      <div className="rounded-[2rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,252,246,0.96),rgba(248,237,214,0.82))] p-5 sm:p-8 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
         {category.heroImage ? (
-          <div className="relative mb-8 aspect-[16/7] overflow-hidden rounded-[1.6rem] border border-[#eadfcf] bg-[#f3ebdc]">
+          <div className="relative mb-8 aspect-[4/3] overflow-hidden rounded-[1.6rem] border border-[#eadfcf] bg-[#f3ebdc] sm:aspect-[16/7]">
             <Image
               src={category.heroImage}
               alt={category.altText}
@@ -45,7 +45,7 @@ export default async function CategoryDetailPage({
           </div>
         ) : null}
         <p className="text-xs uppercase tracking-[0.3em] text-[#a2845d]">Category</p>
-        <h1 className="text-display mt-4 text-5xl text-[#171717]">{category.name}</h1>
+        <h1 className="page-title mt-4 text-[#171717]">{category.name}</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-black/58">{category.description}</p>
         {children.length ? (
           <div className="mt-6 flex flex-wrap gap-3">

@@ -11,7 +11,7 @@ function VisualFallback({ label }: { label: string }) {
     <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(213,199,169,0.4),transparent_48%),linear-gradient(135deg,#fffaf2,#efe3cf)] px-8 text-center">
       <div className="space-y-3">
         <div className="flex justify-center">
-          <Logo dark src="/brand/stonza-logo.png" alt="STONZA" className="w-[112px]" />
+          <Logo dark href={false} src="/brand/stonza-logo.png" alt="STONZA" className="w-[88px] sm:w-[112px]" />
         </div>
         <p className="text-[11px] uppercase tracking-[0.28em] text-black/42">{label}</p>
       </div>
@@ -22,7 +22,7 @@ function VisualFallback({ label }: { label: string }) {
 export function CollectionCard({ collection }: { collection: Collection }) {
   return (
     <Link href={`/collections/${collection.slug}`} className="sheen-card group block overflow-hidden rounded-[2rem] border border-[#e7dccd] bg-[#fffdfa] shadow-[0_20px_45px_rgba(23,18,12,0.05)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_26px_56px_rgba(23,18,12,0.08)]">
-      <div className="relative h-64 overflow-hidden bg-[#f2ece4] sm:h-72 lg:h-80">
+      <div className="relative h-56 overflow-hidden bg-[#f2ece4] sm:h-72 lg:h-80">
         {collection.featuredImage ? (
           <Image
             src={collection.featuredImage}
@@ -48,7 +48,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
 export function CategoryCard({ category }: { category: Category }) {
   return (
     <Link href={`/categories/${category.slug}`} className="sheen-card group block overflow-hidden rounded-[1.75rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_50px_rgba(23,18,12,0.07)]">
-      <div className="relative h-40 overflow-hidden bg-[#f2ece4] sm:h-64 lg:h-72">
+      <div className="relative h-48 overflow-hidden bg-[#f2ece4] sm:h-64 lg:h-72">
         {category.featuredImage ? (
           <Image
             src={category.featuredImage}
@@ -103,7 +103,7 @@ export function ProductCard({
 
   return (
     <article className="sheen-card group overflow-hidden rounded-[1.35rem] border border-black/8 bg-white shadow-[0_14px_36px_rgba(20,22,26,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_52px_rgba(20,22,26,0.09)]">
-      <div className="relative h-[14rem] overflow-hidden bg-[#f2eee8] sm:h-[18rem] lg:h-[21rem]">
+      <div className="relative h-[13rem] overflow-hidden bg-[#f2eee8] sm:h-[18rem] lg:h-[21rem]">
         <Link href={`/stones/${product.slug}`} className="absolute inset-0 z-10" aria-label={product.name} />
         {product.featuredImage ? (
           <>

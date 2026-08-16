@@ -35,9 +35,9 @@ export function CheckoutForm({ products }: { products: Product[] }) {
 
   if (!cartItems.length) {
     return (
-      <section className="container-shell py-16">
-        <div className="rounded-[2rem] border border-[#eadfcf] bg-white/82 p-8 text-center">
-          <h1 className="text-display text-4xl text-[#171717]">Your cart is empty</h1>
+      <section className="container-shell page-section">
+        <div className="page-panel text-center">
+          <h1 className="section-title text-[#171717]">Your cart is empty</h1>
           <p className="mt-4 text-sm leading-7 text-black/58">Add items to your cart before checking out.</p>
         </div>
       </section>
@@ -45,10 +45,10 @@ export function CheckoutForm({ products }: { products: Product[] }) {
   }
 
   return (
-    <section className="container-shell py-16">
+    <section className="container-shell page-section">
       <div className="mb-8">
         <p className="text-xs uppercase tracking-[0.28em] text-black/42">Checkout</p>
-        <h1 className="text-display mt-3 text-5xl text-[#171717]">Complete your order</h1>
+        <h1 className="page-title mt-3 text-[#171717]">Complete your order</h1>
       </div>
 
       <form
@@ -58,9 +58,9 @@ export function CheckoutForm({ products }: { products: Product[] }) {
           formData.set("submissionToken", submissionToken);
           return formAction(formData);
         }}
-        className="grid gap-8 lg:grid-cols-[1fr_360px]"
+        className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]"
       >
-        <div className="grid gap-5 rounded-[1.8rem] border border-[#eadfcf] bg-white/86 p-6">
+        <div className="grid gap-5 rounded-[1.8rem] border border-[#eadfcf] bg-white/86 p-5 sm:p-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="grid gap-2 text-sm">
               Full name
@@ -122,7 +122,7 @@ export function CheckoutForm({ products }: { products: Product[] }) {
           {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
         </div>
 
-        <div className="h-fit rounded-[1.8rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,253,249,0.96),rgba(248,237,214,0.82))] p-6 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
+        <div className="h-fit rounded-[1.8rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,253,249,0.96),rgba(248,237,214,0.82))] p-5 sm:p-6 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
           <h2 className="text-display text-3xl text-[#171717]">Order summary</h2>
           <div className="mt-5 space-y-4">
             {cartItems.map((entry) => (

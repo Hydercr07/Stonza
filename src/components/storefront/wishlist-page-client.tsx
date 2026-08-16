@@ -11,10 +11,10 @@ export function WishlistPageClient({ products }: { products: Product[] }) {
   const items = products.filter((product) => productIds.includes(product.id));
 
   return (
-    <section className="container-shell py-16">
+    <section className="container-shell page-section">
       <div className="mb-8">
         <p className="text-xs uppercase tracking-[0.28em] text-black/42">Wishlist</p>
-        <h1 className="text-display mt-3 text-5xl text-[#171717]">Saved pieces</h1>
+        <h1 className="page-title mt-3 text-[#171717]">Saved pieces</h1>
       </div>
 
       {items.length ? (
@@ -24,7 +24,7 @@ export function WishlistPageClient({ products }: { products: Product[] }) {
           ))}
         </div>
       ) : (
-        <div className="rounded-[2rem] border border-[#eadfcf] bg-white/82 p-8 text-center">
+        <div className="page-panel text-center">
           <p className="text-sm leading-7 text-black/58">
             You have not saved any products yet. Use the product detail page to add pieces to your wishlist.
           </p>

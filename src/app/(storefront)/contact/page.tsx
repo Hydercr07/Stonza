@@ -12,11 +12,11 @@ export default async function ContactPage() {
     : settings.contactButton.destination;
 
   return (
-    <section className="container-shell py-16">
+    <section className="container-shell page-section">
       <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
         <div className="space-y-5">
           <p className="text-xs uppercase tracking-[0.28em] text-accent">Contact</p>
-          <h1 className="text-display text-5xl text-[#171717]">{page?.heroHeading ?? "Contact STONZA"}</h1>
+          <h1 className="page-title text-[#171717]">{page?.heroHeading ?? "Contact STONZA"}</h1>
           <p className="max-w-xl text-sm leading-8 text-black/62">
             {page?.content?.replace(/<[^>]+>/g, "") ?? "Speak with STONZA for sourcing requests, certifications, and private appointments."}
           </p>

@@ -9,10 +9,10 @@ export default async function ShippingReturnsPage() {
   }
 
   return (
-    <section className="container-shell py-16">
-      <div className="rounded-[2rem] border border-[#eadfcf] bg-white/88 p-8 shadow-[0_22px_52px_rgba(26,20,12,0.08)]">
+    <section className="container-shell page-section">
+      <div className="page-panel">
         <p className="text-xs uppercase tracking-[0.28em] text-black/42">Policy</p>
-        <h1 className="text-display mt-3 text-5xl text-[#171717]">
+        <h1 className="page-title mt-3 text-[#171717]">
           {page?.heroHeading ?? "Shipping Policy"}
         </h1>
         <RichText

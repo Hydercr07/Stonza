@@ -21,7 +21,7 @@ export function ProductGallery({
         <button
           type="button"
           onClick={() => setLightboxOpen(true)}
-          className="relative min-h-[24rem] overflow-hidden rounded-[2.1rem] border border-[#e1d4c0] bg-[#efe8dc] shadow-[0_18px_44px_rgba(26,20,12,0.06)] sm:min-h-[34rem]"
+          className="relative min-h-[18rem] overflow-hidden rounded-[2.1rem] border border-[#e1d4c0] bg-[#efe8dc] shadow-[0_18px_44px_rgba(26,20,12,0.06)] sm:min-h-[26rem] lg:min-h-[34rem]"
           aria-label="Open product image"
         >
           <Image
@@ -36,13 +36,13 @@ export function ProductGallery({
           />
         </button>
         {gallery.length > 1 ? (
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-5">
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 sm:gap-3">
             {gallery.map((image) => (
               <button
                 key={image}
                 type="button"
                 onClick={() => setActiveImage(image)}
-                className={`relative min-h-24 overflow-hidden rounded-[1.2rem] border ${activeImage === image ? "border-[#171717]" : "border-black/8"} bg-[#efe8dc]`}
+                className={`relative min-h-20 overflow-hidden rounded-[1rem] border ${activeImage === image ? "border-[#171717]" : "border-black/8"} bg-[#efe8dc] sm:min-h-24 sm:rounded-[1.2rem]`}
               >
                 <Image
                   src={image}
@@ -71,7 +71,7 @@ export function ProductGallery({
           >
             Close
           </button>
-          <div className="relative h-[70vh] w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#181411]">
+          <div className="relative h-[60vh] w-full max-w-5xl overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#181411] sm:h-[70vh] sm:rounded-[2rem]">
             <Image
               src={activeImage}
               alt={altText}

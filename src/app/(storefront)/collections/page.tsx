@@ -5,10 +5,10 @@ export default async function CollectionsPage() {
   const [collections, labels] = await Promise.all([listCollections(), getLabelMap()]);
 
   return (
-    <section className="container-shell py-16">
-      <div className="mb-10 rounded-[2rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,252,246,0.96),rgba(248,237,214,0.82))] p-8">
+    <section className="container-shell page-section">
+      <div className="mb-10 rounded-[2rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,252,246,0.96),rgba(248,237,214,0.82))] p-5 sm:p-8">
         <p className="text-xs uppercase tracking-[0.3em] text-[#a2845d]">{labels.collectionsEyebrow}</p>
-        <h1 className="text-display mt-4 text-5xl text-[#171717]">{labels.collectionsHeading}</h1>
+        <h1 className="page-title mt-4 text-[#171717]">{labels.collectionsHeading}</h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-black/58">{labels.collectionsBody}</p>
       </div>
       {collections.length ? (

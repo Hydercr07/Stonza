@@ -9,10 +9,10 @@ export default async function PrivacyPolicyPage() {
   }
 
   return (
-    <section className="container-shell py-16">
-      <div className="rounded-[2rem] border border-[#eadfcf] bg-white/88 p-8 shadow-[0_22px_52px_rgba(26,20,12,0.08)]">
+    <section className="container-shell page-section">
+      <div className="page-panel">
         <p className="text-xs uppercase tracking-[0.28em] text-black/42">Policy</p>
-        <h1 className="text-display mt-3 text-5xl text-[#171717]">{page?.heroHeading ?? "Privacy Policy"}</h1>
+        <h1 className="page-title mt-3 text-[#171717]">{page?.heroHeading ?? "Privacy Policy"}</h1>
         <RichText
           html={page?.content ?? "<p>Privacy details will appear here once published from the admin portal.</p>"}
           className="mt-8 max-w-4xl text-black/68"

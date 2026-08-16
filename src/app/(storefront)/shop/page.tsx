@@ -44,17 +44,17 @@ export default async function ShopPage({
         <div className="container-shell">
           <div className="space-y-4">
             <p className="text-xs uppercase tracking-[0.34em] text-[#a2845d]">{labels.shopEyebrow}</p>
-            <h1 className="text-5xl font-serif text-[#171717] sm:text-6xl">{labels.shopHeading}</h1>
+            <h1 className="page-title text-[#171717]">{labels.shopHeading}</h1>
             <p className="max-w-3xl text-sm leading-7 text-black/60">{labels.shopBody}</p>
           </div>
         </div>
       </div>
 
       {/* Main Content Grid */}
-      <div className="container-shell py-8 md:py-12 lg:flex lg:gap-12">
+      <div className="container-shell py-8 md:py-12 lg:grid lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] lg:gap-10 xl:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
         {/* Sidebar */}
-        <aside className="mb-8 lg:mb-0 lg:w-64 lg:flex-shrink-0">
-          <form className="space-y-6 rounded-[1.75rem] border border-[#e8dfd1] bg-[#fcfaf6] p-5 lg:sticky lg:top-28">
+        <aside className="mb-8 lg:mb-0">
+          <form className="space-y-6 rounded-[1.75rem] border border-[#e8dfd1] bg-[#fcfaf6] p-4 sm:p-5 lg:sticky lg:top-28">
             {/* Search */}
             <div>
               <label htmlFor="search" className="mb-3 block text-xs font-semibold uppercase tracking-[0.26em] text-[#171717]">
