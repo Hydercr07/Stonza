@@ -25,7 +25,7 @@ export function Hero({ hero }: { hero: HeroSettings }) {
   if (!activeSlide) {
     return (
       <section className="w-full bg-transparent sm:bg-[#f6efe3]">
-        <div className="relative min-h-[22rem] overflow-hidden bg-[#111] sm:bg-[linear-gradient(135deg,#fffaf2,#efe6d7)]">
+        <div className="relative aspect-[16/8] overflow-hidden bg-[#111] sm:bg-[linear-gradient(135deg,#fffaf2,#efe6d7)]">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(213,199,169,0.45),transparent_42%)]" />
           <div className="relative flex h-full items-center justify-center">
             <Logo dark src="/brand/stonza-logo.png" alt="STONZA" className="w-[180px] sm:w-[220px]" />
@@ -37,7 +37,7 @@ export function Hero({ hero }: { hero: HeroSettings }) {
 
   return (
     <section className="w-full bg-transparent sm:bg-[#f6efe3]">
-      <div className="relative min-h-[22rem] overflow-hidden bg-[#111] sm:min-h-[calc(100vh-5rem)] sm:bg-[#efe8dc]">
+      <div className="relative aspect-[16/8] overflow-hidden bg-[#111] sm:bg-[#efe8dc]">
         {slides.map((slide, slideIndex) => (
           <div
             key={slide.id}
@@ -72,7 +72,7 @@ export function Hero({ hero }: { hero: HeroSettings }) {
               fill
               priority={slideIndex === 0}
               loading={slideIndex === 0 ? "eager" : "lazy"}
-              className="object-contain object-center sm:hidden"
+              className="object-cover object-center sm:hidden"
               sizes="100vw"
             />
           </div>
