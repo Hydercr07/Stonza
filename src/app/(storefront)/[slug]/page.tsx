@@ -28,16 +28,16 @@ export default async function ManagedPageRoute({
         <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="space-y-5">
             <p className="text-xs uppercase tracking-[0.28em] text-accent">Contact</p>
-            <h1 className="text-display text-5xl text-white">{page.heroHeading}</h1>
-            <p className="text-sm leading-7 text-white/65">
+            <h1 className="text-display text-5xl text-[#171717]">{page.heroHeading}</h1>
+            <p className="max-w-xl text-sm leading-8 text-black/62">
               {page.content.replace(/<[^>]+>/g, "")}
             </p>
           </div>
           <div className="stone-panel rounded-[2rem] p-8">
-            <div className="grid gap-4 text-sm text-white/72">
-              <div><span className="block text-white/40">Email</span>{settings.email}</div>
-              <div><span className="block text-white/40">Address</span>{settings.address}</div>
-              <div><span className="block text-white/40">Hours</span>{settings.businessHours}</div>
+            <div className="grid gap-4 text-sm text-black/72">
+              <div><span className="mb-1 block text-black/42">Email</span>{settings.email}</div>
+              <div><span className="mb-1 block text-black/42">Address</span>{settings.address}</div>
+              <div><span className="mb-1 block text-black/42">Hours</span>{settings.businessHours}</div>
             </div>
             <Button className="mt-8" asChild>
               <a href={whatsappHref} target="_blank" rel="noreferrer">
@@ -52,7 +52,7 @@ export default async function ManagedPageRoute({
 
   return (
     <section className="container-shell py-16">
-      <div className="rounded-[2rem] border border-[#eadfcf] bg-white/88 p-8 shadow-[0_22px_52px_rgba(26,20,12,0.08)]">
+      <div className="rounded-[2rem] border border-black/8 bg-white p-8 shadow-[0_18px_42px_rgba(17,24,39,0.06)]">
         <h1 className="text-display text-5xl text-[#171717]">{page.heroHeading}</h1>
         <RichText html={page.content} className="mt-8 max-w-4xl text-black/68" />
       </div>
