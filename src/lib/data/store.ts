@@ -14,6 +14,7 @@ import type {
   CustomerOrderDetails,
   FooterSection,
   HeroSettings,
+  HomepageBanner,
   HomepageSection,
   JournalPost,
   ManagedPage,
@@ -56,6 +57,7 @@ function createEmptyStore(): StoreData {
       },
     }),
     homepageSections: normalizeSections([]),
+    homepageBanners: [],
     categories: [],
     collections: [],
     products: [],
@@ -757,6 +759,24 @@ function normalizeSections(sections: StoreData["homepageSections"] | undefined):
   return normalized;
 }
 
+function normalizeHomepageBanner(banner: Partial<HomepageBanner>, index = 0): HomepageBanner {
+  const now = new Date().toISOString();
+  return {
+    id: banner.id ?? `homepage-banner-${crypto.randomUUID()}`,
+    title: banner.title?.trim() || `Homepage banner ${index + 1}`,
+    imageUrl: banner.imageUrl ?? "",
+    linkUrl: banner.linkUrl?.trim() || undefined,
+    afterSectionKey: banner.afterSectionKey?.trim() || "featured-categories",
+    enabled: banner.enabled ?? true,
+    order: banner.order ?? index + 1,
+    altText: banner.altText?.trim() || banner.title?.trim() || "STONZA promotional banner",
+    status: banner.status ?? "published",
+    updatedAt: banner.updatedAt ?? now,
+    updatedBy: banner.updatedBy ?? "system",
+    deletedAt: banner.deletedAt,
+  };
+}
+
 function normalizeStore(store: Partial<StoreData>): StoreData {
   const settings = normalizeSettings(store.settings);
   return {
@@ -781,6 +801,10 @@ function normalizeStore(store: Partial<StoreData>): StoreData {
         : undefined,
     ),
     homepageSections: normalizeSections(store.homepageSections).sort((a, b) => a.order - b.order),
+    homepageBanners: (store.homepageBanners ?? [])
+      .map((banner, index) => normalizeHomepageBanner(banner, index))
+      .filter((banner) => !banner.deletedAt)
+      .sort((a, b) => a.order - b.order),
     categories: (store.categories ?? []).map(normalizeCategory).sort((a, b) => a.sortOrder - b.sortOrder),
     collections: (store.collections ?? []).map(normalizeCollection).sort((a, b) => a.sortOrder - b.sortOrder),
     products: (store.products ?? []).map(normalizeProduct),
@@ -1069,6 +1093,14 @@ export async function getHomepageSections(includeDisabled = false): Promise<Home
   const store = await readStore();
   return store.homepageSections
     .filter((section) => includeDisabled || section.enabled)
+    .sort((a, b) => a.order - b.order);
+}
+
+export async function getHomepageBanners(includeDisabled = false): Promise<HomepageBanner[]> {
+  const store = await readStore();
+  return store.homepageBanners
+    .filter((banner) => !banner.deletedAt)
+    .filter((banner) => includeDisabled || banner.enabled)
     .sort((a, b) => a.order - b.order);
 }
 
@@ -1420,6 +1452,15 @@ export async function updateHomepageSections(sections: HomepageSection[]) {
   store.homepageSections = normalizeSections(sections);
   await writeStore(store);
   return store.homepageSections;
+}
+
+export async function updateHomepageBanners(banners: HomepageBanner[]) {
+  const store = await readStore();
+  store.homepageBanners = banners
+    .map((banner, index) => normalizeHomepageBanner(banner, index))
+    .filter((banner) => !banner.deletedAt);
+  await writeStore(store);
+  return store.homepageBanners;
 }
 
 export async function updateSiteSettings(settings: SiteSettings) {

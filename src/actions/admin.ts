@@ -19,6 +19,7 @@ import {
   getCategoryById,
   getContentLabels,
   getHeroSettings,
+  getHomepageBanners,
   getJournalPostById,
   getProductById,
   getStoreData,
@@ -28,6 +29,7 @@ import {
   updateOrderStatus,
   updateCategoryStatus,
   updateContentLabels,
+  updateHomepageBanners,
   updateHomepageSections,
   upsertManagedPage,
   updateMediaAsset,
@@ -43,6 +45,7 @@ import {
   categorySchema,
   collectionSchema,
   heroSchema,
+  homepageBannerListSchema,
   journalPostSchema,
   loginSchema,
   managedPageSchema,
@@ -53,6 +56,7 @@ import { slugify } from "@/lib/utils";
 import type {
   Category,
   ContentLabel,
+  HomepageBanner,
   HomepageSection,
   MediaAsset,
   NavigationItem,
@@ -492,6 +496,29 @@ export async function saveHomepageSectionsAction(formData: FormData) {
     actor: session.email,
     entity: "homepage",
     entityId: "homepage-sections",
+  });
+  revalidatePath("/");
+  revalidatePath("/admin/homepage");
+}
+
+export async function saveHomepageBannersAction(formData: FormData) {
+  const session = await requireAdminSession("homepage:write");
+  const existing = await getHomepageBanners(true);
+  const nextBanners = homepageBannerListSchema.parse(
+    parseJson<HomepageBanner[]>(formData.get("banners"), existing).map((banner, index) => ({
+      ...banner,
+      order: index + 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: session.email,
+    })),
+  );
+
+  await updateHomepageBanners(nextBanners);
+  await logActivity({
+    action: "homepage_banners_updated",
+    actor: session.email,
+    entity: "homepage",
+    entityId: "homepage-banners",
   });
   revalidatePath("/");
   revalidatePath("/admin/homepage");

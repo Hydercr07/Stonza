@@ -269,6 +269,23 @@ export const heroSchema = z.object({
   updatedBy: z.string(),
 });
 
+export const homepageBannerSchema = z.object({
+  id: z.string(),
+  title: z.string().min(2),
+  imageUrl: z.string().min(1),
+  linkUrl: z.string().optional(),
+  afterSectionKey: z.string().min(1),
+  enabled: z.boolean(),
+  order: z.coerce.number().int().min(1),
+  altText: z.string().min(2),
+  status: z.enum(["draft", "published"]),
+  updatedAt: z.string(),
+  updatedBy: z.string(),
+  deletedAt: z.string().optional(),
+});
+
+export const homepageBannerListSchema = z.array(homepageBannerSchema);
+
 export const navigationItemSchema = z.object({
   id: z.string(),
   label: z.string().min(1),

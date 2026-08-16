@@ -1,4 +1,6 @@
+import { Fragment } from "react";
 import { Hero } from "@/components/storefront/hero";
+import { HomepagePromotionalBanner } from "@/components/storefront/homepage-promotional-banner";
 import {
   FeaturedCategoriesSection,
   FeaturedCollectionsSection,
@@ -7,6 +9,7 @@ import {
 } from "@/components/storefront/sections";
 import {
   getHeroSettings,
+  getHomepageBanners,
   getHomepageSections,
   listCategories,
   listCollections,
@@ -14,9 +17,10 @@ import {
 } from "@/lib/data/store";
 
 export default async function HomePage() {
-  const [hero, sections, categories, collections, visibleProducts] = await Promise.all([
+  const [hero, sections, banners, categories, collections, visibleProducts] = await Promise.all([
     getHeroSettings(),
     getHomepageSections(),
+    getHomepageBanners(),
     listCategories({ featuredOnly: true }),
     listCollections(true),
     listProducts(),
@@ -70,39 +74,78 @@ export default async function HomePage() {
       ctaLabel: "View All",
       ctaUrl: "/shop",
     } satisfies typeof sections[number]);
+  const sectionBlocks: Array<{ key: string; content: React.ReactNode }> = [];
 
-  return (
-    <>
-      <Hero hero={hero} />
+  if (sectionMap["featured-categories"] && featuredCategorySelection.length) {
+    sectionBlocks.push({
+      key: sectionMap["featured-categories"].key,
+      content: <FeaturedCategoriesSection section={sectionMap["featured-categories"]} categories={featuredCategorySelection} />,
+    });
+  }
 
-      {sectionMap["featured-categories"] && featuredCategorySelection.length ? (
-        <FeaturedCategoriesSection section={sectionMap["featured-categories"]} categories={featuredCategorySelection} />
-      ) : null}
-
-      {sectionMap["featured-collections"] && featuredCollectionSelection.length ? (
+  if (sectionMap["featured-collections"] && featuredCollectionSelection.length) {
+    sectionBlocks.push({
+      key: sectionMap["featured-collections"].key,
+      content: (
         <FeaturedCollectionsSection
           section={sectionMap["featured-collections"]}
           collections={featuredCollectionSelection}
         />
-      ) : null}
+      ),
+    });
+  }
 
-      {newArrivals.length ? (
-        <FeaturedProductsSection eyebrow="New Arrivals" section={newArrivalSection} products={newArrivals} />
-      ) : null}
+  if (newArrivals.length) {
+    sectionBlocks.push({
+      key: newArrivalSection.key,
+      content: <FeaturedProductsSection eyebrow="New Arrivals" section={newArrivalSection} products={newArrivals} />,
+    });
+  }
 
-      {sectionMap["signature-stones"] && featuredProductSelection.length ? (
+  if (sectionMap["signature-stones"] && featuredProductSelection.length) {
+    sectionBlocks.push({
+      key: sectionMap["signature-stones"].key,
+      content: (
         <FeaturedProductsSection
           eyebrow="Featured Products"
           section={sectionMap["signature-stones"]}
           products={featuredProductSelection}
         />
-      ) : null}
+      ),
+    });
+  }
 
-      {bestsellingProducts.length ? (
-        <FeaturedProductsSection eyebrow="Best Sellers" section={bestsellingSection} products={bestsellingProducts} />
-      ) : null}
+  if (bestsellingProducts.length) {
+    sectionBlocks.push({
+      key: bestsellingSection.key,
+      content: <FeaturedProductsSection eyebrow="Best Sellers" section={bestsellingSection} products={bestsellingProducts} />,
+    });
+  }
 
-      {sectionMap["born-beneath-earth"] ? <StorySection section={sectionMap["born-beneath-earth"]} /> : null}
+  if (sectionMap["born-beneath-earth"]) {
+    sectionBlocks.push({
+      key: sectionMap["born-beneath-earth"].key,
+      content: <StorySection section={sectionMap["born-beneath-earth"]} />,
+    });
+  }
+
+  const bannersBySection = new Map<string, typeof banners>();
+  for (const banner of banners) {
+    const sectionKey = banner.afterSectionKey;
+    const current = bannersBySection.get(sectionKey) ?? [];
+    current.push(banner);
+    bannersBySection.set(sectionKey, current);
+  }
+
+  return (
+    <>
+      <Hero hero={hero} />
+      {sectionBlocks.flatMap((block) => [
+        <Fragment key={`section-${block.key}`}>{block.content}</Fragment>,
+        ...(bannersBySection.get(block.key) ?? []).map((banner) => (
+          <HomepagePromotionalBanner key={banner.id} banner={banner} />
+        )),
+      ])}
     </>
   );
 }

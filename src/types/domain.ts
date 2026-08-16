@@ -327,6 +327,21 @@ export interface HomepageSection {
   updatedBy?: string;
 }
 
+export interface HomepageBanner {
+  id: string;
+  title: string;
+  imageUrl: string;
+  linkUrl?: string;
+  afterSectionKey: string;
+  enabled: boolean;
+  order: number;
+  altText: string;
+  status: "draft" | "published";
+  updatedAt: string;
+  updatedBy: string;
+  deletedAt?: string;
+}
+
 export interface ManagedPage {
   id: string;
   title: string;
@@ -515,6 +530,7 @@ export interface StoreData {
   settings: SiteSettings;
   hero: HeroSettings;
   homepageSections: HomepageSection[];
+  homepageBanners: HomepageBanner[];
   categories: Category[];
   collections: Collection[];
   products: Product[];

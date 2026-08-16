@@ -21,7 +21,7 @@ values
   ('media:write', 'Manage media')
 on conflict (key) do nothing;
 
--- Intentionally avoid inserting placeholder catalogue, collection, hero, homepage, or CMS records here.
+-- Intentionally avoid inserting placeholder catalogue, collection, hero, homepage, homepage banner, or CMS records here.
 -- Populate live merchandising and content through the admin portal or a dedicated content migration.
 
 -- Owner bootstrap note:
