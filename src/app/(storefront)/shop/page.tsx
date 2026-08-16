@@ -53,8 +53,8 @@ export default async function ShopPage({
       {/* Main Content Grid */}
       <div className="container-shell py-8 md:py-12 lg:flex lg:gap-12">
         {/* Sidebar */}
-        <aside className="mb-8 lg:mb-0 lg:w-56 lg:flex-shrink-0">
-          <form className="space-y-6">
+        <aside className="mb-8 lg:mb-0 lg:w-64 lg:flex-shrink-0">
+          <form className="space-y-6 rounded-[1.75rem] border border-[#e8dfd1] bg-[#fcfaf6] p-5 lg:sticky lg:top-28">
             {/* Search */}
             <div>
               <label htmlFor="search" className="mb-3 block text-xs font-semibold uppercase tracking-[0.26em] text-[#171717]">
@@ -153,7 +153,7 @@ export default async function ShopPage({
             </div>
 
             {/* Buttons */}
-            <div className="flex gap-3 pt-4">
+            <div className="grid gap-3 pt-2 sm:grid-cols-2 lg:grid-cols-1">
               <button
                 type="submit"
                 className="flex-1 rounded-lg bg-[#10233a] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#0d1929]"
@@ -174,9 +174,12 @@ export default async function ShopPage({
         <div className="flex-1">
           {products.length ? (
             <>
-              <div className="mb-8">
+              <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm text-black/60">
                   {products.length} stone{products.length === 1 ? "" : "s"}
+                </p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-black/38">
+                  Curated with the same editorial layout across devices
                 </p>
               </div>
               <div className="shop-grid">

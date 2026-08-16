@@ -22,7 +22,7 @@ function VisualFallback({ label }: { label: string }) {
 export function CollectionCard({ collection }: { collection: Collection }) {
   return (
     <Link href={`/collections/${collection.slug}`} className="sheen-card group block overflow-hidden rounded-[2rem] border border-[#e7dccd] bg-[#fffdfa] shadow-[0_20px_45px_rgba(23,18,12,0.05)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_26px_56px_rgba(23,18,12,0.08)]">
-      <div className="relative h-80 overflow-hidden bg-[#f2ece4]">
+      <div className="relative h-64 overflow-hidden bg-[#f2ece4] sm:h-72 lg:h-80">
         {collection.featuredImage ? (
           <Image
             src={collection.featuredImage}
@@ -48,7 +48,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
 export function CategoryCard({ category }: { category: Category }) {
   return (
     <Link href={`/categories/${category.slug}`} className="sheen-card group block overflow-hidden rounded-[1.75rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_50px_rgba(23,18,12,0.07)]">
-      <div className="relative h-72 overflow-hidden bg-[#f2ece4]">
+      <div className="relative h-56 overflow-hidden bg-[#f2ece4] sm:h-64 lg:h-72">
         {category.featuredImage ? (
           <Image
             src={category.featuredImage}
@@ -103,7 +103,7 @@ export function ProductCard({
 
   return (
     <article className="sheen-card group overflow-hidden rounded-[1.35rem] border border-black/8 bg-white shadow-[0_14px_36px_rgba(20,22,26,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_52px_rgba(20,22,26,0.09)]">
-      <div className="relative h-[18rem] overflow-hidden bg-[#f2eee8] sm:h-[21rem]">
+      <div className="relative h-[14rem] overflow-hidden bg-[#f2eee8] sm:h-[18rem] lg:h-[21rem]">
         <Link href={`/stones/${product.slug}`} className="absolute inset-0 z-10" aria-label={product.name} />
         {product.featuredImage ? (
           <>
@@ -161,7 +161,7 @@ export function ProductCard({
           )}
         </div>
       </div>
-      <div className="space-y-3 px-4 py-4 sm:px-5">
+      <div className="space-y-3 px-3 py-4 sm:px-5">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-black/40">
             <span>{product.collectionSlug || product.categorySlug}</span>
@@ -171,7 +171,7 @@ export function ProductCard({
               </span>
             ))}
           </div>
-          <Link href={`/stones/${product.slug}`} className="line-clamp-2 text-sm font-semibold uppercase tracking-[0.13em] text-black/86 hover:text-black">
+          <Link href={`/stones/${product.slug}`} className="line-clamp-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-black/86 hover:text-black sm:text-sm">
             {product.name}
           </Link>
         </div>

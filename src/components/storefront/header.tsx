@@ -72,6 +72,7 @@ export function Header({
     () => collections.filter((collection) => collection.featured).slice(0, 4),
     [collections],
   );
+  const primaryLinks = useMemo(() => navGroups.slice(0, 6), [navGroups]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 16);
@@ -138,6 +139,27 @@ export function Header({
                 <ShoppingBag className="h-4 w-4" />
               </button>
             </div>
+          </div>
+
+          <div className="scrollbar-hidden -mx-4 flex gap-2 overflow-x-auto px-4 pb-3 lg:hidden">
+            {primaryLinks.map((group) => (
+              <Link
+                key={group.category.id}
+                href={`/categories/${group.category.slug}`}
+                className="whitespace-nowrap rounded-full border border-black/10 bg-white px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-black/68"
+              >
+                {group.category.name}
+              </Link>
+            ))}
+            {utilityLinks.map((item) => (
+              <Link
+                key={item.id}
+                href={item.href}
+                className="whitespace-nowrap rounded-full border border-black/10 bg-[#f7f1e8] px-4 py-2 text-[11px] font-medium uppercase tracking-[0.16em] text-black/58"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
 
           <div className="hidden min-h-12 items-center justify-between gap-6 border-t border-black/7 text-[12px] uppercase tracking-[0.24em] lg:flex">

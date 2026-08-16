@@ -40,9 +40,9 @@ export function FeaturedCollectionsSection({
   collections: Collection[];
 }) {
   return (
-    <section className="container-shell py-18">
+    <section className="container-shell storefront-section">
       <SectionHeading eyebrow={section.eyebrow ?? "Collections"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="storefront-card-grid">
         {collections.map((collection) => (
           <CollectionCard key={collection.id} collection={collection} />
         ))}
@@ -59,9 +59,9 @@ export function FeaturedCategoriesSection({
   categories: Category[];
 }) {
   return (
-    <section className="container-shell py-18">
+    <section className="container-shell storefront-section">
       <SectionHeading eyebrow={section.eyebrow ?? "Categories"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="storefront-card-grid">
         {categories.map((category) => (
           <CategoryCard key={category.id} category={category} />
         ))}
@@ -80,11 +80,11 @@ export function FeaturedProductsSection({
   products: Product[];
 }) {
   return (
-    <section className="container-shell py-18">
+    <section className="container-shell storefront-section">
       <SectionHeading eyebrow={section.eyebrow ?? eyebrow} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 lg:grid-cols-4">
+      <div className="storefront-product-grid">
         {products.map((product, index) => (
-          <div key={product.id} className="min-w-[16.5rem] snap-start md:min-w-0">
+          <div key={product.id} className="min-w-0">
             <ProductCard product={product} priorityImage={index < 2} />
           </div>
         ))}
@@ -95,7 +95,7 @@ export function FeaturedProductsSection({
 
 export function StorySection({ section }: { section: HomepageSection }) {
   return (
-    <section className="container-shell py-18">
+    <section className="container-shell storefront-section">
       <div className="stone-panel min-h-[22rem] rounded-[2rem] p-8 md:p-12">
         <p className="text-xs uppercase tracking-[0.28em] text-[#a2845d]">{section.eyebrow ?? "Editorial"}</p>
         <h2 className="text-display mt-4 text-4xl text-[#171717] md:text-5xl">{section.heading}</h2>
