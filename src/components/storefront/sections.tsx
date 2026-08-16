@@ -48,7 +48,7 @@ function MobileSectionCta({
   }
 
   return (
-    <div className="mt-6 lg:hidden">
+    <div className="order-last mt-6 lg:hidden">
       <Button asChild variant="outline" className="flex w-full justify-center sm:w-auto sm:min-w-[13rem]">
         <Link href={ctaHref}>{ctaLabel}</Link>
       </Button>
@@ -64,7 +64,7 @@ export function FeaturedCollectionsSection({
   collections: Collection[];
 }) {
   return (
-    <section className="container-shell storefront-section">
+    <section className="container-shell storefront-section flex flex-col">
       <SectionHeading eyebrow={section.eyebrow ?? "Collections"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
       <div className="storefront-card-grid">
         {collections.map((collection) => (
@@ -84,7 +84,7 @@ export function FeaturedCategoriesSection({
   categories: Category[];
 }) {
   return (
-    <section className="container-shell storefront-section">
+    <section className="container-shell storefront-section flex flex-col">
       <SectionHeading
         eyebrow={section.eyebrow ?? "Categories"}
         title={section.heading}
@@ -112,7 +112,7 @@ export function FeaturedProductsSection({
   products: Product[];
 }) {
   return (
-    <section className="container-shell storefront-section">
+    <section className="container-shell storefront-section flex flex-col">
       <SectionHeading eyebrow={section.eyebrow ?? eyebrow} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
       <div className="storefront-product-grid">
         {products.map((product, index) => (
