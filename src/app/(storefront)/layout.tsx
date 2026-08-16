@@ -3,17 +3,16 @@ import { Header } from "@/components/storefront/header";
 import { AnnouncementBar } from "@/components/storefront/announcement-bar";
 import { CartProvider } from "@/components/storefront/cart-store";
 import { WishlistProvider } from "@/components/storefront/wishlist-store";
-import { getSiteSettings, listCategories, listCollections, listProducts } from "@/lib/data/store";
+import { getSiteSettings, listCategories, listProducts } from "@/lib/data/store";
 
 export default async function StorefrontLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [settings, categories, collections, products] = await Promise.all([
+  const [settings, categories, products] = await Promise.all([
     getSiteSettings(),
     listCategories(),
-    listCollections(),
     listProducts(),
   ]);
 
@@ -28,7 +27,7 @@ export default async function StorefrontLayout({
               linkLabel={settings.announcement.linkLabel}
             />
           ) : null}
-          <Header settings={settings} categories={categories} collections={collections} products={products} />
+          <Header settings={settings} categories={categories} products={products} />
           <main className="flex-1">{children}</main>
           <Footer settings={settings} />
         </div>
