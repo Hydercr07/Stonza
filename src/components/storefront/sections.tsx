@@ -60,12 +60,19 @@ export function FeaturedCategoriesSection({
 }) {
   return (
     <section className="container-shell storefront-section">
-      <SectionHeading eyebrow={section.eyebrow ?? "Categories"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+      <SectionHeading eyebrow={section.eyebrow ?? "Categories"} title={section.heading} body={section.body} />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         {categories.map((category) => (
           <CategoryCard key={category.id} category={category} />
         ))}
       </div>
+      {section.ctaUrl ? (
+        <div className="mt-6 flex justify-center">
+          <Button asChild variant="outline" className="min-w-[13rem]">
+            <Link href={section.ctaUrl}>View All</Link>
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }
