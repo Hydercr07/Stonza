@@ -44,6 +44,7 @@ export function Hero({ hero }: { hero: HeroSettings }) {
             className={`absolute inset-0 transition-opacity duration-700 ${slideIndex === index ? "opacity-100" : "pointer-events-none opacity-0"}`}
             aria-hidden={slideIndex !== index}
           >
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),transparent_42%),linear-gradient(180deg,rgba(11,13,18,0.08),rgba(11,13,18,0.16))]" />
             <Image
               src={
                 slide.desktopImage ||
@@ -56,8 +57,8 @@ export function Hero({ hero }: { hero: HeroSettings }) {
               fill
               priority={slideIndex === 0}
               loading={slideIndex === 0 ? "eager" : "lazy"}
-              className="hidden object-cover sm:block"
-              sizes="(max-width: 640px) 0px, (max-width: 1024px) 92vw, 1200px"
+              className="hidden object-contain object-center sm:block"
+              sizes="100vw"
             />
             <Image
               src={
@@ -71,8 +72,8 @@ export function Hero({ hero }: { hero: HeroSettings }) {
               fill
               priority={slideIndex === 0}
               loading={slideIndex === 0 ? "eager" : "lazy"}
-              className="object-cover sm:hidden"
-              sizes="92vw"
+              className="object-contain object-center sm:hidden"
+              sizes="100vw"
             />
           </div>
         ))}
