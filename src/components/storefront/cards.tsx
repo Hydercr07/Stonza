@@ -48,7 +48,7 @@ export function CollectionCard({ collection }: { collection: Collection }) {
 export function CategoryCard({ category }: { category: Category }) {
   return (
     <Link href={`/categories/${category.slug}`} className="sheen-card group block overflow-hidden rounded-[1.75rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_50px_rgba(23,18,12,0.07)]">
-      <div className="relative h-56 overflow-hidden bg-[#f2ece4] sm:h-64 lg:h-72">
+      <div className="relative h-40 overflow-hidden bg-[#f2ece4] sm:h-64 lg:h-72">
         {category.featuredImage ? (
           <Image
             src={category.featuredImage}
@@ -61,15 +61,15 @@ export function CategoryCard({ category }: { category: Category }) {
         ) : (
           <VisualFallback label="Category" />
         )}
-        <div className="absolute inset-x-4 bottom-4 flex items-center justify-between rounded-full bg-[rgba(255,248,237,0.9)] px-4 py-2 text-[10px] uppercase tracking-[0.22em] text-black/58 backdrop-blur-md">
+        <div className="absolute inset-x-3 bottom-3 flex items-center justify-between rounded-full bg-[rgba(255,248,237,0.9)] px-3 py-2 text-[9px] uppercase tracking-[0.18em] text-black/58 backdrop-blur-md sm:inset-x-4 sm:bottom-4 sm:px-4 sm:text-[10px] sm:tracking-[0.22em]">
           <span>{category.name}</span>
           <span>View</span>
         </div>
       </div>
-      <div className="space-y-2 px-5 py-5">
+      <div className="space-y-2 px-3 py-4 sm:px-5 sm:py-5">
         <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7a4f]">Category</p>
-        <h3 className="text-display text-2xl text-[#171717]">{category.name}</h3>
-        <p className="text-sm leading-7 text-black/58">{category.shortDescription}</p>
+        <h3 className="text-display text-xl text-[#171717] sm:text-2xl">{category.name}</h3>
+        <p className="text-sm leading-6 text-black/58 sm:leading-7">{category.shortDescription}</p>
       </div>
     </Link>
   );

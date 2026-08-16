@@ -61,7 +61,7 @@ export function FeaturedCategoriesSection({
   return (
     <section className="container-shell storefront-section">
       <SectionHeading eyebrow={section.eyebrow ?? "Categories"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="storefront-card-grid">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         {categories.map((category) => (
           <CategoryCard key={category.id} category={category} />
         ))}
