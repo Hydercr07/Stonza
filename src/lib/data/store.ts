@@ -5,6 +5,7 @@ import path from "node:path";
 import { unstable_noStore as noStore } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getEffectivePrice } from "@/lib/commerce";
+import { sidebarCategoryHierarchy } from "@/lib/category-hierarchy";
 import type {
   ActivityLogEntry,
   CartLineInput,
@@ -139,7 +140,6 @@ const defaultContentLabels: ContentLabel[] = Object.entries(defaultLabels).map((
 }));
 
 const defaultHeroSlides: HeroSettings["carousel"]["slides"] = [];
-const preferredCategoryRootSlugs = ["men", "women"] as const;
 
 const placeholderAssetPattern = /(^\/placeholders\/)|(^\/brand\/stonza-logo\.png$)/i;
 
@@ -1022,26 +1022,36 @@ function ensureUniqueSlug(existingSlugs: string[], preferred: string, currentId?
 
 function buildCategoryNavigation(categories: Category[]) {
   const visibleCategories = categories.filter(visibleCategory).sort((a, b) => a.sortOrder - b.sortOrder);
-  const rootCategories = visibleCategories.filter((category) => !category.parentCategorySlug);
-  const preferredRoots = rootCategories.filter((category) => preferredCategoryRootSlugs.includes(category.slug as (typeof preferredCategoryRootSlugs)[number]));
-  const activeRoots = preferredRoots.length ? preferredRoots : rootCategories;
-  return activeRoots
-    .map((category, index) => ({
-      id: `nav-category-${category.id}`,
-      label: category.name,
-      href: `/shop?category=${encodeURIComponent(category.slug)}`,
-      order: index + 1,
-      visible: true,
-      children: visibleCategories
-        .filter((child) => child.parentCategorySlug === category.slug)
-        .map((child, childIndex) => ({
-          id: `nav-category-${child.id}`,
-          label: child.name,
-          href: `/shop?category=${encodeURIComponent(category.slug)}&subcategory=${encodeURIComponent(child.slug)}`,
-          order: childIndex + 1,
-          visible: true,
-        })),
-    }));
+  const bySlug = new Map(visibleCategories.map((category) => [category.slug, category]));
+
+  return sidebarCategoryHierarchy
+    .map((group, index) => {
+      const category = bySlug.get(group.parentSlug);
+      if (!category) return null;
+
+      return {
+        id: `nav-category-${category.id}`,
+        label: category.name,
+        href: `/shop?category=${encodeURIComponent(category.slug)}`,
+        order: index + 1,
+        visible: true,
+        children: group.childSlugs
+          .map((slug, childIndex) => {
+            const child = bySlug.get(slug);
+            if (!child || child.parentCategorySlug !== category.slug) return null;
+
+            return {
+              id: `nav-category-${child.id}`,
+              label: child.name,
+              href: `/shop?category=${encodeURIComponent(category.slug)}&subcategory=${encodeURIComponent(child.slug)}`,
+              order: childIndex + 1,
+              visible: true,
+            };
+          })
+          .filter((child): child is NonNullable<typeof child> => Boolean(child)),
+      };
+    })
+    .filter((group): group is NonNullable<typeof group> => Boolean(group));
 }
 
 export async function getStoreData() {

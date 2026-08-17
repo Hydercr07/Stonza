@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Menu, Search, ShoppingBag, X } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Logo } from "@/components/shared/logo";
+import { sidebarCategoryHierarchy } from "@/lib/category-hierarchy";
 import { cn } from "@/lib/utils";
 import type { Category, NavigationItem, Product, SiteSettings } from "@/types/domain";
 import { SearchDrawer } from "@/components/storefront/search-drawer";
@@ -26,33 +27,24 @@ type DrawerLinkItem = {
   }>;
 };
 
-const preferredRootSlugs = new Set(["men", "women"]);
-
 function buildNavGroups(categories: Category[]) {
   const visible = categories
     .filter((category) => category.active && category.status === "published")
     .sort((left, right) => left.sortOrder - right.sortOrder);
   const parentBySlug = new Map(visible.map((category) => [category.slug, category]));
-  const groups = new Map<string, NavGroup>();
+  return sidebarCategoryHierarchy
+    .map((group) => {
+      const category = parentBySlug.get(group.parentSlug);
+      if (!category) return null;
 
-  for (const category of visible) {
-    const parentSlug = category.parentCategorySlug;
-    if (!parentSlug || !parentBySlug.has(parentSlug)) {
-      groups.set(category.slug, { category, children: [] });
-      continue;
-    }
-
-    const group = groups.get(parentSlug) ?? {
-      category: parentBySlug.get(parentSlug)!,
-      children: [],
-    };
-    group.children.push(category);
-    groups.set(parentSlug, group);
-  }
-
-  const allGroups = [...groups.values()].sort((left, right) => left.category.sortOrder - right.category.sortOrder);
-  const preferredGroups = allGroups.filter((group) => preferredRootSlugs.has(group.category.slug));
-  return preferredGroups.length ? preferredGroups : allGroups;
+      return {
+        category,
+        children: group.childSlugs
+          .map((slug) => parentBySlug.get(slug))
+          .filter((child): child is Category => Boolean(child && child.parentCategorySlug === category.slug)),
+      } satisfies NavGroup;
+    })
+    .filter((group): group is NavGroup => Boolean(group));
 }
 
 function buildDrawerItems(navGroups: NavGroup[], navigationItems: NavigationItem[]) {

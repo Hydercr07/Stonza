@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { ProductCard } from "@/components/storefront/cards";
+import { sidebarCategoryHierarchy } from "@/lib/category-hierarchy";
 import { getEffectivePrice } from "@/lib/commerce";
 import { getLabelMap, listAdminCollections, listCategories, listProducts } from "@/lib/data/store";
-
-const preferredRootSlugs = new Set(["men", "women"]);
 
 function buildShopHref({
   category,
@@ -51,10 +50,10 @@ export default async function ShopPage({
     }),
   ]);
 
-  const parentCategories = categories.filter((entry) => !entry.parentCategorySlug);
-  const preferredParents = parentCategories.filter((entry) => preferredRootSlugs.has(entry.slug));
-  const visibleParentCategories = preferredParents.length ? preferredParents : parentCategories;
-  const subcategoryOptions = categories.filter((entry) => entry.parentCategorySlug === category);
+  const categoryBySlug = new Map(categories.map((entry) => [entry.slug, entry]));
+  const visibleParentCategories = sidebarCategoryHierarchy
+    .map((group) => categoryBySlug.get(group.parentSlug))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
   const visibleCollections = collections.filter((entry) => entry.active);
   const products = [...rawProducts].sort((left, right) => {
     if (sort === "price-asc") return getEffectivePrice(left) - getEffectivePrice(right);
@@ -111,7 +110,11 @@ export default async function ShopPage({
                   All Categories
                 </Link>
                 {visibleParentCategories.map((entry) => {
-                  const children = categories.filter((child) => child.parentCategorySlug === entry.slug);
+                  const configuredChildren =
+                    sidebarCategoryHierarchy.find((group) => group.parentSlug === entry.slug)?.childSlugs ?? [];
+                  const children = configuredChildren
+                    .map((slug) => categoryBySlug.get(slug))
+                    .filter((child): child is NonNullable<typeof child> => Boolean(child && child.parentCategorySlug === entry.slug));
                   const isActiveParent = category === entry.slug;
                   return (
                     <details key={entry.id} className="border-b border-[#eee4d6] last:border-b-0" open={isActiveParent}>
