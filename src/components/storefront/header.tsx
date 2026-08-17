@@ -48,24 +48,8 @@ function buildNavGroups(categories: Category[]) {
 }
 
 function buildDrawerItems(navGroups: NavGroup[], navigationItems: NavigationItem[]) {
-  const categoryItems: DrawerLinkItem[] = navGroups.map((group) => ({
-    id: group.category.id,
-    label: group.category.name,
-    href: `/categories/${group.category.slug}`,
-    children: group.children.length
-      ? group.children
-          .sort((left, right) => left.sortOrder - right.sortOrder)
-          .map((child) => ({
-            id: child.id,
-            label: child.name,
-            href: `/categories/${child.slug}`,
-          }))
-      : undefined,
-  }));
-
-  const categoryHrefs = new Set(categoryItems.map((item) => item.href));
   const utilityItems: DrawerLinkItem[] = navigationItems
-    .filter((item) => item.visible && !categoryHrefs.has(item.href))
+    .filter((item) => item.visible)
     .sort((left, right) => left.order - right.order)
     .map((item) => ({
       id: item.id,
@@ -79,6 +63,24 @@ function buildDrawerItems(navGroups: NavGroup[], navigationItems: NavigationItem
           label: child.label,
           href: child.href,
         })),
+    }));
+
+  const utilityLabels = new Set(utilityItems.map((item) => item.label.toLowerCase()));
+  const categoryItems: DrawerLinkItem[] = navGroups
+    .filter((group) => !utilityLabels.has(group.category.name.toLowerCase()))
+    .map((group) => ({
+      id: group.category.id,
+      label: group.category.name,
+      href: `/categories/${group.category.slug}`,
+      children: group.children.length
+        ? group.children
+            .sort((left, right) => left.sortOrder - right.sortOrder)
+            .map((child) => ({
+              id: child.id,
+              label: child.name,
+              href: `/categories/${child.slug}`,
+            }))
+        : undefined,
     }));
 
   return {
