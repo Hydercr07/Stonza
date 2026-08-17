@@ -11,11 +11,7 @@ export default async function CategoryDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [category, categories, products] = await Promise.all([
-    getCategoryBySlug(slug),
-    listCategories(),
-    listProducts({ categorySlug: slug }),
-  ]);
+  const [category, categories] = await Promise.all([getCategoryBySlug(slug), listCategories()]);
 
   if (!category) {
     notFound();
@@ -24,6 +20,11 @@ export default async function CategoryDetailPage({
     permanentRedirect(`/categories/${category.slug}`);
   }
 
+  const products = await listProducts(
+    category.parentCategorySlug
+      ? { categorySlug: category.parentCategorySlug, subcategorySlug: category.slug }
+      : { categorySlug: slug },
+  );
   const children = categories.filter((entry) => entry.parentCategorySlug === category.slug);
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   deleteProductAction,
@@ -30,14 +30,11 @@ export function ProductForm({
   categories: Category[];
   collections: Collection[];
 }) {
-  const activeCategories = categories.filter((category) => !category.deletedAt && category.status !== "trash");
-  const parentCategories = activeCategories.filter((category) => !category.parentCategorySlug);
+  const activeCategories = categories.filter((category) => !category.deletedAt && category.active && category.status === "published");
+  const allParentCategories = activeCategories.filter((category) => !category.parentCategorySlug);
+  const preferredParentCategories = allParentCategories.filter((category) => ["men", "women"].includes(category.slug));
+  const parentCategories = preferredParentCategories.length ? preferredParentCategories : allParentCategories;
   const childCategories = activeCategories.filter((category) => category.parentCategorySlug);
-  const selectedCategorySlugs = product?.categorySlugs?.length
-    ? product.categorySlugs
-    : product?.categorySlug
-      ? [product.categorySlug]
-      : [];
   const hasCategories = activeCategories.length > 0;
   const hasCollections = collections.length > 0;
   const canSubmit = hasCategories;
@@ -46,6 +43,13 @@ export function ProductForm({
     "general" | "media" | "pricing" | "inventory" | "description" | "seo" | "advanced"
   >("general");
   const [dirty, setDirty] = useState(false);
+  const initialParentCategorySlug =
+    parentCategories.find((category) => category.slug === product?.categorySlug)?.slug ??
+    (product?.subcategorySlug
+      ? childCategories.find((category) => category.slug === product.subcategorySlug)?.parentCategorySlug ?? ""
+      : "");
+  const [selectedParentCategorySlug, setSelectedParentCategorySlug] = useState(initialParentCategorySlug);
+  const [selectedSubcategorySlug, setSelectedSubcategorySlug] = useState(product?.subcategorySlug ?? "");
   const [sizeChart, setSizeChart] = useState<ProductSizeChart>(
     product?.sizeChart ?? {
       title: "",
@@ -61,10 +65,16 @@ export function ProductForm({
   const [variants, setVariants] = useState<ProductVariantOption[]>(product?.variants ?? []);
   const [specifications, setSpecifications] = useState<ProductSpecification[]>(product?.specifications ?? []);
 
-  const childCategoryOptions = childCategories.map((category) => ({
-    ...category,
-    parentName: categories.find((entry) => entry.slug === category.parentCategorySlug)?.name ?? "Parent",
-  }));
+  const childCategoryOptions = useMemo(
+    () =>
+      childCategories
+        .filter((category) => category.parentCategorySlug === selectedParentCategorySlug)
+        .map((category) => ({
+          ...category,
+          parentName: categories.find((entry) => entry.slug === category.parentCategorySlug)?.name ?? "Parent",
+        })),
+    [categories, childCategories, selectedParentCategorySlug],
+  );
 
   useEffect(() => {
     if (!dirty) return;
@@ -261,26 +271,34 @@ export function ProductForm({
                 </label>
               </div>
               <div className="grid gap-3">
-                <p className="text-sm font-medium text-white">Categories</p>
-                <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-black/15 p-4">
-                  {parentCategories.map((category) => (
-                    <label key={category.id} className="flex items-center gap-3 text-sm text-white/80">
-                      <input
-                        type="checkbox"
-                        name={`category:${category.slug}`}
-                        defaultChecked={selectedCategorySlugs.includes(category.slug)}
-                        className="h-4 w-4 rounded border-white/20 bg-black/30"
-                      />
-                      <span>{category.name}</span>
-                    </label>
-                  ))}
-                </div>
+                <p className="text-sm font-medium text-white">Category hierarchy</p>
+                <label className="grid gap-2 text-sm">
+                  Main category
+                  <select
+                    name="mainCategorySlug"
+                    value={selectedParentCategorySlug}
+                    onChange={(event) => {
+                      setSelectedParentCategorySlug(event.target.value);
+                      setSelectedSubcategorySlug("");
+                    }}
+                    className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
+                  >
+                    <option value="">Select main category</option>
+                    {parentCategories.map((category) => (
+                      <option key={category.id} value={category.slug}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
               <label className="grid gap-2 text-sm">
                 Subcategory
                 <select
                   name="subcategorySlug"
-                  defaultValue={product?.subcategorySlug ?? ""}
+                  value={selectedSubcategorySlug}
+                  onChange={(event) => setSelectedSubcategorySlug(event.target.value)}
+                  disabled={!selectedParentCategorySlug}
                   className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
                 >
                   <option value="">No subcategory</option>

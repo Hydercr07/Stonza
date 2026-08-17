@@ -26,6 +26,8 @@ type DrawerLinkItem = {
   }>;
 };
 
+const preferredRootSlugs = new Set(["men", "women"]);
+
 function buildNavGroups(categories: Category[]) {
   const visible = categories
     .filter((category) => category.active && category.status === "published")
@@ -48,7 +50,9 @@ function buildNavGroups(categories: Category[]) {
     groups.set(parentSlug, group);
   }
 
-  return [...groups.values()].sort((left, right) => left.category.sortOrder - right.category.sortOrder);
+  const allGroups = [...groups.values()].sort((left, right) => left.category.sortOrder - right.category.sortOrder);
+  const preferredGroups = allGroups.filter((group) => preferredRootSlugs.has(group.category.slug));
+  return preferredGroups.length ? preferredGroups : allGroups;
 }
 
 function buildDrawerItems(navGroups: NavGroup[], navigationItems: NavigationItem[]) {

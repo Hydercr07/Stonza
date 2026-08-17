@@ -80,6 +80,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     product.subcategorySlug
       ? categories.find((item) => item.slug === product.subcategorySlug)?.name ?? product.subcategorySlug
       : null;
+  const subcategoryParentSlug =
+    product.subcategorySlug
+      ? categories.find((item) => item.slug === product.subcategorySlug)?.parentCategorySlug ?? product.categorySlug
+      : undefined;
   const whatsappHref = settings.whatsappNumber
     ? `https://wa.me/${settings.whatsappNumber.replace(/[^\d]/g, "")}`
     : "https://wa.me/923058599096";
@@ -93,7 +97,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         {subcategoryLabel ? (
           <>
             <span>/</span>
-            <Link href={`/shop?subcategory=${product.subcategorySlug}`} className="hover:text-black">
+            <Link href={`/shop?category=${subcategoryParentSlug ?? product.categorySlug}&subcategory=${product.subcategorySlug}`} className="hover:text-black">
               {subcategoryLabel}
             </Link>
           </>

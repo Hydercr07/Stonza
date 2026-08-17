@@ -551,16 +551,26 @@ export async function saveProductAction(formData: FormData) {
   const parsedMedia = parseJson<ProductMediaItem[]>(formData.get("media"), []);
   const fallbackAsset = parsedMedia.length ? null : await getRecentUploadFallback(session.email);
   const media = syncMedia(parsedMedia.length ? parsedMedia : fallbackAsset ? [asProductMediaItem(fallbackAsset)] : []);
+  const mainCategorySlug = String(formData.get("mainCategorySlug") ?? "").trim();
   const selectedCategorySlugs = Array.from(formData.keys())
     .filter((key) => key.startsWith("category:"))
     .map((key) => key.replace("category:", ""));
-  const subcategorySlug = String(formData.get("subcategorySlug") ?? "").trim() || undefined;
+  const requestedSubcategorySlug = String(formData.get("subcategorySlug") ?? "").trim() || undefined;
   const store = await getStoreData();
-  const subcategory = subcategorySlug
-    ? store.categories.find((category) => category.slug === subcategorySlug)
+  const subcategory = requestedSubcategorySlug
+    ? store.categories.find((category) => category.slug === requestedSubcategorySlug)
     : null;
+  const subcategorySlug =
+    subcategory && (!mainCategorySlug || subcategory.parentCategorySlug === mainCategorySlug)
+      ? requestedSubcategorySlug
+      : undefined;
+  const parentCategorySlugs = selectedCategorySlugs.length
+    ? selectedCategorySlugs
+    : mainCategorySlug
+      ? [mainCategorySlug]
+      : [];
   const categorySlugs = [...new Set([
-    ...selectedCategorySlugs,
+    ...parentCategorySlugs,
     ...(subcategorySlug ? [subcategorySlug] : []),
     ...(subcategory?.parentCategorySlug ? [subcategory.parentCategorySlug] : []),
   ])];
@@ -1057,42 +1067,153 @@ export async function deleteJournalPostAction(formData: FormData) {
 export async function installRequestedTaxonomyAction() {
   const session = await requireAdminSession("categories:write");
   const store = await getStoreData();
-
-  const requested = [
-    { name: "Men Rings", parentCategorySlug: undefined },
-    { name: "Stones", parentCategorySlug: "men-rings" },
-    { name: "Women Rings", parentCategorySlug: undefined },
-    { name: "Stones", parentCategorySlug: "women-rings" },
-    { name: "Jewellery Sets", parentCategorySlug: undefined },
-    { name: "Pendants", parentCategorySlug: undefined },
-    { name: "Bracelets", parentCategorySlug: undefined },
-    { name: "Orig Gem Stones", parentCategorySlug: undefined },
-    { name: "Diamond", parentCategorySlug: undefined },
-    { name: "Diamond Sets", parentCategorySlug: undefined },
+  const now = new Date().toISOString();
+  const requested: Array<{
+    name: string;
+    slug: string;
+    legacySlugs: string[];
+    parentCategorySlug?: string;
+    shortDescription: string;
+    description: string;
+  }> = [
+    {
+      name: "Men",
+      slug: "men",
+      legacySlugs: [],
+      parentCategorySlug: undefined,
+      shortDescription: "Men's jewellery and stones curated for bold, grounded styling.",
+      description: "Men's jewellery and stones curated through the STONZA admin portal.",
+    },
+    {
+      name: "Women",
+      slug: "women",
+      legacySlugs: [],
+      parentCategorySlug: undefined,
+      shortDescription: "Women's jewellery and stones arranged in a clean editorial hierarchy.",
+      description: "Women's jewellery and stones curated through the STONZA admin portal.",
+    },
+    {
+      name: "Rings",
+      slug: "men-rings",
+      legacySlugs: ["men-rings"],
+      parentCategorySlug: "men",
+      shortDescription: "Men's rings shaped for statement and daily wear.",
+      description: "Men's rings managed within the STONZA Men category hierarchy.",
+    },
+    {
+      name: "Bracelets & Chains",
+      slug: "men-bracelets-chains",
+      legacySlugs: [],
+      parentCategorySlug: "men",
+      shortDescription: "Men's bracelets and chains presented in one unified rail.",
+      description: "Men's bracelets and chains managed within the STONZA Men category hierarchy.",
+    },
+    {
+      name: "Stones",
+      slug: "men-stones",
+      legacySlugs: ["men-rings-stones", "orig-gem-stones"],
+      parentCategorySlug: "men",
+      shortDescription: "Loose stones and collector pieces aligned to the men's catalogue.",
+      description: "Men's stones managed within the STONZA Men category hierarchy.",
+    },
+    {
+      name: "Rings",
+      slug: "women-rings",
+      legacySlugs: ["women-rings"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's rings arranged under the Women parent category.",
+      description: "Women's rings managed within the STONZA Women category hierarchy.",
+    },
+    {
+      name: "Bracelets",
+      slug: "women-bracelets",
+      legacySlugs: ["bracelets"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's bracelets arranged under the Women parent category.",
+      description: "Women's bracelets managed within the STONZA Women category hierarchy.",
+    },
+    {
+      name: "Jewellery Sets",
+      slug: "women-jewellery-sets",
+      legacySlugs: ["jewellery-sets"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's jewellery sets arranged under the Women parent category.",
+      description: "Women's jewellery sets managed within the STONZA Women category hierarchy.",
+    },
+    {
+      name: "Diamond",
+      slug: "women-diamond",
+      legacySlugs: ["diamond"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's diamond-focused pieces arranged under the Women parent category.",
+      description: "Women's diamond pieces managed within the STONZA Women category hierarchy.",
+    },
+    {
+      name: "Diamond Nose Pin",
+      slug: "women-diamond-nose-pin",
+      legacySlugs: ["diamond-sets"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's diamond nose pin assortment under the Women parent category.",
+      description: "Women's diamond nose pin pieces managed within the STONZA Women category hierarchy.",
+    },
   ];
 
   for (const [index, category] of requested.entries()) {
-    const slug = slugify(category.name);
-    const exists = store.categories.find(
-      (entry) => entry.slug === slug && (entry.parentCategorySlug ?? "") === (category.parentCategorySlug ?? ""),
-    );
-    if (exists) continue;
+    const existing =
+      store.categories.find((entry) => entry.slug === category.slug) ??
+      store.categories.find((entry) => category.legacySlugs.includes(entry.slug));
 
     await upsertCategory({
+      ...existing,
       name: category.name,
-      slug,
-      shortDescription: `${category.name} catalogue section.`,
-      description: `${category.name} catalogue section managed through the STONZA admin portal.`,
+      slug: category.slug,
+      shortDescription: category.shortDescription,
+      description: category.description,
       altText: category.name,
       parentCategorySlug: category.parentCategorySlug,
-      sortOrder: store.categories.length + index + 1,
-      featured: false,
+      sortOrder: index + 1,
+      featured: existing?.featured ?? false,
       active: true,
       status: "published",
-      createdBy: session.email,
+      seoTitle: existing?.seoTitle ?? category.name,
+      seoDescription: existing?.seoDescription ?? category.shortDescription,
+      openGraphImage: existing?.openGraphImage ?? existing?.featuredImage ?? "",
+      createdBy: existing?.createdBy ?? session.email,
       updatedBy: session.email,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      slugHistory:
+        existing && existing.slug !== category.slug
+          ? [...new Set([...(existing.slugHistory ?? []), existing.slug])]
+          : existing?.slugHistory,
+    });
+  }
+
+  const productRemaps: Array<{
+    legacySlugs: string[];
+    parentSlug: string;
+    subcategorySlug: string;
+  }> = [
+    { legacySlugs: ["men-rings"], parentSlug: "men", subcategorySlug: "men-rings" },
+    { legacySlugs: ["men-rings-stones", "orig-gem-stones"], parentSlug: "men", subcategorySlug: "men-stones" },
+    { legacySlugs: ["women-rings"], parentSlug: "women", subcategorySlug: "women-rings" },
+    { legacySlugs: ["bracelets"], parentSlug: "women", subcategorySlug: "women-bracelets" },
+    { legacySlugs: ["jewellery-sets"], parentSlug: "women", subcategorySlug: "women-jewellery-sets" },
+    { legacySlugs: ["diamond"], parentSlug: "women", subcategorySlug: "women-diamond" },
+    { legacySlugs: ["diamond-sets"], parentSlug: "women", subcategorySlug: "women-diamond-nose-pin" },
+  ];
+
+  for (const product of store.products) {
+    const currentSlugs = [...new Set([product.categorySlug, ...(product.categorySlugs ?? []), product.subcategorySlug ?? ""])].filter(Boolean);
+    const mapping = productRemaps.find((entry) => currentSlugs.some((slug) => entry.legacySlugs.includes(slug)));
+    if (!mapping) continue;
+
+    await upsertProduct({
+      ...product,
+      categorySlug: mapping.parentSlug,
+      categorySlugs: [mapping.parentSlug, mapping.subcategorySlug],
+      subcategorySlug: mapping.subcategorySlug,
+      updatedAt: now,
     });
   }
 
@@ -1101,7 +1222,7 @@ export async function installRequestedTaxonomyAction() {
     actor: session.email,
     entity: "category",
     entityId: "requested-taxonomy",
-    detail: "Installed requested jewellery taxonomy",
+    detail: "Installed Men/Women category hierarchy",
   });
 
   revalidatePath("/admin/categories");

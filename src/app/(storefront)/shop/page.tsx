@@ -3,6 +3,31 @@ import { ProductCard } from "@/components/storefront/cards";
 import { getEffectivePrice } from "@/lib/commerce";
 import { getLabelMap, listAdminCollections, listCategories, listProducts } from "@/lib/data/store";
 
+const preferredRootSlugs = new Set(["men", "women"]);
+
+function buildShopHref({
+  category,
+  subcategory,
+  search,
+  collection,
+  sort,
+}: {
+  category?: string;
+  subcategory?: string;
+  search?: string;
+  collection?: string;
+  sort?: string;
+}) {
+  const params = new URLSearchParams();
+  if (search) params.set("q", search);
+  if (category) params.set("category", category);
+  if (subcategory) params.set("subcategory", subcategory);
+  if (collection) params.set("collection", collection);
+  if (sort && sort !== "featured") params.set("sort", sort);
+  const query = params.toString();
+  return query ? `/shop?${query}` : "/shop";
+}
+
 export default async function ShopPage({
   searchParams,
 }: {
@@ -27,6 +52,8 @@ export default async function ShopPage({
   ]);
 
   const parentCategories = categories.filter((entry) => !entry.parentCategorySlug);
+  const preferredParents = parentCategories.filter((entry) => preferredRootSlugs.has(entry.slug));
+  const visibleParentCategories = preferredParents.length ? preferredParents : parentCategories;
   const subcategoryOptions = categories.filter((entry) => entry.parentCategorySlug === category);
   const visibleCollections = collections.filter((entry) => entry.active);
   const products = [...rawProducts].sort((left, right) => {
@@ -71,45 +98,61 @@ export default async function ShopPage({
 
             {/* Categories */}
             <div>
-              <label htmlFor="category" className="mb-3 block text-xs font-semibold uppercase tracking-[0.26em] text-[#171717]">
+              <div className="mb-3 block text-xs font-semibold uppercase tracking-[0.26em] text-[#171717]">
                 Category
-              </label>
-              <select
-                id="category"
-                name="category"
-                defaultValue={category ?? ""}
-                className="w-full rounded-lg border border-[#d8ccb9] bg-white px-4 py-3 text-sm focus:border-[#10233a] focus:outline-none"
-              >
-                <option value="">All Categories</option>
-                {parentCategories.map((entry) => (
-                  <option key={entry.id} value={entry.slug}>
-                    {entry.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Subcategories */}
-            {subcategoryOptions.length > 0 && (
-              <div>
-                <label htmlFor="subcategory" className="mb-3 block text-xs font-semibold uppercase tracking-[0.26em] text-[#171717]">
-                  Type
-                </label>
-                <select
-                  id="subcategory"
-                  name="subcategory"
-                  defaultValue={subcategory ?? ""}
-                  className="w-full rounded-lg border border-[#d8ccb9] bg-white px-4 py-3 text-sm focus:border-[#10233a] focus:outline-none"
-                >
-                  <option value="">All Types</option>
-                  {subcategoryOptions.map((entry) => (
-                    <option key={entry.id} value={entry.slug}>
-                      {entry.name}
-                    </option>
-                  ))}
-                </select>
               </div>
-            )}
+              <input type="hidden" name="category" value={category ?? ""} />
+              <input type="hidden" name="subcategory" value={subcategory ?? ""} />
+              <div className="rounded-[1.25rem] border border-[#e3d8c7] bg-white">
+                <Link
+                  href={buildShopHref({ search, collection, sort })}
+                  className={`block border-b border-[#eee4d6] px-4 py-3 text-sm ${!category ? "font-semibold text-[#171717]" : "text-black/62"}`}
+                >
+                  All Categories
+                </Link>
+                {visibleParentCategories.map((entry) => {
+                  const children = categories.filter((child) => child.parentCategorySlug === entry.slug);
+                  const isActiveParent = category === entry.slug;
+                  return (
+                    <details key={entry.id} className="border-b border-[#eee4d6] last:border-b-0" open={isActiveParent}>
+                      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-[#171717]">
+                        <span className="flex items-center justify-between gap-3">
+                          <span className={isActiveParent && !subcategory ? "font-semibold" : ""}>{entry.name}</span>
+                          <span className="text-black/34">{children.length ? "+" : ""}</span>
+                        </span>
+                      </summary>
+                      {children.length ? (
+                        <div className="px-4 pb-3">
+                          <div className="grid gap-1 border-l border-[#e7dccd] pl-3">
+                            <Link
+                              href={buildShopHref({ search, category: entry.slug, collection, sort })}
+                              className={`py-2 text-sm ${isActiveParent && !subcategory ? "font-semibold text-[#171717]" : "text-black/62"}`}
+                            >
+                              View all {entry.name}
+                            </Link>
+                            {children.map((child) => (
+                              <Link
+                                key={child.id}
+                                href={buildShopHref({
+                                  search,
+                                  category: entry.slug,
+                                  subcategory: child.slug,
+                                  collection,
+                                  sort,
+                                })}
+                                className={`py-2 text-sm ${subcategory === child.slug ? "font-semibold text-[#171717]" : "text-black/62"}`}
+                              >
+                                {child.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </details>
+                  );
+                })}
+              </div>
+            </div>
 
             {/* Collections */}
             {visibleCollections.length > 0 && (

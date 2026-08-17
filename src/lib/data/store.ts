@@ -139,6 +139,7 @@ const defaultContentLabels: ContentLabel[] = Object.entries(defaultLabels).map((
 }));
 
 const defaultHeroSlides: HeroSettings["carousel"]["slides"] = [];
+const preferredCategoryRootSlugs = ["men", "women"] as const;
 
 const placeholderAssetPattern = /(^\/placeholders\/)|(^\/brand\/stonza-logo\.png$)/i;
 
@@ -1021,12 +1022,14 @@ function ensureUniqueSlug(existingSlugs: string[], preferred: string, currentId?
 
 function buildCategoryNavigation(categories: Category[]) {
   const visibleCategories = categories.filter(visibleCategory).sort((a, b) => a.sortOrder - b.sortOrder);
-  return visibleCategories
-    .filter((category) => !category.parentCategorySlug)
+  const rootCategories = visibleCategories.filter((category) => !category.parentCategorySlug);
+  const preferredRoots = rootCategories.filter((category) => preferredCategoryRootSlugs.includes(category.slug as (typeof preferredCategoryRootSlugs)[number]));
+  const activeRoots = preferredRoots.length ? preferredRoots : rootCategories;
+  return activeRoots
     .map((category, index) => ({
       id: `nav-category-${category.id}`,
       label: category.name,
-      href: `/categories/${category.slug}`,
+      href: `/shop?category=${encodeURIComponent(category.slug)}`,
       order: index + 1,
       visible: true,
       children: visibleCategories
@@ -1034,7 +1037,7 @@ function buildCategoryNavigation(categories: Category[]) {
         .map((child, childIndex) => ({
           id: `nav-category-${child.id}`,
           label: child.name,
-          href: `/categories/${child.slug}`,
+          href: `/shop?category=${encodeURIComponent(category.slug)}&subcategory=${encodeURIComponent(child.slug)}`,
           order: childIndex + 1,
           visible: true,
         })),

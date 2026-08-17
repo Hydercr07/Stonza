@@ -36,7 +36,7 @@ export default async function AdminCategoriesPage({
         </div>
         <div className="flex flex-wrap gap-3">
           <form action={installRequestedTaxonomyAction}>
-            <Button variant="outline">Install requested taxonomy</Button>
+            <Button variant="outline">Install Men / Women taxonomy</Button>
           </form>
           <Button asChild>
             <Link href="/admin/categories/new">New category</Link>
