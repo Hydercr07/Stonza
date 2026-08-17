@@ -430,3 +430,76 @@ img {
 .admin-login :is(p, h1, h2, h3, h4, h5, h6, label, span, div)[class*="text-white"] {
   color: #171717 !important;
 }
+
+.admin-portal [data-ui="button"],
+.admin-login [data-ui="button"] {
+  color-scheme: light;
+}
+
+.admin-portal [data-ui="button"][data-variant="default"],
+.admin-login [data-ui="button"][data-variant="default"] {
+  background: #171717 !important;
+  color: #fffdf9 !important;
+  border-color: #171717 !important;
+}
+
+.admin-portal [data-ui="button"][data-variant="default"]:hover,
+.admin-login [data-ui="button"][data-variant="default"]:hover,
+.admin-portal [data-ui="button"][data-variant="default"]:active,
+.admin-login [data-ui="button"][data-variant="default"]:active {
+  background: #2a2621 !important;
+  color: #fffdf9 !important;
+}
+
+.admin-portal [data-ui="button"][data-variant="outline"],
+.admin-login [data-ui="button"][data-variant="outline"],
+.admin-portal [data-ui="button"][data-variant="ghost"],
+.admin-login [data-ui="button"][data-variant="ghost"] {
+  background: #fffdfa !important;
+  color: #171717 !important;
+  border-color: #d8ccb9 !important;
+}
+
+.admin-portal [data-ui="button"][data-variant="outline"]:hover,
+.admin-login [data-ui="button"][data-variant="outline"]:hover,
+.admin-portal [data-ui="button"][data-variant="ghost"]:hover,
+.admin-login [data-ui="button"][data-variant="ghost"]:hover,
+.admin-portal [data-ui="button"][data-variant="outline"]:active,
+.admin-login [data-ui="button"][data-variant="outline"]:active,
+.admin-portal [data-ui="button"][data-variant="ghost"]:active,
+.admin-login [data-ui="button"][data-variant="ghost"]:active {
+  background: #f6f1e8 !important;
+  color: #171717 !important;
+  border-color: #cdbda8 !important;
+}
+
+.admin-portal [data-ui="button"][data-variant="gold"],
+.admin-login [data-ui="button"][data-variant="gold"] {
+  background: #efe1c5 !important;
+  color: #171717 !important;
+  border-color: #c8ab79 !important;
+}
+
+.admin-portal [data-ui="button"][data-variant="gold"]:hover,
+.admin-login [data-ui="button"][data-variant="gold"]:hover,
+.admin-portal [data-ui="button"][data-variant="gold"]:active,
+.admin-login [data-ui="button"][data-variant="gold"]:active {
+  background: #e5d3b2 !important;
+  color: #171717 !important;
+}
+
+.admin-portal [data-ui="button"]:focus-visible,
+.admin-login [data-ui="button"]:focus-visible {
+  outline: 2px solid #c8ab79 !important;
+  outline-offset: 3px;
+}
+
+.admin-portal [data-ui="button"][disabled],
+.admin-login [data-ui="button"][disabled],
+.admin-portal [data-ui="button"][aria-disabled="true"],
+.admin-login [data-ui="button"][aria-disabled="true"] {
+  background: #ece6dc !important;
+  color: #6f6558 !important;
+  border-color: #d8ccb9 !important;
+  opacity: 1 !important;
+}
