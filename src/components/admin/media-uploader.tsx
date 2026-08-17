@@ -157,13 +157,13 @@ export function AdminMediaUploader({
     <div className="space-y-4" data-admin-uploading={uploading ? "true" : undefined}>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-white">{label}</p>
-          <p className="text-sm leading-6 text-white/58">{description}</p>
+          <p className="text-sm font-medium text-[#171717]">{label}</p>
+          <p className="text-sm leading-6 text-[#6f6558]">{description}</p>
         </div>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="rounded-full border border-white/12 px-4 py-2 text-sm text-white transition hover:border-white/24 hover:bg-white/6"
+          className="rounded-full border border-[#d8ccb9] bg-white px-4 py-2 text-sm text-[#5f564b] transition hover:border-[#cdbda8] hover:bg-[#f9f5ee] hover:text-[#171717]"
         >
           Browse Files
         </button>
@@ -199,12 +199,12 @@ export function AdminMediaUploader({
         }}
         className={cn(
           "flex min-h-44 w-full flex-col items-center justify-center rounded-[1.75rem] border border-dashed px-6 text-center transition",
-          dragOver ? "border-[#d5c7a9] bg-[#1c1a16]" : "border-white/14 bg-black/20 hover:border-white/28",
+          dragOver ? "border-[#c9ae7b] bg-[#f8f1e5]" : "border-[#ddcfbc] bg-[#fdfaf4] hover:border-[#c9ae7b] hover:bg-[#faf3e8]",
         )}
       >
         {uploading ? <Loader2 className="mb-4 h-7 w-7 animate-spin text-accent" /> : <Upload className="mb-4 h-7 w-7 text-accent" />}
-        <p className="text-base font-medium text-white">Drag and drop files here</p>
-        <p className="mt-2 max-w-md text-sm leading-6 text-white/55">
+        <p className="text-base font-medium text-[#171717]">Drag and drop files here</p>
+        <p className="mt-2 max-w-md text-sm leading-6 text-[#6f6558]">
           Or use Browse Files.
         </p>
       </button>
@@ -233,7 +233,7 @@ export function AdminMediaUploader({
                 {previewableImage(item.url) ? (
                   <Image src={item.url} alt={item.altText} fill loading="eager" sizes="(min-width: 1280px) 20vw, (min-width: 768px) 40vw, 100vw" className="object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center p-4 text-center text-sm text-white/55">
+                  <div className="flex h-full items-center justify-center p-4 text-center text-sm text-[#6f6558]">
                     {item.fileName}
                   </div>
                 )}
@@ -251,10 +251,10 @@ export function AdminMediaUploader({
               </div>
               <div className="space-y-3 p-4">
                 <div>
-                  <p className="truncate text-sm font-medium text-white">{item.fileName}</p>
-                  <p className="text-xs text-white/50">{humanFileSize(item.size)}</p>
+                  <p className="truncate text-sm font-medium text-[#171717]">{item.fileName}</p>
+                  <p className="text-xs text-[#8b7e70]">{humanFileSize(item.size)}</p>
                 </div>
-                <label className="grid gap-2 text-xs uppercase tracking-[0.22em] text-white/45">
+                <label className="grid gap-2 text-xs uppercase tracking-[0.22em] text-[#8b7e70]">
                   Alt text
                   <input
                     value={item.altText}
@@ -265,7 +265,7 @@ export function AdminMediaUploader({
                         ),
                       )
                     }
-                    className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm normal-case tracking-normal text-white"
+                    className="rounded-2xl border border-[#d8ccb9] bg-[#fffdf9] px-3 py-2 text-sm normal-case tracking-normal text-[#171717]"
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -274,12 +274,12 @@ export function AdminMediaUploader({
                     onClick={() => {
                       syncItems((current) => current.filter((entry) => entry.id !== item.id));
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-white/70 transition hover:bg-white/6 hover:text-white"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#d8ccb9] bg-white px-3 py-2 text-xs text-[#5f564b] transition hover:bg-[#f9f5ee] hover:text-[#171717]"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Remove
                   </button>
-                  <span className="inline-flex items-center rounded-full border border-white/10 px-3 py-2 text-xs text-white/50">
+                  <span className="inline-flex items-center rounded-full border border-[#d8ccb9] bg-white px-3 py-2 text-xs text-[#8b7e70]">
                     Drag to reorder
                   </span>
                 </div>

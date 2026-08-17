@@ -274,7 +274,7 @@ export function AdminSidebar({
                           className={cn(
                             "flex items-center gap-3 rounded-2xl px-3 py-3 text-sm",
                             active
-                              ? "bg-[#161616] text-white shadow-[0_12px_32px_rgba(15,15,15,0.18)]"
+                              ? "border border-[#dcc8a5] bg-[#f7f0e4] text-[#171717] shadow-[0_12px_32px_rgba(15,15,15,0.08)]"
                               : "text-[#5f564b] hover:bg-[#f6f1e8] hover:text-[#171717]",
                           )}
                         >

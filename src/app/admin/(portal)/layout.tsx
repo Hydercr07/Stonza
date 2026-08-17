@@ -71,7 +71,7 @@ export default async function AdminPortalLayout({
   ];
 
   return (
-    <div className="grid min-h-screen bg-[#f3efe8] text-[#171717] lg:grid-cols-[320px_1fr]">
+    <div className="admin-portal grid min-h-screen bg-[#f3efe8] text-[#171717] lg:grid-cols-[320px_1fr]">
       <AdminSidebar role={session.role} searchItems={searchItems} />
       <main className="p-4 md:p-6 xl:p-8">{children}</main>
     </div>

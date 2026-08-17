@@ -150,14 +150,16 @@ export function ProductForm({
           {state.error}
         </div>
       ) : null}
-      <div className="flex flex-wrap gap-2 rounded-[1.5rem] border border-white/10 bg-[#111213] p-3">
+      <div className="flex flex-wrap gap-2 rounded-[1.5rem] border border-[#e7dfd1] bg-[#fffdfa] p-3 shadow-sm">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={`rounded-full px-4 py-2 text-sm ${
-              activeTab === tab.id ? "bg-white text-black" : "text-white/60 hover:bg-white/8 hover:text-white"
+              activeTab === tab.id
+                ? "border border-[#dcc8a5] bg-[#f7f0e4] text-[#171717]"
+                : "text-[#6f6558] hover:bg-[#f6f1e8] hover:text-[#171717]"
             }`}
           >
             {tab.label}
