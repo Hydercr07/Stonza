@@ -503,3 +503,36 @@ img {
   border-color: #d8ccb9 !important;
   opacity: 1 !important;
 }
+
+.admin-portal button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"]),
+.admin-login button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"]) {
+  background: #fffdfa !important;
+  color: #111111 !important;
+  border-color: #d8ccb9 !important;
+}
+
+.admin-portal button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"]):hover,
+.admin-login button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"]):hover,
+.admin-portal button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"]):active,
+.admin-login button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"]):active {
+  background: #f6f1e8 !important;
+  color: #111111 !important;
+  border-color: #cdbda8 !important;
+}
+
+.admin-portal button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"]):focus-visible,
+.admin-login button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"]):focus-visible {
+  outline: 2px solid #c8ab79 !important;
+  outline-offset: 3px;
+  color: #111111 !important;
+}
+
+.admin-portal button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"])[disabled],
+.admin-login button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"])[disabled],
+.admin-portal button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"])[aria-disabled="true"],
+.admin-login button:not([data-ui="button"]):is([class*="border-white/10"], [class*="border-white/12"], [class*="border-white/8"])[aria-disabled="true"] {
+  background: #ece6dc !important;
+  color: #6f6558 !important;
+  border-color: #d8ccb9 !important;
+  opacity: 1 !important;
+}
