@@ -97,6 +97,7 @@ export function ProductForm({
     { id: "seo", label: "SEO" },
     { id: "advanced", label: "Advanced" },
   ] as const;
+  const panelClassName = (tabId: typeof tabs[number]["id"]) => (activeTab === tabId ? undefined : "hidden");
 
   return (
     <div className="space-y-6">
@@ -194,7 +195,7 @@ export function ProductForm({
           name="specificationsData"
           value={specifications.length ? JSON.stringify(specifications) : ""}
         />
-        {activeTab === "general" ? (
+        <div className={panelClassName("general")}>
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
             <label className="grid gap-2 text-sm">
@@ -345,9 +346,9 @@ export function ProductForm({
               </div>
             </div>
           </div>
-        ) : null}
+        </div>
 
-        {activeTab === "media" ? (
+        <div className={panelClassName("media")}>
           <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
             <AdminMediaUploader
               name="media"
@@ -356,9 +357,9 @@ export function ProductForm({
               initialItems={product?.media}
             />
           </div>
-        ) : null}
+        </div>
 
-        {activeTab === "pricing" ? (
+        <div className={panelClassName("pricing")}>
           <div className="grid gap-6 lg:grid-cols-2">
             <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -389,9 +390,9 @@ export function ProductForm({
               </p>
             </div>
           </div>
-        ) : null}
+        </div>
 
-        {activeTab === "inventory" ? (
+        <div className={panelClassName("inventory")}>
           <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -589,9 +590,9 @@ export function ProductForm({
           </div>
             </div>
           </div>
-        ) : null}
+        </div>
 
-        {activeTab === "description" ? (
+        <div className={panelClassName("description")}>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
             <div className="space-y-4 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
               <div>
@@ -650,9 +651,9 @@ export function ProductForm({
               should appear on the product page.
             </div>
           </div>
-        ) : null}
+        </div>
 
-        {activeTab === "seo" ? (
+        <div className={panelClassName("seo")}>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
             <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
               <label className="grid gap-2 text-sm">
@@ -685,9 +686,9 @@ export function ProductForm({
               Keep titles concise, describe the stone naturally, and use a polished featured image for sharing.
             </div>
           </div>
-        ) : null}
+        </div>
 
-        {activeTab === "advanced" ? (
+        <div className={panelClassName("advanced")}>
           <div className="grid gap-6 lg:grid-cols-[1fr_1fr]">
             <div className="space-y-5 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
               <label className="grid gap-2 text-sm">
@@ -718,7 +719,7 @@ export function ProductForm({
               Advanced controls stay tucked away here so everyday catalog editing stays calm and focused.
             </div>
           </div>
-        ) : null}
+        </div>
 
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-[#111213] p-4 shadow-[0_14px_40px_rgba(0,0,0,0.2)]">
           <p className="text-sm text-white/65">

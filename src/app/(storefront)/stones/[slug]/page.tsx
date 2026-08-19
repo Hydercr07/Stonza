@@ -1,4 +1,3 @@
-import { cache } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -10,11 +9,9 @@ import { hasDiscount } from "@/lib/commerce";
 import { getLabelMap, getProductBySlug, getSiteSettings, listCategories, listCollections, listProducts } from "@/lib/data/store";
 import { getProductDisplayPrice, formatMoney } from "@/lib/utils";
 
-const getCachedProductBySlug = cache(async (slug: string) => getProductBySlug(slug));
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getCachedProductBySlug(slug);
+  const product = await getProductBySlug(slug);
 
   if (!product) {
     notFound();
@@ -38,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const product = await getCachedProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) notFound();
   if (product.slug !== slug && product.slugHistory?.includes(slug)) {
     permanentRedirect(`/stones/${product.slug}`);

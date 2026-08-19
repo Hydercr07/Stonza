@@ -697,6 +697,15 @@ export async function saveProductAction(formData: FormData) {
     entityId: nextProduct.id,
     detail: nextProduct.name,
   });
+  if (existing?.slug && existing.slug !== nextProduct.slug) {
+    revalidatePath(`/stones/${existing.slug}`);
+  }
+  if (existing?.collectionSlug && existing.collectionSlug !== nextProduct.collectionSlug) {
+    revalidatePath(`/collections/${existing.collectionSlug}`);
+  }
+  if (nextProduct.collectionSlug) {
+    revalidatePath(`/collections/${nextProduct.collectionSlug}`);
+  }
   revalidatePath("/");
   revalidatePath("/shop");
   revalidatePath(`/stones/${nextProduct.slug}`);
