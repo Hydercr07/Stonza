@@ -1,6 +1,24 @@
+import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ProductCard } from "@/components/storefront/cards";
 import { getCollectionBySlug, getLabelMap, listProducts } from "@/lib/data/store";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const collection = await getCollectionBySlug(slug);
+  if (!collection) return {};
+
+  const title = collection.seoTitle || collection.name;
+  const description = collection.seoDescription || collection.description || undefined;
+  const image = collection.openGraphImage || collection.featuredImage || undefined;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, images: image ? [image] : undefined },
+    twitter: { title, description, images: image ? [image] : undefined },
+  };
+}
 
 export default async function CollectionDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

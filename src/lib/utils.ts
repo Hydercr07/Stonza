@@ -16,6 +16,21 @@ export function formatMoney(amount: number, currency = "PKR") {
   return `${normalizedCurrency} ${formatted}`;
 }
 
+/**
+ * Turns a URL slug into a presentable label ("women-diamond-nose-pin" ->
+ * "Women Diamond Nose Pin") for the spots that only have a slug on hand
+ * (e.g. a product card showing its category/collection) and would
+ * otherwise print the raw, hyphenated slug straight to customers.
+ */
+export function humanizeSlug(slug: string | undefined | null) {
+  if (!slug) return "";
+  return slug
+    .split("-")
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
 export function slugify(value: string) {
   return value
     .normalize("NFKD")

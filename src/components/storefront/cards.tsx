@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Logo } from "@/components/shared/logo";
 import { hasDiscount } from "@/lib/commerce";
 import type { Category, Collection, Product } from "@/types/domain";
-import { cn, getProductDisplayPrice, formatMoney, isRemoteAsset } from "@/lib/utils";
+import { cn, getProductDisplayPrice, formatMoney, humanizeSlug, isRemoteAsset } from "@/lib/utils";
 import { QuickBuyModal } from "@/components/storefront/quick-buy-modal";
 
 function VisualFallback({ label }: { label: string }) {
@@ -149,7 +149,7 @@ export function ProductCard({
         </div>
         <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between gap-3 rounded-full bg-white/94 px-3 py-2 shadow-[0_10px_24px_rgba(12,16,22,0.12)] backdrop-blur-md transition duration-300 group-hover:translate-y-0 lg:translate-y-4 lg:opacity-0 lg:group-hover:opacity-100">
           <div className="min-w-0">
-            <p className="truncate text-[10px] uppercase tracking-[0.18em] text-black/42">{product.origin || product.categorySlug || product.sku}</p>
+            <p className="truncate text-[10px] uppercase tracking-[0.18em] text-black/42">{product.origin || humanizeSlug(product.categorySlug) || product.sku}</p>
             <p className="truncate text-xs font-medium text-black/72">
               {product.variants?.length ? `${product.variants.length} options` : product.sizes?.length ? `${product.sizes.length} sizes` : "Ready to ship"}
             </p>
@@ -164,7 +164,7 @@ export function ProductCard({
       <div className="space-y-3 px-3 py-4 sm:px-5">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-black/40">
-            <span>{product.collectionSlug || product.categorySlug}</span>
+            <span>{humanizeSlug(product.collectionSlug || product.categorySlug)}</span>
             {product.variants?.slice(0, 2).map((variant) => (
               <span key={variant.id} className="rounded-full bg-[#f6f2ea] px-2 py-1">
                 {variant.label || variant.value}

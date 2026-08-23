@@ -1,9 +1,27 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { ProductCard } from "@/components/storefront/cards";
 import { getCategoryBySlug, listCategories, listProducts } from "@/lib/data/store";
 import { isRemoteAsset } from "@/lib/utils";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const category = await getCategoryBySlug(slug);
+  if (!category) return {};
+
+  const title = category.seoTitle || category.name;
+  const description = category.seoDescription || category.shortDescription || undefined;
+  const image = category.openGraphImage || category.featuredImage || undefined;
+
+  return {
+    title,
+    description,
+    openGraph: { title, description, images: image ? [image] : undefined },
+    twitter: { title, description, images: image ? [image] : undefined },
+  };
+}
 
 export default async function CategoryDetailPage({
   params,

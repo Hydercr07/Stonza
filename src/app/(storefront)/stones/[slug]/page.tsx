@@ -17,19 +17,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     notFound();
   }
 
+  // The root layout already applies a "%s | STONZA" title template, so the
+  // title set here should be just the page-specific part -- appending
+  // "| STONZA" again produced "Product Name | STONZA | STONZA" in the
+  // browser tab and in search/social previews.
+  const title = product.seoTitle || product.name;
+  const description = product.seoDescription || product.shortDescription || undefined;
+  const image = product.openGraphImage || product.featuredImage || undefined;
+
   return {
-    title: product.seoTitle || `${product.name} | STONZA`,
-    description: product.seoDescription || product.shortDescription || undefined,
-    openGraph: {
-      title: product.seoTitle || `${product.name} | STONZA`,
-      description: product.seoDescription || product.shortDescription || undefined,
-      images: product.openGraphImage || product.featuredImage ? [product.openGraphImage || product.featuredImage] : undefined,
-    },
-    twitter: {
-      title: product.seoTitle || `${product.name} | STONZA`,
-      description: product.seoDescription || product.shortDescription || undefined,
-      images: product.openGraphImage || product.featuredImage ? [product.openGraphImage || product.featuredImage] : undefined,
-    },
+    title,
+    description,
+    openGraph: { title, description, images: image ? [image] : undefined },
+    twitter: { title, description, images: image ? [image] : undefined },
   };
 }
 

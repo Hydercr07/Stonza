@@ -1,7 +1,7 @@
 export const sidebarCategoryHierarchy = [
   {
     parentSlug: "men",
-    childSlugs: ["men-rings", "men-bracelets-chains", "men-stones"],
+    childSlugs: ["men-rings", "men-bracelets-chains"],
   },
   {
     parentSlug: "women",
@@ -12,6 +12,11 @@ export const sidebarCategoryHierarchy = [
       "women-diamond",
       "women-diamond-nose-pin",
     ],
+  },
+  {
+    // Standalone top-level category, not nested under Men or Women.
+    parentSlug: "stones",
+    childSlugs: [],
   },
 ] as const;
 

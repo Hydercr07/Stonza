@@ -7,6 +7,12 @@ export function Footer({ settings }: { settings: SiteSettings }) {
   const visibleFooterSections = settings.footer.sections
     .filter((section) => section.links.length)
     .sort((a, b) => a.order - b.order);
+  const secondarySectionHrefs = new Set(visibleFooterSections[1]?.links.map((link) => link.href));
+  // A link configured in both the legal list and the second footer section
+  // (e.g. FAQ in both) would otherwise render twice, once per column.
+  const legalLinks = settings.footer.legalLinks.filter(
+    (link) => link.visible && !secondarySectionHrefs.has(link.href),
+  );
 
   return (
     <footer className="mt-16 border-t border-[#1d3659] bg-[#10233a] text-white">
@@ -34,39 +40,36 @@ export function Footer({ settings }: { settings: SiteSettings }) {
           </div>
         </div>
 
-        <div className="grid gap-8 py-10 sm:grid-cols-2 xl:grid-cols-[1.1fr_0.8fr_0.8fr_0.9fr]">
+        <div className="grid gap-8 py-10 sm:grid-cols-2 xl:grid-cols-[1.1fr_0.7fr_0.7fr_0.7fr_0.9fr]">
           <div className="space-y-4">
             <Logo light src={settings.brand.lightLogo} alt={`${settings.brand.name} ${settings.brand.tagline}`} className="w-[128px]" />
             <p className="text-[11px] uppercase tracking-[0.24em] text-white/42">{settings.brand.tagline}</p>
             <p className="max-w-sm text-sm leading-7 text-white/58">{settings.siteDescription}</p>
           </div>
-          <div>
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/42">
-              {visibleFooterSections[0]?.title ?? "Explore"}
-            </p>
-            <div className="grid gap-3 text-sm text-white/66">
-              {visibleFooterSections[0]?.links.map((link) => (
-                <Link key={link.id} href={link.href} className="hover:text-white">
-                  {link.label}
-                </Link>
-              ))}
+          {visibleFooterSections.slice(0, 2).map((section) => (
+            <div key={section.id}>
+              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/42">{section.title}</p>
+              <div className="grid gap-3 text-sm text-white/66">
+                {section.links.map((link) => (
+                  <Link key={link.id} href={link.href} className="hover:text-white">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-          <div>
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/42">Legal</p>
-            <div className="grid gap-3 text-sm text-white/66">
-              {settings.footer.legalLinks.filter((link) => link.visible).map((link) => (
-                <Link key={link.id} href={link.href} className="hover:text-white">
-                  {link.label}
-                </Link>
-              ))}
-              {visibleFooterSections[1]?.links.map((link) => (
-                <Link key={link.id} href={link.href} className="hover:text-white">
-                  {link.label}
-                </Link>
-              ))}
+          ))}
+          {legalLinks.length ? (
+            <div>
+              <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/42">Legal</p>
+              <div className="grid gap-3 text-sm text-white/66">
+                {legalLinks.map((link) => (
+                  <Link key={link.id} href={link.href} className="hover:text-white">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
           <div>
             <p className="mb-4 text-sm font-semibold uppercase tracking-[0.24em] text-white/42">Storefront</p>
             <div className="grid gap-3 text-sm leading-7 text-white/66">
