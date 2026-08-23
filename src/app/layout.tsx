@@ -19,6 +19,18 @@ const organizationJsonLd = {
   slogan: siteConfig.tagline,
   areaServed: "PK",
   sameAs: [] as string[],
+  // What this business actually sells, in plain terms -- the field AI answer
+  // engines (ChatGPT, Gemini, Perplexity) lean on most for "who sells X"
+  // questions, since it's structured rather than something they have to
+  // infer from page copy.
+  knowsAbout: [
+    "Original stones",
+    "Gemstones",
+    "Jewelry",
+    "Fancy jewelry",
+    "Silver jewelry",
+    "Jewellery sets",
+  ],
 };
 
 const websiteJsonLd = {
@@ -42,6 +54,7 @@ export const metadata: Metadata = {
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  keywords: siteConfig.keywords,
   applicationName: siteConfig.name,
   alternates: { canonical: "/" },
   openGraph: {

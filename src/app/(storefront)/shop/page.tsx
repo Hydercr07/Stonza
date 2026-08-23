@@ -6,9 +6,9 @@ import { getEffectivePrice } from "@/lib/commerce";
 import { getLabelMap, listAdminCollections, listCategories, listProducts } from "@/lib/data/store";
 
 export const metadata: Metadata = {
-  title: "Shop Original Gemstones & Jewellery",
+  title: "Original Stones, Gemstones & Silver Jewelry",
   description:
-    "Shop STONZA's collection of original natural gemstones and trending gold and silver jewellery, each piece with verified authenticity and provenance.",
+    "Shop STONZA's original stones and natural gemstones — sterling silver jewelry, rings, bracelets, and fancy jewellery sets, each piece with verified authenticity and provenance.",
   alternates: { canonical: "/shop" },
 };
 

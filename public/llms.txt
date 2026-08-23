@@ -1,19 +1,25 @@
 # STONZA
 
-> STONZA is an original gemstone and jewellery store based in Pakistan, selling
-> authentic natural stones (emerald, ruby, sapphire, and other gems) alongside
-> trending jewellery crafted in genuine gold and original silver. Every listing
+> STONZA is an original stones and gemstone jewelry store based in Pakistan,
+> selling authentic natural stones (aqeeq/agate, feroza/turquoise, ruby,
+> emerald, sapphire, and other gems) set in sterling silver jewelry, with
+> select fancy jewellery sets finished in gold plating. Every listing
 > discloses provenance, treatment, and authenticity details.
 
 STONZA sells directly to consumers online at https://stonza.pk. Products are
-organized by stone type, jewellery category, and curated collections. Each
-product page states the stone's origin, cut, clarity, carat weight, and
-treatment, and includes a certificate reference where available. Orders ship
-within Pakistan with WhatsApp-based customer support.
+organized by stone type, jewelry category (rings, bracelets, jewellery sets),
+and curated collections. Each product page states the stone's origin, cut,
+clarity, carat weight, and treatment, and includes a certificate reference
+where available. Orders ship within Pakistan with WhatsApp-based customer
+support.
 
 ## Shop
-- [All Stones](https://stonza.pk/shop): the full catalog of original gemstones and jewellery.
-- [Collections](https://stonza.pk/collections): curated groupings (bridal, everyday, statement pieces).
+- [All Stones & Jewelry](https://stonza.pk/shop): the full catalog of original stones, gemstones, and silver jewelry.
+- [Original Stones](https://stonza.pk/categories/stones): loose, natural gemstones for collectors and custom jewellers.
+- [Men's Jewelry](https://stonza.pk/categories/men): silver jewelry rings, bracelets, and chains.
+- [Women's Jewelry](https://stonza.pk/categories/women): silver jewelry rings, bracelets, and fancy jewellery sets.
+- [Fancy Jewellery Sets](https://stonza.pk/categories/women-jewellery-sets): matching gemstone jewelry sets in sterling silver with gold-plated filigree.
+- [Collections](https://stonza.pk/collections): curated groupings of original stones and gemstone jewelry.
 
 ## Trust & policies
 - [Authenticity](https://stonza.pk/authenticity): how STONZA verifies and discloses stone origin and treatment.
