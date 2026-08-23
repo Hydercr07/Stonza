@@ -2,8 +2,30 @@ import "server-only";
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { timingSafeEqual } from "node:crypto";
+import { cache } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  createOrderInPostgres,
+  fetchCategoryById,
+  fetchCategoryBySlug,
+  fetchCollectionById,
+  fetchCollectionBySlug,
+  fetchJournalPostById,
+  fetchJournalPostBySlug,
+  fetchMediaAssetById,
+  fetchPageById,
+  fetchPageBySlug,
+  fetchProductById,
+  fetchProductBySlug,
+  fetchSingletonTable,
+  fetchTable,
+  isPostgresStoreConfigured,
+  readStoreFromPostgres,
+  updateOrderStatusInPostgres,
+  writeStoreToPostgres,
+} from "@/lib/data/postgres-adapter";
 import { getEffectivePrice } from "@/lib/commerce";
 import { sidebarCategoryHierarchy } from "@/lib/category-hierarchy";
 import type {
@@ -830,14 +852,46 @@ function getRequestedQuantityForProduct(
   return lines.reduce((total, line) => (line.productId === productId ? total + line.quantity : total), 0);
 }
 
-async function readStore(): Promise<StoreData> {
+// Carries the just-read snapshot alongside the StoreData object returned by
+// readStore() so writeStore() can later diff against it and persist only
+// the collections that actually changed. Non-enumerable so it never leaks
+// into JSON.stringify(store) or shows up in normal property iteration.
+const ORIGINAL_SNAPSHOT = Symbol("originalSnapshot");
+
+async function readStoreUncached(): Promise<StoreData> {
   noStore();
+
+  if (isPostgresStoreConfigured()) {
+    const raw = await readStoreFromPostgres();
+    const normalized = normalizeStore(raw);
+    Object.defineProperty(normalized, ORIGINAL_SNAPSHOT, {
+      value: structuredClone(normalized),
+      enumerable: false,
+    });
+    return normalized;
+  }
+
   const raw = await readStoreSource();
   const parsed = JSON.parse(raw) as Partial<StoreData>;
   return normalizeStore(parsed);
 }
 
+// A single page render/server action commonly calls several store getters
+// (getSiteSettings, listCategories, getProductBySlug, ...), each of which
+// used to trigger its own full readStoreFromPostgres() -- a dozen-plus
+// Postgres round trips per request. react's cache() dedupes readStore()
+// calls within one request/render (a fresh cache per request, so this never
+// serves stale data across requests, and mutations always read-modify-write
+// within a single readStore()/writeStore() pair regardless).
+const readStore = cache(readStoreUncached);
+
 async function writeStore(store: StoreData) {
+  if (isPostgresStoreConfigured()) {
+    const original = (store as unknown as Record<symbol, StoreData>)[ORIGINAL_SNAPSHOT];
+    await writeStoreToPostgres(store, original);
+    return;
+  }
+
   const payload = `${JSON.stringify(store, null, 2)}\n`;
 
   if (shouldUseRemoteStore()) {
@@ -1058,170 +1112,288 @@ export async function getStoreData() {
   return readStore();
 }
 
-export async function listMediaAssets(): Promise<MediaAsset[]> {
-  const store = await readStore();
-  return store.mediaAssets.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+// --- Scoped Postgres readers -------------------------------------------
+// Each queries only the one table (or one row) a getter actually needs,
+// instead of readStore()'s "fetch all ten tables" -- the remaining half of
+// the product-page load-time fix (see the middleware/cache() changes
+// nearby). Every normalize* call here is a pure, single-entity function --
+// none of them depend on any other table's data -- so applying them to a
+// scoped fetch is exactly equivalent to what normalizeStore() already did
+// to that same row as part of the whole store. The JSON-blob (non-Postgres)
+// path below each of these is untouched.
+
+async function fetchCategoriesScoped(): Promise<Category[]> {
+  const raw = (await fetchTable("categories")) as Partial<Category>[];
+  return raw.map(normalizeCategory);
 }
 
-export async function getMediaAssetById(id: string) {
+async function fetchCollectionsScoped(): Promise<Collection[]> {
+  const raw = (await fetchTable("collections")) as Partial<Collection>[];
+  return raw.map(normalizeCollection);
+}
+
+async function fetchProductsScoped(): Promise<Product[]> {
+  const raw = (await fetchTable("products")) as Partial<Product>[];
+  return raw.map(normalizeProduct);
+}
+
+async function fetchPagesScoped(): Promise<ManagedPage[]> {
+  const raw = (await fetchTable("pages")) as Partial<ManagedPage>[];
+  return raw.map(normalizeManagedPage);
+}
+
+async function fetchJournalPostsScoped(): Promise<JournalPost[]> {
+  const raw = (await fetchTable("journalPosts")) as Partial<JournalPost>[];
+  return raw.map(normalizeJournalPost);
+}
+
+async function fetchMediaAssetsScoped(): Promise<MediaAsset[]> {
+  const raw = (await fetchTable("mediaAssets")) as MediaAsset[];
+  return raw.filter((asset) => !asset.deletedAt);
+}
+
+async function fetchContentLabelsScoped(): Promise<ContentLabel[]> {
+  const raw = (await fetchTable("contentLabels")) as ContentLabel[];
+  return raw.length ? raw : defaultContentLabels;
+}
+
+async function fetchHomepageSectionsScoped(): Promise<HomepageSection[]> {
+  const raw = (await fetchTable("homepageSections")) as StoreData["homepageSections"];
+  return normalizeSections(raw).sort((a, b) => a.order - b.order);
+}
+
+async function fetchHomepageBannersScoped(): Promise<HomepageBanner[]> {
+  const raw = (await fetchTable("homepageBanners")) as Array<Partial<HomepageBanner>>;
+  return raw
+    .map((banner, index) => normalizeHomepageBanner(banner, index))
+    .filter((banner) => !banner.deletedAt)
+    .sort((a, b) => a.order - b.order);
+}
+
+async function fetchSettingsScoped(): Promise<SiteSettings> {
+  const raw = (await fetchSingletonTable("settings")) as Partial<SiteSettings> | undefined;
+  return normalizeSettings(raw);
+}
+
+async function fetchHeroScoped(): Promise<HeroSettings> {
+  const raw = (await fetchSingletonTable("hero")) as Partial<HeroSettings> | undefined;
+  return normalizeHero(raw);
+}
+
+export const listMediaAssets = cache(async (): Promise<MediaAsset[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchMediaAssetsScoped() : (await readStore()).mediaAssets;
+  return [...items].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+});
+
+export const getMediaAssetById = cache(async (id: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchMediaAssetById(id);
+    return raw ? (raw as MediaAsset) : null;
+  }
   const store = await readStore();
   return store.mediaAssets.find((asset) => asset.id === id) ?? null;
-}
+});
 
-export async function getSiteSettings() {
-  const store = await readStore();
+export const getSiteSettings = cache(async () => {
+  noStore();
+  const [settings, categories] = isPostgresStoreConfigured()
+    ? await Promise.all([fetchSettingsScoped(), fetchCategoriesScoped()])
+    : await (async () => {
+        const store = await readStore();
+        return [store.settings, store.categories] as const;
+      })();
+
   return {
-    ...store.settings,
+    ...settings,
     header: {
-      ...store.settings.header,
+      ...settings.header,
       navigation: [
-        ...buildCategoryNavigation(store.categories),
-        ...store.settings.header.navigation.filter((item) => item.visible && item.href !== "/shop"),
+        ...buildCategoryNavigation(categories),
+        ...settings.header.navigation.filter((item) => item.visible && item.href !== "/shop"),
       ],
     },
   };
-}
+});
 
-export async function getAdminSiteSettings() {
-  const store = await readStore();
-  return store.settings;
-}
+export const getAdminSiteSettings = cache(async () => {
+  noStore();
+  return isPostgresStoreConfigured() ? fetchSettingsScoped() : (await readStore()).settings;
+});
 
-export async function getContentLabels() {
-  const store = await readStore();
-  return store.contentLabels ?? defaultContentLabels;
-}
+export const getContentLabels = cache(async () => {
+  noStore();
+  return isPostgresStoreConfigured() ? fetchContentLabelsScoped() : ((await readStore()).contentLabels ?? defaultContentLabels);
+});
 
 export async function getLabelMap() {
   const settings = await getSiteSettings();
   return settings.labels;
 }
 
-export async function getHeroSettings(): Promise<HeroSettings> {
-  const store = await readStore();
-  return store.hero;
-}
+export const getHeroSettings = cache(async (): Promise<HeroSettings> => {
+  noStore();
+  return isPostgresStoreConfigured() ? fetchHeroScoped() : (await readStore()).hero;
+});
 
-export async function getHomepageSections(includeDisabled = false): Promise<HomepageSection[]> {
-  const store = await readStore();
-  return store.homepageSections
-    .filter((section) => includeDisabled || section.enabled)
-    .sort((a, b) => a.order - b.order);
-}
+export const getHomepageSections = cache(async (includeDisabled = false): Promise<HomepageSection[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchHomepageSectionsScoped() : (await readStore()).homepageSections;
+  return items.filter((section) => includeDisabled || section.enabled).sort((a, b) => a.order - b.order);
+});
 
-export async function getHomepageBanners(includeDisabled = false): Promise<HomepageBanner[]> {
-  const store = await readStore();
-  return store.homepageBanners
+export const getHomepageBanners = cache(async (includeDisabled = false): Promise<HomepageBanner[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchHomepageBannersScoped() : (await readStore()).homepageBanners;
+  return items
     .filter((banner) => !banner.deletedAt)
     .filter((banner) => includeDisabled || banner.enabled)
     .sort((a, b) => a.order - b.order);
-}
+});
 
-export async function listCategories(options?: {
-  admin?: boolean;
-  featuredOnly?: boolean;
-  includeInactive?: boolean;
-  search?: string;
-}) {
-  const store = await readStore();
-  let items = store.categories;
+export const listCategories = cache(
+  async (options?: { admin?: boolean; featuredOnly?: boolean; includeInactive?: boolean; search?: string }) => {
+    noStore();
+    let items = isPostgresStoreConfigured() ? await fetchCategoriesScoped() : (await readStore()).categories;
 
-  if (!options?.admin) {
-    items = items.filter(visibleCategory);
+    if (!options?.admin) {
+      items = items.filter(visibleCategory);
+    }
+
+    if (!options?.includeInactive) {
+      items = items.filter((category) => category.status !== "trash");
+    }
+
+    if (options?.featuredOnly) {
+      items = items.filter((category) => category.featured);
+    }
+
+    if (options?.search) {
+      const query = options.search.toLowerCase();
+      items = items.filter((category) =>
+        [category.name, category.shortDescription, category.description].join(" ").toLowerCase().includes(query),
+      );
+    }
+
+    return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+  },
+);
+
+export const getCategoryBySlug = cache(async (slug: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchCategoryBySlug(slug);
+    if (raw) {
+      const category = normalizeCategory(raw as Partial<Category>);
+      return visibleCategory(category) ? category : null;
+    }
+    // No exact slug match -- fall back to a full scan for a renamed
+    // category's old slug (slugHistory). Rare, so only worth paying for on
+    // a miss rather than on every request.
+    const all = await listCategories();
+    return all.find((category) => category.slugHistory?.includes(slug)) ?? null;
   }
 
-  if (!options?.includeInactive) {
-    items = items.filter((category) => category.status !== "trash");
-  }
-
-  if (options?.featuredOnly) {
-    items = items.filter((category) => category.featured);
-  }
-
-  if (options?.search) {
-    const query = options.search.toLowerCase();
-    items = items.filter((category) =>
-      [category.name, category.shortDescription, category.description].join(" ").toLowerCase().includes(query),
-    );
-  }
-
-  return items.sort((a, b) => a.sortOrder - b.sortOrder);
-}
-
-export async function getCategoryBySlug(slug: string) {
   const categories = await listCategories();
   return categories.find((category) => category.slug === slug || category.slugHistory?.includes(slug)) ?? null;
-}
+});
 
-export async function getCategoryById(id: string) {
+export const getCategoryById = cache(async (id: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchCategoryById(id);
+    return raw ? normalizeCategory(raw as Partial<Category>) : null;
+  }
   const store = await readStore();
   return store.categories.find((category) => category.id === id) ?? null;
-}
+});
 
-export async function listCollections(featuredOnly = false): Promise<Collection[]> {
-  const store = await readStore();
-  return store.collections
+export const listCollections = cache(async (featuredOnly = false): Promise<Collection[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchCollectionsScoped() : (await readStore()).collections;
+  return items
     .filter((collection) => visibleCollection(collection) && (!featuredOnly || collection.featured))
     .sort((a, b) => a.sortOrder - b.sortOrder);
-}
+});
 
-export async function listAdminCollections(): Promise<Collection[]> {
-  const store = await readStore();
-  return store.collections.sort((a, b) => a.sortOrder - b.sortOrder);
-}
+export const listAdminCollections = cache(async (): Promise<Collection[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchCollectionsScoped() : (await readStore()).collections;
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+});
 
-export async function getCollectionBySlug(slug: string) {
+export const getCollectionBySlug = cache(async (slug: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchCollectionBySlug(slug);
+    if (raw) {
+      const collection = normalizeCollection(raw as Partial<Collection>);
+      return visibleCollection(collection) ? collection : null;
+    }
+    const all = await listCollections(false);
+    return all.find((collection) => collection.slugHistory?.includes(slug)) ?? null;
+  }
+
   const collections = await listCollections(false);
   return collections.find((collection) => collection.slug === slug || collection.slugHistory?.includes(slug)) ?? null;
-}
+});
 
-export async function getCollectionById(id: string) {
+export const getCollectionById = cache(async (id: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchCollectionById(id);
+    return raw ? normalizeCollection(raw as Partial<Collection>) : null;
+  }
   const store = await readStore();
   return store.collections.find((collection) => collection.id === id) ?? null;
-}
+});
 
-export async function listProducts(options?: {
-  featuredOnly?: boolean;
-  newOnly?: boolean;
-  collectionSlug?: string;
-  categorySlug?: string;
-  subcategorySlug?: string;
-  search?: string;
-}) {
-  const store = await readStore();
-  let items = store.products.filter(visibleProduct);
+export const listProducts = cache(
+  async (options?: {
+    featuredOnly?: boolean;
+    newOnly?: boolean;
+    collectionSlug?: string;
+    categorySlug?: string;
+    subcategorySlug?: string;
+    search?: string;
+  }) => {
+    noStore();
+    const all = isPostgresStoreConfigured() ? await fetchProductsScoped() : (await readStore()).products;
+    let items = all.filter(visibleProduct);
 
-  if (options?.featuredOnly) items = items.filter((product) => product.featured);
-  if (options?.newOnly) items = items.filter((product) => product.newArrival);
-  if (options?.collectionSlug) items = items.filter((product) => product.collectionSlug === options.collectionSlug);
-  if (options?.categorySlug) {
-    items = items.filter((product) => product.categorySlugs?.includes(options.categorySlug!) || product.categorySlug === options.categorySlug);
-  }
-  if (options?.subcategorySlug) {
-    items = items.filter((product) => product.subcategorySlug === options.subcategorySlug);
-  }
-  if (options?.search) {
-    const query = options.search.toLowerCase();
-    items = items.filter((product) =>
-      [
-        product.name,
-        product.shortDescription,
-        product.stoneType,
-        product.origin,
-        product.sku,
-        product.variantLabel,
-        ...(product.variants ?? []).map((variant) => variant.value),
-        ...product.searchKeywords,
-        ...(product.categorySlugs ?? []),
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
-    );
-  }
+    if (options?.featuredOnly) items = items.filter((product) => product.featured);
+    if (options?.newOnly) items = items.filter((product) => product.newArrival);
+    if (options?.collectionSlug) items = items.filter((product) => product.collectionSlug === options.collectionSlug);
+    if (options?.categorySlug) {
+      items = items.filter((product) => product.categorySlugs?.includes(options.categorySlug!) || product.categorySlug === options.categorySlug);
+    }
+    if (options?.subcategorySlug) {
+      items = items.filter((product) => product.subcategorySlug === options.subcategorySlug);
+    }
+    if (options?.search) {
+      const query = options.search.toLowerCase();
+      items = items.filter((product) =>
+        [
+          product.name,
+          product.shortDescription,
+          product.stoneType,
+          product.origin,
+          product.sku,
+          product.variantLabel,
+          ...(product.variants ?? []).map((variant) => variant.value),
+          ...product.searchKeywords,
+          ...(product.categorySlugs ?? []),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+      );
+    }
 
-  return items;
-}
+    return items;
+  },
+);
 
 export async function listOrders() {
   const store = await readStore();
@@ -1235,74 +1407,141 @@ export async function getOrderByNumber(orderNumber: string) {
   return store.orders?.find((order) => order.orderNumber === orderNumber) ?? null;
 }
 
-export async function listAdminProducts() {
-  const store = await readStore();
-  return [...store.products].sort(
-    (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
-  );
+/**
+ * Order numbers (STZ-YYYYMMDD-001, -002, ...) are sequential and easy to
+ * guess, so the public confirmation page must never be reachable by order
+ * number alone — that would let anyone enumerate other customers' names,
+ * emails, phone numbers, and addresses. This requires the unguessable
+ * per-order token that is only ever handed to the customer who placed it.
+ */
+export async function getOrderForConfirmation(orderNumber: string, token: string | undefined) {
+  if (!token) return null;
+  const order = await getOrderByNumber(orderNumber);
+  if (!order?.submissionToken) return null;
+
+  const provided = Buffer.from(token);
+  const expected = Buffer.from(order.submissionToken);
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+    return null;
+  }
+
+  return order;
 }
 
-export async function getProductBySlug(slug: string): Promise<Product | null> {
+export const listAdminProducts = cache(async () => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchProductsScoped() : (await readStore()).products;
+  return [...items].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+});
+
+export const getProductBySlug = cache(async (slug: string): Promise<Product | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchProductBySlug(slug);
+    if (raw) {
+      const product = normalizeProduct(raw as Partial<Product>);
+      return visibleProduct(product) ? product : null;
+    }
+    const all = await listProducts();
+    return all.find((product) => product.slugHistory?.includes(slug)) ?? null;
+  }
+
   const store = await readStore();
   return (
     store.products.find(
       (product) => visibleProduct(product) && (product.slug === slug || product.slugHistory?.includes(slug)),
     ) ?? null
   );
-}
+});
 
-export async function getProductById(id: string): Promise<Product | null> {
+export const getProductById = cache(async (id: string): Promise<Product | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchProductById(id);
+    return raw ? normalizeProduct(raw as Partial<Product>) : null;
+  }
   const store = await readStore();
   return store.products.find((product) => product.id === id) ?? null;
-}
+});
 
-export async function listJournalPosts() {
-  const store = await readStore();
-  return store.journalPosts
+export const listJournalPosts = cache(async () => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchJournalPostsScoped() : (await readStore()).journalPosts;
+  return items
     .filter((post) => post.status === "published")
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-}
+});
 
-export async function listAdminJournalPosts() {
-  const store = await readStore();
-  return store.journalPosts.sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
-}
+export const listAdminJournalPosts = cache(async () => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchJournalPostsScoped() : (await readStore()).journalPosts;
+  return [...items].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+});
 
-export async function getJournalPostById(id: string): Promise<JournalPost | null> {
+export const getJournalPostById = cache(async (id: string): Promise<JournalPost | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchJournalPostById(id);
+    return raw ? normalizeJournalPost(raw as Partial<JournalPost>) : null;
+  }
   const store = await readStore();
   return store.journalPosts.find((post) => post.id === id) ?? null;
-}
+});
 
-export async function getJournalPostBySlug(slug: string): Promise<JournalPost | null> {
+export const getJournalPostBySlug = cache(async (slug: string): Promise<JournalPost | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchJournalPostBySlug(slug);
+    if (raw) {
+      const post = normalizeJournalPost(raw as Partial<JournalPost>);
+      return post.status === "published" ? post : null;
+    }
+    const all = await listAdminJournalPosts();
+    return all.find((post) => post.status === "published" && post.slugHistory?.includes(slug)) ?? null;
+  }
+
   const store = await readStore();
   return (
     store.journalPosts.find(
       (post) => (post.slug === slug || post.slugHistory?.includes(slug)) && post.status === "published",
     ) ?? null
   );
-}
+});
 
-export async function getManagedPage(slug: string): Promise<ManagedPage | null> {
+export const getManagedPage = cache(async (slug: string): Promise<ManagedPage | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchPageBySlug(slug);
+    if (raw) {
+      const page = normalizeManagedPage(raw as Partial<ManagedPage>);
+      return page.status === "published" ? page : null;
+    }
+    const all = await listManagedPages();
+    return all.find((page) => page.status === "published" && page.slugHistory?.includes(slug)) ?? null;
+  }
+
   const store = await readStore();
   return (
     store.pages.find((page) => (page.slug === slug || page.slugHistory?.includes(slug)) && page.status === "published") ??
     null
   );
-}
+});
 
-export async function listManagedPages() {
-  const store = await readStore();
-  return store.pages.sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  );
-}
+export const listManagedPages = cache(async () => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchPagesScoped() : (await readStore()).pages;
+  return [...items].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+});
 
-export async function getManagedPageById(id: string): Promise<ManagedPage | null> {
+export const getManagedPageById = cache(async (id: string): Promise<ManagedPage | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchPageById(id);
+    return raw ? normalizeManagedPage(raw as Partial<ManagedPage>) : null;
+  }
   const store = await readStore();
   return store.pages.find((page) => page.id === id) ?? null;
-}
+});
 
 export async function logActivity(entry: Omit<ActivityLogEntry, "id" | "timestamp">) {
   const store = await readStore();
@@ -1833,6 +2072,15 @@ export async function createOrder(payload: {
   paymentMethod: string;
   submissionToken?: string;
 }) {
+  // The Postgres path locks every referenced product row and runs as a
+  // single transaction (see create_order in the migration) -- this is what
+  // actually closes the overselling/lost-order race the old JSON-blob store
+  // was exposed to, so it's used whenever Postgres is configured rather
+  // than falling through to the generic read-modify-write path below.
+  if (isPostgresStoreConfigured()) {
+    return createOrderInPostgres(payload);
+  }
+
   const store = await readStore();
   const existingOrder = payload.submissionToken
     ? (store.orders ?? []).find((order) => order.submissionToken === payload.submissionToken)
@@ -1951,6 +2199,10 @@ export async function createOrder(payload: {
 }
 
 export async function updateOrderStatus(orderNumber: string, status: OrderRecord["status"]) {
+  if (isPostgresStoreConfigured()) {
+    return updateOrderStatusInPostgres(orderNumber, status);
+  }
+
   const store = await readStore();
   const order = store.orders?.find((entry) => entry.orderNumber === orderNumber);
   if (!order) {
