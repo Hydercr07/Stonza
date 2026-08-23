@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { createOrder } from "@/lib/data/store";
 import { checkoutSchema } from "@/lib/validation/admin";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import { sendOrderConfirmationEmail, sendOrderNotificationToOwner } from "@/lib/email";
 
 export type CheckoutActionState = {
   error: string | null;
@@ -13,6 +15,12 @@ export async function placeOrderAction(
   formData: FormData,
 ): Promise<CheckoutActionState> {
   try {
+    const ip = await getClientIp();
+    const limit = checkRateLimit(`checkout:${ip}`, 8, 60 * 60 * 1000);
+    if (!limit.allowed) {
+      return { error: `Too many orders submitted recently. Please try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s), or contact us on WhatsApp.` };
+    }
+
     const cartJson = String(formData.get("cartLines") ?? "[]");
     const payload = checkoutSchema.parse({
       fullName: formData.get("fullName"),
@@ -46,7 +54,17 @@ export async function placeOrderAction(
       submissionToken: payload.submissionToken,
     });
 
-    redirect(`/order-confirmation/${order.orderNumber}`);
+    // Best-effort: a customer's order is placed and paid for the moment
+    // createOrder() above returns, so a flaky email provider must never
+    // turn into a failed checkout -- log and move on instead of throwing.
+    try {
+      await Promise.all([sendOrderConfirmationEmail(order), sendOrderNotificationToOwner(order)]);
+    } catch (emailError) {
+      console.error("Order email notification failed:", emailError);
+    }
+
+    const tokenParam = order.submissionToken ? `?token=${encodeURIComponent(order.submissionToken)}` : "";
+    redirect(`/order-confirmation/${order.orderNumber}${tokenParam}`);
   } catch (error) {
     if (
       typeof error === "object" &&
