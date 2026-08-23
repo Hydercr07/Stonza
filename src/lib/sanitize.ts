@@ -1,4 +1,4 @@
-import DOMPurify from "isomorphic-dompurify";
+import sanitizeHtmlLib from "sanitize-html";
 
 const ALLOWED_TAGS = [
   "a",
@@ -33,17 +33,24 @@ const ALLOWED_ATTR = ["alt", "class", "href", "src", "title"];
 /**
  * Sanitizes admin-authored rich text (journal posts, product/category
  * descriptions, managed pages) before it is rendered with
- * `dangerouslySetInnerHTML`. Backed by DOMPurify — a battle-tested parser
- * that actually builds a DOM tree to sanitize, rather than a hand-rolled
- * regex pass, which is a well-known way to end up with a bypassable filter.
+ * `dangerouslySetInnerHTML`.
+ *
+ * Was previously backed by isomorphic-dompurify (DOMPurify + jsdom), but
+ * jsdom's dynamic requires aren't fully captured by Vercel's serverless
+ * function file-tracing -- it worked in local `next build`/`next start`
+ * (full node_modules present) and crashed with an empty 500 in the actual
+ * deployed Lambda on every route that rendered rich text (product,
+ * category, journal, and every CMS-managed static page). sanitize-html has
+ * no DOM/jsdom dependency, so it has no such traced-file gap.
  */
 export function sanitizeHtml(input: string | null | undefined): string {
   const source = typeof input === "string" ? input : "";
   if (!source.trim()) return "";
 
-  return DOMPurify.sanitize(source, {
-    ALLOWED_TAGS,
-    ALLOWED_ATTR,
-    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+  return sanitizeHtmlLib(source, {
+    allowedTags: ALLOWED_TAGS,
+    allowedAttributes: { "*": ALLOWED_ATTR },
+    allowedSchemes: ["https", "http", "mailto", "tel"],
+    allowProtocolRelative: false,
   });
 }
