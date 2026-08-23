@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -53,22 +54,39 @@ function getReservedQuantity(
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLineInput[]>(() => {
-    if (typeof window === "undefined") {
-      return [];
-    }
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    try {
-      const parsed = JSON.parse(raw) as CartLineInput[];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
-      return [];
-    }
-  });
+  // Always start empty so the very first render matches the server exactly
+  // (SSR has no access to localStorage) -- reading it inside a useState
+  // initializer instead makes the client's first render diverge from the
+  // server-rendered HTML, which React then has to discard and redo. The
+  // cart is hydrated from localStorage a moment after mount instead, below.
+  const [lines, setLines] = useState<CartLineInput[]>([]);
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw) as CartLineInput[];
+      if (Array.isArray(parsed) && parsed.length) {
+        // One-time sync from an external system (localStorage) into React
+        // state right after mount -- exactly the case the underlying rule's
+        // own guidance calls out as acceptable, not a per-render cascade.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLines(parsed);
+      }
+    } catch {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Skip the first run (the initial empty-cart render, before the load
+    // effect above has had a chance to run) so it can't stomp a real saved
+    // cart with `[]` before it's even been read.
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      return;
+    }
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
   }, [lines]);
 
@@ -141,7 +159,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         );
       },
       clear() {
-        setLines([]);
+        // Bail out with the same array reference when already empty so a
+        // caller that re-invokes clear() on every render (e.g. an effect
+        // keyed on this function's identity) can't loop forever: setting a
+        // brand-new `[]` every time would otherwise "change" state by
+        // reference even though the content never does.
+        setLines((current) => (current.length === 0 ? current : []));
       },
     }),
     [lines],

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Ruler, X } from "lucide-react";
 import { Button } from "@/components/shared/ui/button";
