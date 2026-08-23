@@ -94,6 +94,31 @@ public/
    - later: `https://stonza.pk/auth/callback`
 7. Bootstrap the owner account by inviting or creating the `OWNER_EMAIL` user, then assign the `owner` role in the `user_roles` table.
 
+## Cutting Over To The Relational Store
+The catalogue/content/order data used to live as one JSON file uploaded whole
+to Supabase Storage on every save -- no transactions, no row locking, so two
+concurrent writes (two checkouts, or a checkout during an admin edit) could
+silently overwrite each other. `supabase/migrations/202608230001_relational_store.sql`
+replaces that with real per-entity tables, and a dedicated `create_order`/
+`update_order_status` Postgres function that locks the relevant product rows
+and runs as a single transaction, closing that race entirely.
+
+1. Apply the migration: paste `supabase/migrations/202608230001_relational_store.sql`
+   into the Supabase Dashboard's SQL Editor and run it (or `psql "$DATABASE_URL" -f supabase/migrations/202608230001_relational_store.sql`
+   if you have a working direct connection string -- Supabase's default
+   `db.<ref>.supabase.co` host is IPv6-only, so this often only works from a
+   network with IPv6 egress, or via the connection pooler host from Project
+   Settings -> Database).
+2. Backfill existing data: `node scripts/backfill-postgres.cjs`. Safe to re-run.
+3. Verify nothing was lost: `node scripts/verify-backfill.cjs`.
+4. Cut over: set `DATA_BACKEND=postgres` in `.env.local` and in the Vercel
+   project's environment variables, then redeploy. Until this is set, the
+   app keeps reading/writing the JSON blob exactly as before -- shipping the
+   code ahead of running the migration never breaks the live site.
+5. The JSON blob (`documents/runtime/dev-store.json` in Supabase Storage) is
+   left in place afterwards as a rollback snapshot; it's simply no longer
+   read once `DATA_BACKEND=postgres` is set.
+
 ## Database Migration Workflow
 - Add forward-only SQL files under `supabase/migrations`.
 - Keep the TypeScript validation and repository types aligned with schema changes.
@@ -136,5 +161,6 @@ public/
 - Provide meaningful alt text for every product and editorial media item.
 
 ## Known Current Limitations
-- Local development currently uses a file-backed repository and demo admin auth until Supabase credentials are configured.
+- Local development without Supabase credentials configured uses a file-backed repository and demo admin auth; production should set `DATA_BACKEND=postgres` per "Cutting Over To The Relational Store" above.
+- Admin auth is still a signed local session cookie against `OWNER_EMAIL`/`OWNER_PASSWORD`, not Supabase Auth -- fine for a single owner account, but replace it before adding multiple admin users.
 - A live online card gateway is not enabled until valid third-party merchant credentials are supplied.

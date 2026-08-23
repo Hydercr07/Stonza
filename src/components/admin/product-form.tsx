@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   deleteProductAction,
@@ -65,16 +65,12 @@ export function ProductForm({
   const [variants, setVariants] = useState<ProductVariantOption[]>(product?.variants ?? []);
   const [specifications, setSpecifications] = useState<ProductSpecification[]>(product?.specifications ?? []);
 
-  const childCategoryOptions = useMemo(
-    () =>
-      childCategories
-        .filter((category) => category.parentCategorySlug === selectedParentCategorySlug)
-        .map((category) => ({
-          ...category,
-          parentName: categories.find((entry) => entry.slug === category.parentCategorySlug)?.name ?? "Parent",
-        })),
-    [categories, childCategories, selectedParentCategorySlug],
-  );
+  const childCategoryOptions = childCategories
+    .filter((category) => category.parentCategorySlug === selectedParentCategorySlug)
+    .map((category) => ({
+      ...category,
+      parentName: categories.find((entry) => entry.slug === category.parentCategorySlug)?.name ?? "Parent",
+    }));
 
   useEffect(() => {
     if (!dirty) return;
