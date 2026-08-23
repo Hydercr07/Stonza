@@ -2,6 +2,14 @@ import { loginAction } from "@/actions/admin";
 import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/shared/ui/button";
 
+// CSP nonces are generated per-request in proxy.ts and injected by Next
+// into every script tag it manages -- but only for dynamically rendered
+// pages. This page was being statically prerendered at build time (the
+// only route in the app that was), which bakes one HTML file for every
+// visitor and gives Next no per-request nonce to inject, so every script
+// on it was missing its nonce and getting blocked by 'strict-dynamic'.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Admin Login",
   robots: {
