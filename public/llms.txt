@@ -1,0 +1,29 @@
+# STONZA
+
+> STONZA is an original gemstone and jewellery store based in Pakistan, selling
+> authentic natural stones (emerald, ruby, sapphire, and other gems) alongside
+> trending jewellery crafted in genuine gold and original silver. Every listing
+> discloses provenance, treatment, and authenticity details.
+
+STONZA sells directly to consumers online at https://stonza.pk. Products are
+organized by stone type, jewellery category, and curated collections. Each
+product page states the stone's origin, cut, clarity, carat weight, and
+treatment, and includes a certificate reference where available. Orders ship
+within Pakistan with WhatsApp-based customer support.
+
+## Shop
+- [All Stones](https://stonza.pk/shop): the full catalog of original gemstones and jewellery.
+- [Collections](https://stonza.pk/collections): curated groupings (bridal, everyday, statement pieces).
+
+## Trust & policies
+- [Authenticity](https://stonza.pk/authenticity): how STONZA verifies and discloses stone origin and treatment.
+- [Shipping & Returns](https://stonza.pk/shipping-and-returns)
+- [Return & Refund Policy](https://stonza.pk/return-refund-policy)
+- [Terms & Conditions](https://stonza.pk/terms-and-conditions)
+- [Privacy Policy](https://stonza.pk/privacy-policy)
+
+## Editorial
+- [Journal](https://stonza.pk/journal): field notes on gemstones, provenance, and craftsmanship.
+
+## Contact
+- [Contact](https://stonza.pk/contact)

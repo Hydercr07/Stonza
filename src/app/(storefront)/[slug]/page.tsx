@@ -1,7 +1,20 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { RichText } from "@/components/shared/rich-text";
 import { Button } from "@/components/shared/ui/button";
 import { getManagedPage, getSiteSettings } from "@/lib/data/store";
+import { buildManagedPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const page = await getManagedPage(slug);
+  if (!page) return {};
+  return buildManagedPageMetadata(page, `/${slug}`, page.title);
+}
 
 export default async function ManagedPageRoute({
   params,

@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import { permanentRedirect } from "next/navigation";
 import { RichText } from "@/components/shared/rich-text";
 import { getManagedPage } from "@/lib/data/store";
+import { buildManagedPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getManagedPage("shipping-and-returns");
+  return buildManagedPageMetadata(page, "/shipping-and-returns", "Shipping & Returns | STONZA");
+}
 
 export default async function ShippingReturnsPage() {
   const page = await getManagedPage("shipping-and-returns");

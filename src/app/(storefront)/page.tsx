@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import type { Metadata } from "next";
 import { Hero } from "@/components/storefront/hero";
 import { HomepagePromotionalBanner } from "@/components/storefront/homepage-promotional-banner";
 import {
@@ -15,6 +16,10 @@ import {
   listCollections,
   listProducts,
 } from "@/lib/data/store";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 export default async function HomePage() {
   const [hero, sections, banners, categories, collections, visibleProducts] = await Promise.all([

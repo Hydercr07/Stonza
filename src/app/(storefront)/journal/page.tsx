@@ -1,5 +1,12 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { listJournalPosts } from "@/lib/data/store";
+
+export const metadata: Metadata = {
+  title: "Journal",
+  description: "Field notes on gemstones, provenance, and craftsmanship from STONZA.",
+  alternates: { canonical: "/journal" },
+};
 
 export default async function JournalPage() {
   const posts = await listJournalPosts();

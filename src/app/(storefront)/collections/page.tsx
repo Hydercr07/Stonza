@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import { CollectionCard } from "@/components/storefront/cards";
 import { getLabelMap, listCollections } from "@/lib/data/store";
+
+export const metadata: Metadata = {
+  title: "Collections",
+  description: "Curated STONZA collections of original gemstones and trending gold and silver jewellery.",
+  alternates: { canonical: "/collections" },
+};
 
 export default async function CollectionsPage() {
   const [collections, labels] = await Promise.all([listCollections(), getLabelMap()]);

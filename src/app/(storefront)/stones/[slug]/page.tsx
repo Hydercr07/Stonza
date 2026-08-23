@@ -8,6 +8,7 @@ import { RichText } from "@/components/shared/rich-text";
 import { hasDiscount } from "@/lib/commerce";
 import { getLabelMap, getProductBySlug, getSiteSettings, listCategories, listCollections, listProducts } from "@/lib/data/store";
 import { getProductDisplayPrice, formatMoney } from "@/lib/utils";
+import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -28,6 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
+    alternates: { canonical: `/stones/${product.slug}` },
     openGraph: { title, description, images: image ? [image] : undefined },
     twitter: { title, description, images: image ? [image] : undefined },
   };
@@ -84,9 +86,29 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   const whatsappHref = settings.whatsappNumber
     ? `https://wa.me/${settings.whatsappNumber.replace(/[^\d]/g, "")}`
     : "https://wa.me/923058599096";
+  const breadcrumbItems = [
+    { name: "Shop", path: "/shop" },
+    { name: categoryLabel, path: `/shop?category=${product.categorySlug}` },
+    ...(subcategoryLabel
+      ? [{ name: subcategoryLabel, path: `/shop?category=${subcategoryParentSlug ?? product.categorySlug}&subcategory=${product.subcategorySlug}` }]
+      : []),
+    { name: product.name, path: `/stones/${product.slug}` },
+  ];
 
   return (
     <section className="section-noise container-shell page-section">
+      {/* Product schema unlocks price/availability rich results in Google
+          Search and gives AI shopping assistants structured facts to cite. */}
+      <script
+        type="application/ld+json"
+         
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, getProductDisplayPrice(product))) }}
+      />
+      <script
+        type="application/ld+json"
+         
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(breadcrumbItems)) }}
+      />
       <div className="mb-8 flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.24em] text-black/42">
         <Link href="/shop" className="hover:text-black">Shop</Link>
         <span>/</span>

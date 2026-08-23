@@ -5,6 +5,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { ProductCard } from "@/components/storefront/cards";
 import { getCategoryBySlug, listCategories, listProducts } from "@/lib/data/store";
 import { isRemoteAsset } from "@/lib/utils";
+import { breadcrumbJsonLd } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -18,6 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
+    alternates: { canonical: `/categories/${category.slug}` },
     openGraph: { title, description, images: image ? [image] : undefined },
     twitter: { title, description, images: image ? [image] : undefined },
   };
@@ -44,9 +46,24 @@ export default async function CategoryDetailPage({
       : { categorySlug: slug },
   );
   const children = categories.filter((entry) => entry.parentCategorySlug === category.slug);
+  const breadcrumbItems = category.parentCategorySlug
+    ? [
+        { name: "Shop", path: "/shop" },
+        { name: categories.find((entry) => entry.slug === category.parentCategorySlug)?.name ?? category.parentCategorySlug, path: `/categories/${category.parentCategorySlug}` },
+        { name: category.name, path: `/categories/${category.slug}` },
+      ]
+    : [
+        { name: "Shop", path: "/shop" },
+        { name: category.name, path: `/categories/${category.slug}` },
+      ];
 
   return (
     <section className="container-shell page-section">
+      <script
+        type="application/ld+json"
+         
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(breadcrumbItems)) }}
+      />
       <div className="rounded-[2rem] border border-[#eadfcf] bg-[linear-gradient(180deg,rgba(255,252,246,0.96),rgba(248,237,214,0.82))] p-5 sm:p-8 shadow-[0_18px_44px_rgba(26,20,12,0.06)]">
         {category.heroImage ? (
           <div className="relative mb-8 aspect-[4/3] overflow-hidden rounded-[1.6rem] border border-[#eadfcf] bg-[#f3ebdc] sm:aspect-[16/7]">

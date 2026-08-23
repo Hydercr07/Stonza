@@ -4,6 +4,10 @@ import { Button } from "@/components/shared/ui/button";
 import { OrderConfirmationClient } from "@/components/storefront/order-confirmation-client";
 import { getOrderForConfirmation } from "@/lib/data/store";
 import { formatMoney } from "@/lib/utils";
+import { noIndexMetadata } from "@/lib/seo";
+
+// Token-gated, single-customer order data -- must never appear in search results.
+export const metadata = noIndexMetadata;
 
 export default async function OrderConfirmationPage({
   params,

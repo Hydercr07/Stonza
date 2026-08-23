@@ -1,8 +1,16 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { ProductCard } from "@/components/storefront/cards";
 import { sidebarCategoryHierarchy } from "@/lib/category-hierarchy";
 import { getEffectivePrice } from "@/lib/commerce";
 import { getLabelMap, listAdminCollections, listCategories, listProducts } from "@/lib/data/store";
+
+export const metadata: Metadata = {
+  title: "Shop Original Gemstones & Jewellery",
+  description:
+    "Shop STONZA's collection of original natural gemstones and trending gold and silver jewellery, each piece with verified authenticity and provenance.",
+  alternates: { canonical: "/shop" },
+};
 
 function buildShopHref({
   category,
