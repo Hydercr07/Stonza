@@ -1,5 +1,4 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { env } from "@/lib/env";
 
@@ -11,8 +10,7 @@ import { env } from "@/lib/env";
  * components (root layout font vars, GSAP/Three.js driven inline styles) set
  * `style=""` attributes directly, and nonce-ing those isn't practical here.
  */
-function applySecurityHeaders(request: NextRequest, response: NextResponse) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+function buildCspHeader(nonce: string) {
   const isDev = process.env.NODE_ENV !== "production";
 
   const scriptSrc = isDev
@@ -22,7 +20,7 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   const connectSrc = ["'self'", "https://*.supabase.co"];
   if (isDev) connectSrc.push("ws:", "http://localhost:*");
 
-  const cspHeader = [
+  return [
     `default-src 'self'`,
     `script-src ${scriptSrc}`,
     `style-src 'self' 'unsafe-inline'`,
@@ -38,6 +36,10 @@ function applySecurityHeaders(request: NextRequest, response: NextResponse) {
   ]
     .filter(Boolean)
     .join("; ");
+}
+
+function applyResponseSecurityHeaders(response: NextResponse, nonce: string, cspHeader: string) {
+  const isDev = process.env.NODE_ENV !== "production";
 
   response.headers.set("x-nonce", nonce);
   response.headers.set("Content-Security-Policy", cspHeader);
@@ -99,18 +101,30 @@ async function refreshSupabaseSession(request: NextRequest, response: NextRespon
 }
 
 export async function proxy(request: NextRequest) {
-  // /stones/[slug]/page.tsx already calls notFound() for a missing product,
-  // producing the exact same 404 -- this used to duplicate that same
-  // full-store lookup here in middleware first, roughly doubling the
-  // Postgres round trips (and therefore load time) on every product page
-  // for a check whose outcome never differed from the page's own.
-  let response = NextResponse.next();
+  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  const cspHeader = buildCspHeader(nonce);
+
+  // Next's App Router auto-injects this same nonce into every script tag IT
+  // manages (chunk loaders, the RSC hydration payload, etc.) -- but only if
+  // it can read the CSP header off the *incoming request*, not just see it
+  // on the outgoing response. Without this, none of those framework-managed
+  // scripts carry a nonce, so 'strict-dynamic' (which trusts a script only
+  // by nonce, never by host) blocks nearly everything: broken hydration,
+  // broken client-side interactivity, sitewide CSP console errors.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nonce", nonce);
+  requestHeaders.set("Content-Security-Policy", cspHeader);
+  // A full NextRequest clone (not just a Headers object) so refreshSupabaseSession
+  // below still has working `.cookies` while also carrying the CSP-bearing headers.
+  const requestWithCsp = new NextRequest(request, { headers: requestHeaders });
+
+  let response = NextResponse.next({ request: { headers: requestHeaders } });
 
   if (request.nextUrl.pathname.startsWith("/admin")) {
-    response = await refreshSupabaseSession(request, response);
+    response = await refreshSupabaseSession(requestWithCsp, response);
   }
 
-  return applySecurityHeaders(request, response);
+  return applyResponseSecurityHeaders(response, nonce, cspHeader);
 }
 
 export const config = {
