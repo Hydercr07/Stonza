@@ -18,7 +18,10 @@ export default async function AuthenticityPage() {
     <section className="container-shell page-section">
       <div className="page-panel">
         <h1 className="page-title text-[#171717]">{page?.heroHeading ?? "Authenticity"}</h1>
-        <RichText html={page?.content ?? "<p>Content coming soon.</p>"} className="prose-copy mt-8 max-w-3xl" />
+        <RichText
+          html={page?.content ?? "<p>Content coming soon.</p>"}
+          className="prose-copy mt-8 max-w-3xl [&_h3]:text-display [&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:text-[#171717] [&_p]:mb-4 [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1 [&_a]:text-[#a2845d] [&_a]:underline"
+        />
       </div>
     </section>
   );

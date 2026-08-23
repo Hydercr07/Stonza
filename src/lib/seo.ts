@@ -101,6 +101,29 @@ export function productJsonLd(product: Product, price: number) {
   };
 }
 
+/**
+ * FAQPage schema -- one of the more reliable rich-result types in Google
+ * Search, and exactly the shape AI answer engines pull from directly for
+ * GEO. Kept as a plain array here rather than parsed out of the FAQ page's
+ * CMS rich-text content, since that's admin-editable free-form HTML with no
+ * guaranteed question/answer structure to parse reliably. If the FAQ page's
+ * content is edited from the admin portal, update this list to match.
+ */
+export function faqJsonLd(items: { question: string; answer: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: items.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: item.answer,
+      },
+    })),
+  };
+}
+
 export function articleJsonLd(post: { title: string; excerpt?: string; heroMedia?: string; slug: string; publishedAt?: string; updatedAt: string }) {
   return {
     "@context": "https://schema.org",

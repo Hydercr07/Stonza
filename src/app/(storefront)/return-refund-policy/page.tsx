@@ -24,7 +24,7 @@ export default async function ReturnRefundPolicyPage() {
         </h1>
         <RichText
           html={page?.content ?? "<p>Return and refund guidance will appear here once published from the admin portal.</p>"}
-          className="mt-8 max-w-4xl text-black/68"
+          className="mt-8 max-w-4xl text-black/68 [&_h3]:text-display [&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:text-xl [&_h3]:text-[#171717] [&_p]:mb-4 [&_a]:text-[#a2845d] [&_a]:underline"
         />
       </div>
     </section>
