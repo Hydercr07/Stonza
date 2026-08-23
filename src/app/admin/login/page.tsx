@@ -1,7 +1,6 @@
 import { loginAction } from "@/actions/admin";
 import { Logo } from "@/components/shared/logo";
 import { Button } from "@/components/shared/ui/button";
-import { getOwnerEmail, getOwnerPassword } from "@/lib/auth/session";
 
 export const metadata = {
   title: "Admin Login",
@@ -34,7 +33,7 @@ export default function AdminLoginPage() {
               name="email"
               type="email"
               autoComplete="email"
-              defaultValue={getOwnerEmail()}
+              placeholder="owner@stonza.pk"
               className="rounded-2xl border border-[#d8ccb9] bg-[#fffdf9] px-4 py-3 text-[#171717]"
             />
           </label>
@@ -44,7 +43,6 @@ export default function AdminLoginPage() {
               name="password"
               type="password"
               autoComplete="current-password"
-              defaultValue={getOwnerPassword()}
               className="rounded-2xl border border-[#d8ccb9] bg-[#fffdf9] px-4 py-3 text-[#171717]"
             />
           </label>

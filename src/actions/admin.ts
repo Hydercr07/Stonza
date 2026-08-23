@@ -1,9 +1,20 @@
 "use server";
 
+import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
-import { clearAdminSession, getOwnerEmail, getOwnerPassword, requireAdminSession, setAdminSession } from "@/lib/auth/session";
+import {
+  clearAdminSession,
+  getAdminSession,
+  getOwnerEmail,
+  getOwnerPassword,
+  isSupabaseAuthEnabled,
+  requireAdminSession,
+  setAdminSession,
+} from "@/lib/auth/session";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import {
   adjustProductInventory,
   assignProductsToCategory,
@@ -167,13 +178,54 @@ function formatAdminError(error: unknown) {
   return error instanceof Error ? error.message : "Product could not be saved right now.";
 }
 
+function timingSafeStringEqual(a: string, b: string) {
+  const bufferA = Buffer.from(a);
+  const bufferB = Buffer.from(b);
+  // Pad to equal length first so the comparison itself doesn't leak length
+  // via early-exit timing, then compare a fixed-size digest for good measure.
+  const paddedA = Buffer.concat([bufferA, Buffer.alloc(Math.max(0, bufferB.length - bufferA.length))]);
+  const paddedB = Buffer.concat([bufferB, Buffer.alloc(Math.max(0, bufferA.length - bufferB.length))]);
+  return bufferA.length === bufferB.length && crypto.timingSafeEqual(paddedA, paddedB);
+}
+
 export async function loginAction(formData: FormData) {
+  const ip = await getClientIp();
+  const limit = checkRateLimit(`login:${ip}`, 5, 15 * 60 * 1000);
+  if (!limit.allowed) {
+    throw new Error(`Too many login attempts. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s).`);
+  }
+
   const payload = loginSchema.parse({
     email: formData.get("email"),
     password: formData.get("password"),
   });
 
-  if (payload.email !== getOwnerEmail() || payload.password !== getOwnerPassword()) {
+  if (isSupabaseAuthEnabled()) {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: payload.email,
+      password: payload.password,
+    });
+
+    if (error || !data.user) {
+      throw new Error("Invalid login credentials.");
+    }
+
+    const session = await getAdminSession();
+    if (!session) {
+      // Valid Supabase account, but nobody granted it an admin role --
+      // don't leave a signed-in-but-unauthorized session sitting around.
+      await supabase.auth.signOut();
+      throw new Error("This account does not have admin access.");
+    }
+
+    redirect("/admin");
+  }
+
+  const emailValid = timingSafeStringEqual(payload.email, getOwnerEmail());
+  const passwordValid = timingSafeStringEqual(payload.password, getOwnerPassword());
+
+  if (!emailValid || !passwordValid) {
     throw new Error("Invalid login credentials for local demo mode.");
   }
 

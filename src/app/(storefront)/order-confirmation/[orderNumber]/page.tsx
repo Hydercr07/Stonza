@@ -2,16 +2,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button } from "@/components/shared/ui/button";
 import { OrderConfirmationClient } from "@/components/storefront/order-confirmation-client";
-import { getOrderByNumber } from "@/lib/data/store";
+import { getOrderForConfirmation } from "@/lib/data/store";
 import { formatMoney } from "@/lib/utils";
 
 export default async function OrderConfirmationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ orderNumber: string }>;
+  searchParams: Promise<{ token?: string }>;
 }) {
   const { orderNumber } = await params;
-  const order = await getOrderByNumber(orderNumber);
+  const { token } = await searchParams;
+  // Order numbers are sequential and guessable, so this page requires the
+  // unguessable token issued at checkout — never look orders up by number
+  // alone here, or any visitor could enumerate other customers' PII.
+  const order = await getOrderForConfirmation(orderNumber, token);
 
   if (!order) {
     notFound();

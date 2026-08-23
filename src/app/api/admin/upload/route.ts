@@ -3,6 +3,7 @@ import path from "node:path";
 import { NextResponse } from "next/server";
 import { addMediaAsset } from "@/lib/data/store";
 import { parseAdminSessionCookie } from "@/lib/auth/session";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
 import { safeFilename, validateMediaInput } from "@/lib/media";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -168,6 +169,14 @@ export async function POST(request: Request) {
   const session = parseAdminSessionCookie(sessionCookie ? decodeURIComponent(sessionCookie) : undefined);
   if (!session) {
     return unauthorized();
+  }
+
+  const limit = checkRateLimit(`upload:${session.email}`, 30, 10 * 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: `Too many uploads. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s).` },
+      { status: 429 },
+    );
   }
 
   const formData = await request.formData();

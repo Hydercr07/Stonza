@@ -1,4 +1,6 @@
-const ALLOWED_TAGS = new Set([
+import DOMPurify from "isomorphic-dompurify";
+
+const ALLOWED_TAGS = [
   "a",
   "b",
   "blockquote",
@@ -24,77 +26,24 @@ const ALLOWED_TAGS = new Set([
   "sub",
   "sup",
   "ul",
-]);
+];
 
-const ALLOWED_ATTRS = new Set(["alt", "class", "href", "src", "title"]);
+const ALLOWED_ATTR = ["alt", "class", "href", "src", "title"];
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function stripUnsafeUrls(value: string) {
-  if (!value) return "";
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  const lower = trimmed.toLowerCase();
-  if (lower.startsWith("javascript:") || lower.startsWith("data:") || lower.startsWith("vbscript:")) {
-    return "";
-  }
-  return trimmed;
-}
-
+/**
+ * Sanitizes admin-authored rich text (journal posts, product/category
+ * descriptions, managed pages) before it is rendered with
+ * `dangerouslySetInnerHTML`. Backed by DOMPurify — a battle-tested parser
+ * that actually builds a DOM tree to sanitize, rather than a hand-rolled
+ * regex pass, which is a well-known way to end up with a bypassable filter.
+ */
 export function sanitizeHtml(input: string | null | undefined): string {
   const source = typeof input === "string" ? input : "";
   if (!source.trim()) return "";
 
-  const tagPattern = /<\/?[a-zA-Z0-9]+\b[^>]*>/g;
-  const matches = source.match(tagPattern) ?? [];
-
-  let sanitized = source;
-
-  for (const match of matches) {
-    const tagName = match.match(/^<\/?\s*([a-zA-Z0-9]+)/)?.[1]?.toLowerCase();
-    if (!tagName) continue;
-
-    if (match.startsWith("</")) {
-      if (!ALLOWED_TAGS.has(tagName)) {
-        sanitized = sanitized.replace(match, "");
-      }
-      continue;
-    }
-
-    if (!ALLOWED_TAGS.has(tagName)) {
-      sanitized = sanitized.replace(match, "");
-      continue;
-    }
-
-    const attrPattern = /([a-zA-Z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g;
-    const rewritten = match.replace(attrPattern, (attrMatch, attrName, doubleQuoted, singleQuoted, unquoted) => {
-      const rawValue = doubleQuoted ?? singleQuoted ?? unquoted ?? "";
-      const attr = attrName.toLowerCase();
-
-      if (!ALLOWED_ATTRS.has(attr)) {
-        return "";
-      }
-
-      if (attr === "href" || attr === "src") {
-        const safeUrl = stripUnsafeUrls(rawValue);
-        return safeUrl ? `${attr}="${escapeHtml(safeUrl)}"` : "";
-      }
-
-      return `${attr}="${escapeHtml(rawValue)}"`;
-    });
-
-    sanitized = sanitized.replace(match, rewritten);
-  }
-
-  return sanitized
-    .replace(/<script\b[^>]*>.*?<\/script>/gi, "")
-    .replace(/<style\b[^>]*>.*?<\/style>/gi, "")
-    .replace(/on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+  return DOMPurify.sanitize(source, {
+    ALLOWED_TAGS,
+    ALLOWED_ATTR,
+    ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+  });
 }
