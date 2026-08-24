@@ -188,48 +188,68 @@ function timingSafeStringEqual(a: string, b: string) {
   return bufferA.length === bufferB.length && crypto.timingSafeEqual(paddedA, paddedB);
 }
 
-export async function loginAction(formData: FormData) {
-  const ip = await getClientIp();
-  const limit = checkRateLimit(`login:${ip}`, 5, 15 * 60 * 1000);
-  if (!limit.allowed) {
-    throw new Error(`Too many login attempts. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s).`);
-  }
+export type LoginActionState = { error: string } | undefined;
 
-  const payload = loginSchema.parse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+// Returns { error } on failure instead of throwing. A Server Action that
+// throws a plain Error, called from a bare `<form action={...}>` with no
+// client-side error boundary catching it, renders as Next's generic
+// "Application error: a client-side exception has occurred" blank screen --
+// so a wrong password, an expired rate limit, or any other ordinary login
+// failure looked identical to the site being broken. useActionState on the
+// client side (see login/page.tsx) surfaces this return value as a real
+// inline message instead.
+export async function loginAction(_prevState: LoginActionState, formData: FormData): Promise<LoginActionState> {
+  try {
+    const ip = await getClientIp();
+    const limit = checkRateLimit(`login:${ip}`, 5, 15 * 60 * 1000);
+    if (!limit.allowed) {
+      return { error: `Too many login attempts. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s).` };
+    }
 
-  if (isSupabaseAuthEnabled()) {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: payload.email,
-      password: payload.password,
+    const payload = loginSchema.parse({
+      email: formData.get("email"),
+      password: formData.get("password"),
     });
 
-    if (error || !data.user) {
-      throw new Error("Invalid login credentials.");
-    }
+    if (isSupabaseAuthEnabled()) {
+      const supabase = await createSupabaseServerClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: payload.email,
+        password: payload.password,
+      });
 
-    const session = await getAdminSession();
-    if (!session) {
-      // Valid Supabase account, but nobody granted it an admin role --
-      // don't leave a signed-in-but-unauthorized session sitting around.
-      await supabase.auth.signOut();
-      throw new Error("This account does not have admin access.");
-    }
+      if (error || !data.user) {
+        return { error: "Invalid login credentials." };
+      }
 
-    redirect("/admin");
+      const session = await getAdminSession();
+      if (!session) {
+        // Valid Supabase account, but nobody granted it an admin role --
+        // don't leave a signed-in-but-unauthorized session sitting around.
+        await supabase.auth.signOut();
+        return { error: "This account does not have admin access." };
+      }
+    } else {
+      const emailValid = timingSafeStringEqual(payload.email, getOwnerEmail());
+      const passwordValid = timingSafeStringEqual(payload.password, getOwnerPassword());
+
+      if (!emailValid || !passwordValid) {
+        return { error: "Invalid login credentials for local demo mode." };
+      }
+
+      await setAdminSession(payload.email);
+    }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: "Enter a valid email and password." };
+    }
+    // Anything else (a Next.js redirect/navigation signal is never thrown
+    // from inside this try block -- redirect() is only called below, after
+    // it) is a genuinely unexpected failure. Surface it as a message
+    // instead of crashing the page.
+    return { error: "Something went wrong signing in. Please try again." };
   }
 
-  const emailValid = timingSafeStringEqual(payload.email, getOwnerEmail());
-  const passwordValid = timingSafeStringEqual(payload.password, getOwnerPassword());
-
-  if (!emailValid || !passwordValid) {
-    throw new Error("Invalid login credentials for local demo mode.");
-  }
-
-  await setAdminSession(payload.email);
   redirect("/admin");
 }
 
