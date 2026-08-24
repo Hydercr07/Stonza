@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getStoreData } from "@/lib/data/store";
+import { getStoreData, listAdminProducts, listOrders } from "@/lib/data/store";
 
 // TEMPORARY diagnostic route -- not linked anywhere, will be removed
 // immediately after use. Reproduces the admin (portal) layout's data
@@ -66,6 +66,31 @@ export async function GET() {
       summary.searchItemsBuilt = searchItems.length;
     } catch (e) {
       summary.searchItemsError = { message: (e as Error).message, stack: (e as Error).stack };
+    }
+
+    try {
+      const [products, orders] = await Promise.all([listAdminProducts(), listOrders()]);
+      const startOfToday = (() => {
+        const now = new Date();
+        return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      })();
+      const todaysOrders = orders.filter((order) => new Date(order.createdAt).getTime() >= startOfToday);
+      const todaysRevenue = todaysOrders.reduce((total, order) => total + order.total, 0);
+      const pendingOrders = orders.filter((order) => ["pending", "confirmed", "processing"].includes(order.status));
+      const lowStockProducts = products.filter((product) => product.inventoryQuantity <= product.lowStockThreshold).slice(0, 6);
+      const uniqueCustomers = new Set(orders.map((order) => order.customer.email.toLowerCase())).size;
+      summary.dashboardPageComputed = {
+        products: products.length,
+        orders: orders.length,
+        todaysOrders: todaysOrders.length,
+        todaysRevenue,
+        pendingOrders: pendingOrders.length,
+        lowStockProducts: lowStockProducts.length,
+        uniqueCustomers,
+        activityLogs: store.activityLogs?.length,
+      };
+    } catch (e) {
+      summary.dashboardPageError = { message: (e as Error).message, stack: (e as Error).stack };
     }
 
     return NextResponse.json(summary);
