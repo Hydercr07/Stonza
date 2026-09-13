@@ -51,7 +51,7 @@ import {
   upsertJournalPost,
   upsertProduct,
 } from "@/lib/data/store";
-import { canTransitionProductStatus } from "@/lib/permissions";
+import { canRole, canTransitionProductStatus } from "@/lib/permissions";
 import {
   categorySchema,
   collectionSchema,
@@ -833,6 +833,21 @@ export async function quickUpdateProductAction(formData: FormData) {
   const featured = formData.get("featured");
   const categorySlug = formData.get("categorySlug");
 
+  const nextStatus = status ? (String(status) as Product["status"]) : existing.status;
+  if (nextStatus !== existing.status) {
+    // The dedicated Publish/Unpublish action requires products:publish and
+    // validates the transition -- this inline quick-edit dropdown exposed
+    // every status option regardless of the product's current one and
+    // enforced neither, so e.g. selecting "published" on a "sold" or
+    // "trash" row instantly republished it with no state-machine check.
+    if (!canRole(session.role, "products:publish")) {
+      throw new Error("You do not have permission to change product status.");
+    }
+    if (!canTransitionProductStatus(existing.status, nextStatus)) {
+      throw new Error(`Cannot change status from "${existing.status}" to "${nextStatus}".`);
+    }
+  }
+
   const nextProduct: Product = {
     ...existing,
     price: price !== null && String(price).length ? Number(price) : existing.price,
@@ -846,7 +861,7 @@ export async function quickUpdateProductAction(formData: FormData) {
       inventoryQuantity !== null && String(inventoryQuantity).length
         ? Number(inventoryQuantity)
         : existing.inventoryQuantity,
-    status: status ? (String(status) as Product["status"]) : existing.status,
+    status: nextStatus,
     featured: featured ? featured === "true" : existing.featured,
     categorySlug: categorySlug ? String(categorySlug) : existing.categorySlug,
     categorySlugs: categorySlug ? [String(categorySlug)] : existing.categorySlugs,
@@ -892,9 +907,25 @@ export async function bulkUpdateProductsAction(formData: FormData) {
       updatedAt: new Date().toISOString(),
     };
 
-    if (action === "publish") nextProduct.status = "published";
-    if (action === "draft") nextProduct.status = "draft";
-    if (action === "archive") nextProduct.status = "archived";
+    const bulkStatusTargets: Partial<Record<string, Product["status"]>> = {
+      publish: "published",
+      draft: "draft",
+      archive: "archived",
+    };
+    const targetStatus = bulkStatusTargets[action];
+    if (targetStatus) {
+      // Mirrors transitionProductStatusAction's guard -- bulk actions used
+      // to set status directly with no permission or state-machine check at
+      // all, so selecting "Publish" over a multi-select that included sold
+      // or trashed items instantly republished them in one click. Skip
+      // (rather than fail the whole batch) any row the transition isn't
+      // valid for, since a bulk action spanning many rows is expected to
+      // apply only to the ones it's actually valid for.
+      if (!canRole(session.role, "products:publish") || !canTransitionProductStatus(existing.status, targetStatus)) {
+        continue;
+      }
+      nextProduct.status = targetStatus;
+    }
     if (action === "feature") nextProduct.featured = true;
     if (action === "unfeature") nextProduct.featured = false;
     if (action === "set-category" && value) {

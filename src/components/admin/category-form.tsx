@@ -6,6 +6,7 @@ import {
 } from "@/actions/admin";
 import { AdminMediaUploader } from "@/components/admin/media-uploader";
 import { UploadAwareSubmitButton } from "@/components/admin/upload-aware-submit-button";
+import { UploadStatusProvider } from "@/components/admin/upload-status-context";
 import { Button } from "@/components/shared/ui/button";
 import type { Category, Product } from "@/types/domain";
 
@@ -82,6 +83,7 @@ export function CategoryForm({
           ) : null}
         </div>
       </div>
+      <UploadStatusProvider>
       <form action={saveCategoryAction} className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <input type="hidden" name="id" defaultValue={category?.id} />
         <div className="space-y-6">
@@ -208,6 +210,7 @@ export function CategoryForm({
           <UploadAwareSubmitButton className="w-full">Save category</UploadAwareSubmitButton>
         </div>
       </form>
+      </UploadStatusProvider>
     </div>
   );
 }

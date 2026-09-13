@@ -14,7 +14,11 @@ export default async function AdminCategoriesPage({
   const featuredOnly = typeof params.featured === "string" ? params.featured === "true" : false;
 
   const [categories, products] = await Promise.all([
-    listCategories({ admin: true, search }),
+    // includeInactive is required so the "Trash" status filter (below) has
+    // anything to show -- without it, listCategories() strips every
+    // status:"trash" row before this page's own filter ever runs, and a
+    // deleted category becomes permanently unfindable in the admin UI.
+    listCategories({ admin: true, search, includeInactive: true }),
     listProducts(),
   ]);
 

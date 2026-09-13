@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { transitionOrderStatusAction } from "@/actions/admin";
 import { Button } from "@/components/shared/ui/button";
+import { requireAdminSession } from "@/lib/auth/session";
 import { getOrderByNumber } from "@/lib/data/store";
 import { formatMoney } from "@/lib/utils";
 
@@ -10,6 +11,7 @@ export default async function AdminOrderDetailPage({
 }: {
   params: Promise<{ orderNumber: string }>;
 }) {
+  await requireAdminSession("orders:write");
   const { orderNumber } = await params;
   const order = await getOrderByNumber(orderNumber);
 

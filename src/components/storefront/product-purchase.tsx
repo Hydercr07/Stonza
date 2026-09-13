@@ -6,6 +6,7 @@ import { Ruler, X } from "lucide-react";
 import { Button } from "@/components/shared/ui/button";
 import { useCart } from "@/components/storefront/cart-store";
 import { useWishlist } from "@/components/storefront/wishlist-store";
+import { canPurchaseProduct } from "@/lib/commerce";
 import type { Product } from "@/types/domain";
 
 export function ProductPurchase({
@@ -25,10 +26,7 @@ export function ProductPurchase({
   const [message, setMessage] = useState<string | null>(null);
   const [sizeChartOpen, setSizeChartOpen] = useState(false);
 
-  const unavailable = useMemo(
-    () => ["sold", "out_of_stock", "archived", "trash"].includes(product.status) || product.inventoryQuantity <= 0,
-    [product.inventoryQuantity, product.status],
-  );
+  const unavailable = useMemo(() => !canPurchaseProduct(product), [product]);
 
   return (
     <div className="mt-6 space-y-4">

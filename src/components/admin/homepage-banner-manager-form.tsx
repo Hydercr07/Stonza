@@ -50,12 +50,19 @@ export function HomepageBannerManagerForm({
   );
 
   const serializedBanners = JSON.stringify(
-    items.map((banner, index) => ({
-      ...banner,
-      order: index + 1,
-      afterSectionKey: banner.afterSectionKey || fallbackSectionKey,
-      altText: banner.altText || banner.title || `STONZA promotional banner ${index + 1}`,
-    })),
+    items
+      // homepageBannerSchema requires a non-empty imageUrl -- a banner just
+      // added via "Add banner" starts with imageUrl "", and submitting
+      // before uploading one used to throw an uncaught ZodError that
+      // crashed the whole page. Drop still-incomplete banners instead;
+      // once an image is uploaded it will serialize (and save) normally.
+      .filter((banner) => banner.imageUrl)
+      .map((banner, index) => ({
+        ...banner,
+        order: index + 1,
+        afterSectionKey: banner.afterSectionKey || fallbackSectionKey,
+        altText: banner.altText || banner.title || `STONZA promotional banner ${index + 1}`,
+      })),
   );
 
   return (

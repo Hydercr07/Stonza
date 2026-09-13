@@ -14,9 +14,11 @@ import type {
   ProductSizeChart,
   ProductVariantOption,
 } from "@/types/domain";
+import { canTransitionProductStatus } from "@/lib/permissions";
 import { Button } from "@/components/shared/ui/button";
 import { AdminMediaUploader } from "@/components/admin/media-uploader";
 import { UploadAwareSubmitButton } from "@/components/admin/upload-aware-submit-button";
+import { UploadStatusProvider } from "@/components/admin/upload-status-context";
 import { AdminBadge } from "@/components/admin/ui";
 
 type ProductSpecification = NonNullable<Product["specifications"]>[number];
@@ -115,11 +117,27 @@ export function ProductForm({
           </Button>
           {product ? (
             <>
-              <form action={transitionProductStatusAction}>
-                <input type="hidden" name="id" value={product.id} />
-                <input type="hidden" name="status" value={product.status === "published" ? "draft" : "published"} />
-                <Button variant="outline">{product.status === "published" ? "Unpublish" : "Publish"}</Button>
-              </form>
+              {(() => {
+                // This quick-toggle always targeted "draft" or "published"
+                // regardless of the product's actual current status, so
+                // clicking "Publish" on a "sold" or "trash" product (neither
+                // of which can transition straight to "published") used to
+                // throw an uncaught "Invalid product status transition"
+                // error with no useActionState wrapper on this form. Only
+                // render the toggle when the transition it would perform is
+                // actually valid; a status the quick-toggle can't reach
+                // (sold, trash) still has the full status dropdown in the
+                // save form below.
+                const target = product.status === "published" ? "draft" : "published";
+                if (!canTransitionProductStatus(product.status, target)) return null;
+                return (
+                  <form action={transitionProductStatusAction}>
+                    <input type="hidden" name="id" value={product.id} />
+                    <input type="hidden" name="status" value={target} />
+                    <Button variant="outline">{product.status === "published" ? "Unpublish" : "Publish"}</Button>
+                  </form>
+                );
+              })()}
               <form action={transitionProductStatusAction}>
                 <input type="hidden" name="id" value={product.id} />
                 <input
@@ -163,6 +181,7 @@ export function ProductForm({
           </button>
         ))}
       </div>
+      <UploadStatusProvider>
       <form
         action={formAction}
         onChangeCapture={() => setDirty(true)}
@@ -731,6 +750,7 @@ export function ProductForm({
           </div>
         </div>
       </form>
+      </UploadStatusProvider>
     </div>
   );
 }

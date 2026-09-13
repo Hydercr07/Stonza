@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Loader2, Star, Trash2, Upload } from "lucide-react";
 import { humanFileSize, validateMediaInput } from "@/lib/media";
 import { cn } from "@/lib/utils";
+import { useUploadStatus } from "@/components/admin/upload-status-context";
 import type { ProductMediaItem } from "@/types/domain";
 
 type UploadAssetResponse = {
@@ -54,10 +55,28 @@ export function AdminMediaUploader({
   multiple?: boolean;
 }) {
   const inputId = useId();
+  const { setUploading: reportUploading } = useUploadStatus();
   const [items, setItems] = useState<ProductMediaItem[]>(normalizeFeatured(initialItems));
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploadingState] = useState(false);
+  // Mirrors local `uploading` into the shared cross-uploader context (keyed
+  // by this instance's stable id) so UploadAwareSubmitButton can disable the
+  // form's Save button while ANY uploader on the page is mid-upload -- not
+  // just while the server action itself is submitting. Previously, clicking
+  // Save while an image was still uploading submitted the pre-upload media
+  // list, silently dropping the in-flight image from the saved product.
+  const setUploading = (value: boolean) => {
+    setUploadingState(value);
+    reportUploading(inputId, value);
+  };
+  useEffect(() => {
+    // Clear this uploader's busy flag if it unmounts mid-upload (e.g. the
+    // admin navigates away), so it can never permanently disable a submit
+    // button elsewhere that shares the same provider.
+    return () => reportUploading(inputId, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputId]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hiddenInputRef = useRef<HTMLInputElement>(null);
   const dragItemId = useRef<string | null>(null);

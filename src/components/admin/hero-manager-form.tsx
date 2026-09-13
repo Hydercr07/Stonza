@@ -47,7 +47,13 @@ export function HeroManagerForm({ hero }: { hero: HeroSettings }) {
           showArrows: false,
           showDots: true,
           transitionStyle: "fade",
-          slides,
+          // heroSlideSchema requires at least one image per slide -- a slide
+          // just added via "Add banner" starts with both images empty, and
+          // submitting before uploading one used to throw an uncaught
+          // ZodError that crashed the whole page. Drop still-incomplete
+          // slides instead of submitting them; the admin can finish adding
+          // the image and save again once it's actually ready.
+          slides: slides.filter((slide) => slide.desktopImage || slide.mobileImage),
         })}
       />
       <input type="hidden" name="video" value={JSON.stringify(hero.video)} />

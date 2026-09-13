@@ -183,7 +183,18 @@ export async function readStoreFromPostgres(): Promise<Partial<StoreData>> {
   } as Partial<StoreData>;
 }
 
-async function syncRowTable(table: string, items: Array<{ id: string }>) {
+// `previousIds` is this request's own "before" snapshot for the table (the
+// ids that were present when readStore() ran at the start of this
+// request/mutation), or `null` when there is no baseline to safely diff
+// against. Deletion is computed ONLY as "was in this request's own before
+// snapshot, is missing from its after state" -- never as "is absent from
+// the current snapshot," which used to delete any row a *concurrent*
+// request had inserted after this request's snapshot was taken (that row
+// is legitimately absent from this snapshot without ever having been
+// removed by anyone). With no baseline, no deletes happen at all: failing
+// to sync a rare legitimate delete is recoverable, silently deleting an
+// unrelated concurrent insert is not.
+async function syncRowTable(table: string, items: Array<{ id: string }>, previousIds: Set<string> | null) {
   const supabase = createSupabaseAdminClient();
   const nowIso = new Date().toISOString();
   const currentIds = new Set(items.map((item) => item.id));
@@ -194,12 +205,9 @@ async function syncRowTable(table: string, items: Array<{ id: string }>) {
     if (error) throw new Error(`Postgres write failed for ${table}: ${error.message}`);
   }
 
-  const { data: existing, error: fetchError } = await supabase.from(table).select("id");
-  if (fetchError) throw new Error(`Postgres read failed for ${table}: ${fetchError.message}`);
+  if (!previousIds) return;
 
-  const idsToDelete = (existing ?? [])
-    .map((row: { id: string }) => row.id)
-    .filter((id: string) => !currentIds.has(id));
+  const idsToDelete = [...previousIds].filter((id) => !currentIds.has(id));
 
   if (idsToDelete.length) {
     const { error: deleteError } = await supabase.from(table).delete().in("id", idsToDelete);
@@ -245,7 +253,10 @@ export async function writeStoreToPostgres(current: StoreData, original: StoreDa
 
   for (const [key, table] of Object.entries(ROW_TABLES) as [RowTableKey, string][]) {
     if (key === "contentLabels" ? changed("contentLabels") : changed(key)) {
-      tasks.push(syncRowTable(table, (current[key] as Array<{ id: string }>) ?? []));
+      const previousIds = original
+        ? new Set(((original[key] as Array<{ id: string }> | undefined) ?? []).map((item) => item.id))
+        : null;
+      tasks.push(syncRowTable(table, (current[key] as Array<{ id: string }>) ?? [], previousIds));
     }
   }
 

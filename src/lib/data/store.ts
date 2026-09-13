@@ -26,7 +26,7 @@ import {
   updateOrderStatusInPostgres,
   writeStoreToPostgres,
 } from "@/lib/data/postgres-adapter";
-import { getEffectivePrice } from "@/lib/commerce";
+import { canPurchaseProduct, getEffectivePrice } from "@/lib/commerce";
 import { sidebarCategoryHierarchy } from "@/lib/category-hierarchy";
 import type {
   ActivityLogEntry,
@@ -462,7 +462,7 @@ function normalizeVariants(variants: Product["variants"] | string[] | undefined)
 
       return {
         id: variant.id || `variant-${index + 1}`,
-        value: variant.value.trim(),
+        value: variant.value?.trim() ?? "",
         label: variant.label?.trim() || undefined,
         active: variant.active ?? true,
       } satisfies ProductVariantOption;
@@ -1044,26 +1044,41 @@ function visibleCollection(collection: Collection) {
   return collection.active && !isLikelyDemoRecord(collection);
 }
 
+// Matches "test"/"demo"/etc. only as whole words, not as a raw substring --
+// a plain .includes("test") also hides any genuine product/category/
+// collection whose real name merely CONTAINS one of these as a fragment
+// ("Latest Arrivals", "Contest Winner Ring", "Attestation Certificate
+// Stone"), silently vanishing it from every storefront listing with no
+// error or admin-visible explanation, while it still shows as normal and
+// published in every admin screen (which doesn't apply this filter).
+const DEMO_RECORD_PATTERN = /\b(playwright|demo|sample|dummy|placeholder|test)\b/i;
+
 function isLikelyDemoRecord(record: { name?: string; title?: string; featuredImage?: string; heroImage?: string; heroMedia?: string }) {
-  const title = `${record.name ?? record.title ?? ""}`.toLowerCase();
+  const title = `${record.name ?? record.title ?? ""}`;
   return (
-    title.includes("playwright") ||
-    title.includes("demo") ||
-    title.includes("sample") ||
-    title.includes("dummy") ||
-    title.includes("placeholder") ||
-    title.includes("test") ||
+    DEMO_RECORD_PATTERN.test(title) ||
     isPlaceholderAsset(record.featuredImage) ||
     isPlaceholderAsset(record.heroImage) ||
     isPlaceholderAsset(record.heroMedia)
   );
 }
 
-function ensureUniqueSlug(existingSlugs: string[], preferred: string, currentId?: string, entries?: Array<{ id: string; slug: string }>) {
+function ensureUniqueSlug(
+  existingSlugs: string[],
+  preferred: string,
+  currentId?: string,
+  entries?: Array<{ id: string; slug: string; slugHistory?: string[] }>,
+) {
   const base = slugify(preferred) || "item";
+  // Must also block slugs still remembered in another entry's slugHistory,
+  // not just its current slug -- otherwise a brand-new record can claim the
+  // exact slug an older, renamed record still redirects from, and slug
+  // lookups (which check slugHistory too) resolve to the wrong record.
   const taken = new Set(
     entries
-      ? entries.filter((entry) => entry.id !== currentId).map((entry) => entry.slug)
+      ? entries
+          .filter((entry) => entry.id !== currentId)
+          .flatMap((entry) => [entry.slug, ...(entry.slugHistory ?? [])])
       : existingSlugs,
   );
   if (!taken.has(base)) return base;
@@ -1615,11 +1630,30 @@ export async function updateCategoryStatus(id: string, status: Category["status"
   const store = await readStore();
   const category = store.categories.find((item) => item.id === id);
   if (!category) throw new Error("Category not found");
+  const wasPublished = category.status === "published";
   category.status = status;
   category.active = status === "published";
   category.deletedAt = status === "trash" ? new Date().toISOString() : undefined;
   category.updatedAt = new Date().toISOString();
   category.updatedBy = actor;
+
+  // A category leaving "published" (trashed or archived) disappears from
+  // visibleCategory() -- unlike the slug-rename cascade above, this used to
+  // update nothing else, leaving child categories pointing at a
+  // parentCategorySlug that no longer resolves to anything visible (a
+  // broken breadcrumb link, and the child silently vanishing from category
+  // navigation since buildCategoryNavigation looks parents up by slug).
+  // Clearing the link promotes the child to top-level instead, which is
+  // recoverable (an admin can re-parent it) rather than silently broken.
+  if (wasPublished && status !== "published") {
+    const now = new Date().toISOString();
+    store.categories = store.categories.map((item) =>
+      item.parentCategorySlug === category.slug
+        ? { ...item, parentCategorySlug: undefined, updatedAt: now }
+        : item,
+    );
+  }
+
   await writeStore(store);
   return category;
 }
@@ -1816,9 +1850,17 @@ export async function adjustProductInventory(id: string, delta: number) {
   const nextQuantity = Math.max(0, product.inventoryQuantity + delta);
   product.inventoryQuantity = nextQuantity;
 
-  if (nextQuantity <= 0) {
+  // Only toggle between "published" and "out_of_stock" -- i.e. only for a
+  // product whose status already tracks live inventory. Unconditionally
+  // force-setting status here (as this used to) meant a routine stock count
+  // on a still-unfinished "draft" product (or a "reserved"/"sold"/"archived"
+  // one) silently flipped it to "out_of_stock" -- a status visibleProduct()
+  // treats as publicly visible -- publishing it as a side effect, with none
+  // of canTransitionProductStatus's transition rules or the products:publish
+  // permission that a deliberate publish requires.
+  if (product.status === "published" && nextQuantity <= 0) {
     product.status = "out_of_stock";
-  } else if (product.status === "out_of_stock") {
+  } else if (product.status === "out_of_stock" && nextQuantity > 0) {
     product.status = "published";
   }
 
@@ -2101,7 +2143,7 @@ export async function createOrder(payload: {
       throw new Error("A product in your cart is no longer available.");
     }
 
-    if (!visibleProduct(product) || !product.allowCartPurchase) {
+    if (!visibleProduct(product) || !canPurchaseProduct(product)) {
       throw new Error(`${product.name} is not currently available for checkout.`);
     }
 
@@ -2215,6 +2257,21 @@ export async function updateOrderStatus(orderNumber: string, status: OrderRecord
       product.inventoryQuantity += item.quantity;
       if (["out_of_stock", "sold"].includes(product.status) && product.inventoryQuantity > 0) {
         product.status = "published";
+      }
+      product.updatedAt = new Date().toISOString();
+    }
+  } else if (status !== "cancelled" && order.status === "cancelled") {
+    // Symmetric undo: an order that was cancelled (and had its items
+    // restocked above) is being moved back to an active status -- without
+    // re-deducting, that stock stays counted as available AND as committed
+    // to this now-active order at the same time, risking overselling the
+    // same physical one-of-a-kind stones.
+    for (const item of order.items) {
+      const product = store.products.find((entry) => entry.id === item.productId);
+      if (!product) continue;
+      product.inventoryQuantity = Math.max(0, product.inventoryQuantity - item.quantity);
+      if (product.status === "published" && product.inventoryQuantity <= 0) {
+        product.status = "out_of_stock";
       }
       product.updatedAt = new Date().toISOString();
     }

@@ -7,6 +7,7 @@ import { Minus, Plus, X } from "lucide-react";
 import { useCart } from "@/components/storefront/cart-store";
 import type { Product } from "@/types/domain";
 import { formatMoney, getProductDisplayPrice, isRemoteAsset } from "@/lib/utils";
+import { canPurchaseProduct } from "@/lib/commerce";
 import { Button } from "@/components/shared/ui/button";
 
 export function QuickBuyModal({ product }: { product: Product }) {
@@ -15,10 +16,7 @@ export function QuickBuyModal({ product }: { product: Product }) {
   const [selectedVariant, setSelectedVariant] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
-  const unavailable = useMemo(
-    () => ["sold", "out_of_stock", "archived", "trash"].includes(product.status) || product.inventoryQuantity <= 0,
-    [product.inventoryQuantity, product.status],
-  );
+  const unavailable = useMemo(() => !canPurchaseProduct(product), [product]);
 
   return (
     <Dialog.Root>
