@@ -13,9 +13,9 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "npm.cmd run dev -- --port 3005",
+    command: "npm.cmd run build && npm.cmd run start -- --port 3005",
     url: "http://localhost:3005",
     reuseExistingServer: false,
-    timeout: 120000,
+    timeout: 240000,
   },
 });

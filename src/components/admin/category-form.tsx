@@ -5,8 +5,10 @@ import {
   transitionCategoryStatusAction,
 } from "@/actions/admin";
 import { AdminMediaUploader } from "@/components/admin/media-uploader";
+import { UploadAwareSubmitButton } from "@/components/admin/upload-aware-submit-button";
+import { UploadStatusProvider } from "@/components/admin/upload-status-context";
 import { Button } from "@/components/shared/ui/button";
-import type { Category } from "@/types/domain";
+import type { Category, Product } from "@/types/domain";
 
 function singleMedia(categoryImage?: string, altText?: string) {
   if (!categoryImage) return [];
@@ -26,11 +28,18 @@ function singleMedia(categoryImage?: string, altText?: string) {
 export function CategoryForm({
   category,
   categories,
+  products,
 }: {
   category?: Category | null;
   categories: Category[];
+  products: Product[];
 }) {
   const parentOptions = categories.filter((entry) => entry.id !== category?.id && !entry.deletedAt);
+  const assignedProductSlugs = new Set(
+    products
+      .filter((product) => (product.categorySlugs?.length ? product.categorySlugs : [product.categorySlug]).includes(category?.slug ?? ""))
+      .map((product) => product.slug),
+  );
 
   return (
     <div className="space-y-6">
@@ -65,10 +74,16 @@ export function CategoryForm({
                   <Button variant="outline">Restore</Button>
                 </form>
               ) : null}
+              <form action={transitionCategoryStatusAction}>
+                <input type="hidden" name="id" value={category.id} />
+                <input type="hidden" name="status" value="trash" />
+                <Button variant="outline">Delete category</Button>
+              </form>
             </>
           ) : null}
         </div>
       </div>
+      <UploadStatusProvider>
       <form action={saveCategoryAction} className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <input type="hidden" name="id" defaultValue={category?.id} />
         <div className="space-y-6">
@@ -103,9 +118,9 @@ export function CategoryForm({
               Alt text
               <input name="altText" defaultValue={category?.altText} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
             </label>
-            <label className="grid gap-2 text-sm">
-              Parent category
-              <select
+          <label className="grid gap-2 text-sm">
+            Parent category
+            <select
                 name="parentCategorySlug"
                 defaultValue={category?.parentCategorySlug ?? ""}
                 className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3"
@@ -118,6 +133,26 @@ export function CategoryForm({
                 ))}
               </select>
             </label>
+            {category ? (
+              <div className="grid gap-3 rounded-[1.5rem] border border-white/10 bg-black/15 p-4">
+                <p className="text-sm font-medium text-white">Assigned products</p>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {products
+                    .filter((product) => product.status !== "trash")
+                    .map((product) => (
+                      <label key={product.id} className="flex items-center gap-3 text-sm text-white/78">
+                        <input
+                          type="checkbox"
+                          name={`product:${product.slug}`}
+                          defaultChecked={assignedProductSlugs.has(product.slug)}
+                          className="h-4 w-4 rounded border-white/20 bg-black/30"
+                        />
+                        <span>{product.name}</span>
+                      </label>
+                    ))}
+                </div>
+              </div>
+            ) : null}
           </div>
           <div className="space-y-6 rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
             <AdminMediaUploader
@@ -172,9 +207,10 @@ export function CategoryForm({
             Open Graph image
             <input name="openGraphImage" defaultValue={category?.openGraphImage ?? category?.featuredImage} className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3" />
           </label>
-          <Button className="w-full">Save category</Button>
+          <UploadAwareSubmitButton className="w-full">Save category</UploadAwareSubmitButton>
         </div>
       </form>
+      </UploadStatusProvider>
     </div>
   );
 }

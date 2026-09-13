@@ -31,8 +31,9 @@ yarn-error.log*
 .pnpm-debug.log*
 .codex-dev*.log
 
-# env files (can opt-in for committing if needed)
+# env files (real secrets never committed; the template is safe and needed for onboarding)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -41,7 +42,11 @@ yarn-error.log*
 .stonza/
 test-results/
 public/uploads/
+supabase/.temp/
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local debug logs, screenshots, and data backups -- not part of the app
+.openai/

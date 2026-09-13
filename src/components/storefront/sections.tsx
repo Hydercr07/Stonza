@@ -17,17 +17,41 @@ export function SectionHeading({
   ctaHref?: string;
 }) {
   return (
-    <div className="mb-10 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-      <div className="max-w-2xl space-y-4">
-        <p className="text-xs uppercase tracking-[0.3em] text-accent">{eyebrow}</p>
-        <h2 className="text-display text-4xl text-white md:text-5xl">{title}</h2>
-        <p className="text-sm leading-7 text-white/62 md:text-base">{body}</p>
+    <div className="mb-10">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl space-y-4">
+          <p className="text-xs uppercase tracking-[0.3em] text-[#a2845d]">{eyebrow}</p>
+          <h2 className="section-title text-[#171717]">{title}</h2>
+          <p className="text-sm leading-7 text-black/58 md:text-base">{body}</p>
+        </div>
+        {ctaLabel && ctaHref ? (
+          <div className="hidden lg:flex lg:shrink-0 lg:justify-end">
+            <Button asChild variant="outline">
+              <Link href={ctaHref}>{ctaLabel}</Link>
+            </Button>
+          </div>
+        ) : null}
       </div>
-      {ctaLabel && ctaHref ? (
-        <Button asChild variant="outline">
-          <Link href={ctaHref}>{ctaLabel}</Link>
-        </Button>
-      ) : null}
+    </div>
+  );
+}
+
+function MobileSectionCta({
+  ctaLabel,
+  ctaHref,
+}: {
+  ctaLabel?: string;
+  ctaHref?: string;
+}) {
+  if (!ctaLabel || !ctaHref) {
+    return null;
+  }
+
+  return (
+    <div className="order-last mt-6 lg:hidden">
+      <Button asChild variant="outline" className="flex w-full justify-center sm:w-auto sm:min-w-[13rem]">
+        <Link href={ctaHref}>{ctaLabel}</Link>
+      </Button>
     </div>
   );
 }
@@ -40,13 +64,14 @@ export function FeaturedCollectionsSection({
   collections: Collection[];
 }) {
   return (
-    <section className="container-shell py-18">
+    <section className="container-shell storefront-section flex flex-col">
       <SectionHeading eyebrow={section.eyebrow ?? "Collections"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="storefront-card-grid">
         {collections.map((collection) => (
           <CollectionCard key={collection.id} collection={collection} />
         ))}
       </div>
+      <MobileSectionCta ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
     </section>
   );
 }
@@ -59,13 +84,20 @@ export function FeaturedCategoriesSection({
   categories: Category[];
 }) {
   return (
-    <section className="container-shell py-18">
-      <SectionHeading eyebrow={section.eyebrow ?? "Categories"} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="grid gap-6 lg:grid-cols-3">
+    <section className="container-shell storefront-section flex flex-col">
+      <SectionHeading
+        eyebrow={section.eyebrow ?? "Categories"}
+        title={section.heading}
+        body={section.body}
+        ctaLabel="View All"
+        ctaHref={section.ctaUrl}
+      />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 lg:gap-6">
         {categories.map((category) => (
           <CategoryCard key={category.id} category={category} />
         ))}
       </div>
+      <MobileSectionCta ctaLabel="View All" ctaHref={section.ctaUrl} />
     </section>
   );
 }
@@ -80,28 +112,27 @@ export function FeaturedProductsSection({
   products: Product[];
 }) {
   return (
-    <section className="container-shell py-18">
+    <section className="container-shell storefront-section flex flex-col">
       <SectionHeading eyebrow={section.eyebrow ?? eyebrow} title={section.heading} body={section.body} ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
-      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
+      <div className="storefront-product-grid">
+        {products.map((product, index) => (
+          <div key={product.id} className="min-w-0">
+            <ProductCard product={product} priorityImage={index < 2} />
+          </div>
         ))}
       </div>
+      <MobileSectionCta ctaLabel={section.ctaLabel} ctaHref={section.ctaUrl} />
     </section>
   );
 }
 
 export function StorySection({ section }: { section: HomepageSection }) {
   return (
-    <section className="container-shell grid gap-8 py-18 lg:grid-cols-[0.9fr_1.1fr]">
-      <div
-        className="min-h-[22rem] rounded-[2rem] border border-white/10 bg-cover bg-center"
-        style={{ backgroundImage: "url('/placeholders/story-mineral.svg')" }}
-      />
-      <div className="stone-panel rounded-[2rem] p-8 md:p-12">
-        <p className="mb-4 text-xs uppercase tracking-[0.28em] text-accent">Brand Story</p>
-        <h2 className="text-display text-4xl text-white md:text-5xl">{section.heading}</h2>
-        <p className="mt-6 max-w-2xl text-base leading-8 text-white/66">{section.body}</p>
+    <section className="container-shell storefront-section">
+      <div className="stone-panel min-h-[18rem] rounded-[2rem] p-6 sm:p-8 md:min-h-[22rem] md:p-12">
+        <p className="text-xs uppercase tracking-[0.28em] text-[#a2845d]">{section.eyebrow ?? "Editorial"}</p>
+        <h2 className="section-title mt-4 text-[#171717]">{section.heading}</h2>
+        <p className="mt-6 max-w-2xl text-base leading-8 text-black/62">{section.body}</p>
         {section.ctaLabel && section.ctaUrl ? (
           <Button asChild variant="outline" className="mt-8">
             <Link href={section.ctaUrl}>{section.ctaLabel}</Link>

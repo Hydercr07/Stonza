@@ -111,7 +111,7 @@ create table public.products (
   description text,
   price numeric(12,2) not null default 0,
   sale_price numeric(12,2),
-  currency text not null default 'USD',
+  currency text not null default 'PKR',
   cost_price numeric(12,2),
   inventory_quantity integer not null default 0,
   low_stock_threshold integer not null default 1,

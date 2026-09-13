@@ -1,8 +1,30 @@
-export default function PrivacyPolicyPage() {
+import type { Metadata } from "next";
+import { permanentRedirect } from "next/navigation";
+import { RichText } from "@/components/shared/rich-text";
+import { getManagedPage } from "@/lib/data/store";
+import { buildManagedPageMetadata } from "@/lib/seo";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const page = await getManagedPage("privacy-policy");
+  return buildManagedPageMetadata(page, "/privacy-policy", "Privacy Policy | STONZA");
+}
+
+export default async function PrivacyPolicyPage() {
+  const page = await getManagedPage("privacy-policy");
+  if (page?.slug && page.slug !== "privacy-policy" && page.slugHistory?.includes("privacy-policy")) {
+    permanentRedirect(`/${page.slug}`);
+  }
+
   return (
-    <section className="container-shell py-16">
-      <h1 className="text-display text-5xl text-white">Privacy Policy</h1>
-      <p className="mt-4 max-w-3xl text-sm leading-7 text-white/62">Draft policy content is ready to be managed through the content CMS layer. This public page is reserved with the final route and metadata behavior in place.</p>
+    <section className="container-shell page-section">
+      <div className="page-panel">
+        <p className="text-xs uppercase tracking-[0.28em] text-black/42">Policy</p>
+        <h1 className="page-title mt-3 text-[#171717]">{page?.heroHeading ?? "Privacy Policy"}</h1>
+        <RichText
+          html={page?.content ?? "<p>Privacy details will appear here once published from the admin portal.</p>"}
+          className="mt-8 max-w-4xl text-black/68"
+        />
+      </div>
     </section>
   );
 }

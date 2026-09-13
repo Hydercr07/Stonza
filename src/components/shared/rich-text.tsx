@@ -1,7 +1,8 @@
-import DOMPurify from "isomorphic-dompurify";
+import { sanitizeHtml } from "@/lib/sanitize";
 
-export function RichText({ html, className = "" }: { html: string; className?: string }) {
-  const clean = DOMPurify.sanitize(html);
+export function RichText({ html, className = "" }: { html: string | null | undefined; className?: string }) {
+  const safeHtml = typeof html === "string" ? html : "";
+  const clean = sanitizeHtml(safeHtml);
 
   return (
     <div
