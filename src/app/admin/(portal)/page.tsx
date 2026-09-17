@@ -1,67 +1,134 @@
 import Link from "next/link";
-import { listAdminProducts, getStoreData } from "@/lib/data/store";
+import { getStoreData, listAdminProducts, listOrders } from "@/lib/data/store";
+import { formatMoney } from "@/lib/utils";
+import { AdminBadge, AdminCard, AdminPageHeader, AdminStatCard } from "@/components/admin/ui";
+import { Button } from "@/components/shared/ui/button";
 
-function StatCard({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-[1.5rem] border border-white/10 bg-[#111213] p-5">
-      <p className="text-xs uppercase tracking-[0.28em] text-white/45">{label}</p>
-      <p className="mt-3 text-display text-4xl text-white">{value}</p>
-    </div>
-  );
+function startOfToday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 }
 
 export default async function AdminDashboardPage() {
-  const [products, store] = await Promise.all([listAdminProducts(), getStoreData()]);
-  const published = products.filter((product) => product.status === "published").length;
-  const draft = products.filter((product) => product.status === "draft").length;
-  const sold = products.filter((product) => product.status === "sold").length;
-  const outOfStock = products.filter((product) => product.status === "out_of_stock").length;
-  const lowStock = products.filter((product) => product.inventoryQuantity <= product.lowStockThreshold).length;
+  const [products, orders, store] = await Promise.all([listAdminProducts(), listOrders(), getStoreData()]);
+  const today = startOfToday();
+  const todaysOrders = orders.filter((order) => new Date(order.createdAt).getTime() >= today);
+  const todaysRevenue = todaysOrders.reduce((total, order) => total + order.total, 0);
+  const pendingOrders = orders.filter((order) => ["pending", "confirmed", "processing"].includes(order.status));
+  const lowStockProducts = products.filter((product) => product.inventoryQuantity <= product.lowStockThreshold).slice(0, 6);
+  const uniqueCustomers = new Set(orders.map((order) => order.customer.email.toLowerCase())).size;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <p className="text-xs uppercase tracking-[0.28em] text-white/42">Overview</p>
-        <h1 className="text-display mt-3 text-5xl">STONZA Control Room</h1>
+    <div className="space-y-6">
+      <AdminPageHeader
+        eyebrow="Dashboard"
+        title="Store overview"
+        description="The most useful signals stay at the top: what sold today, what still needs attention, and what needs restocking."
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link href="/admin/orders">Review orders</Link>
+            </Button>
+            <Button asChild>
+              <Link href="/admin/products/new">Add product</Link>
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <AdminStatCard label="Today's orders" value={todaysOrders.length} />
+        <AdminStatCard label="Today's revenue" value={formatMoney(todaysRevenue, "PKR")} />
+        <AdminStatCard label="Pending orders" value={pendingOrders.length} />
+        <AdminStatCard label="Low stock" value={lowStockProducts.length} />
+        <AdminStatCard label="Customers" value={uniqueCustomers} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <StatCard label="Total products" value={products.length} />
-        <StatCard label="Published" value={published} />
-        <StatCard label="Drafts" value={draft} />
-        <StatCard label="Sold" value={sold} />
-        <StatCard label="Out of stock" value={outOfStock} />
-        <StatCard label="Low stock" value={lowStock} />
-      </div>
+
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
-          <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-xl">Recently edited products</h2>
-            <Link href="/admin/products" className="text-sm text-white/60 hover:text-white">View all</Link>
+        <AdminCard>
+          <div className="mb-5 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8b7e70]">Recent orders</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">Orders needing action</h2>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/admin/orders">View all</Link>
+            </Button>
           </div>
+
           <div className="grid gap-3">
-            {products.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5).map((product, index) => (
-              <Link key={`${product.id ?? product.slug}-${index}`} href={`/admin/products/${product.id}`} className="rounded-2xl border border-white/8 p-4 hover:bg-white/4">
-                <div className="flex items-center justify-between gap-4">
+            {(pendingOrders.length ? pendingOrders : orders).slice(0, 6).map((order) => (
+              <Link
+                key={order.id}
+                href={`/admin/orders/${order.orderNumber}`}
+                className="rounded-[1.25rem] border border-[#eee6da] px-4 py-4 hover:bg-[#fcfaf6]"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium">{product.name}</p>
-                    <p className="text-sm text-white/52">{product.status.replaceAll("_", " ")}</p>
+                    <p className="font-medium text-[#171717]">{order.orderNumber}</p>
+                    <p className="mt-1 text-sm text-[#6f6558]">
+                      {order.customer.fullName} · {order.customer.email}
+                    </p>
                   </div>
-                  <p className="text-sm text-white/40">{new Date(product.updatedAt).toLocaleDateString("en-US")}</p>
+                  <div className="text-right">
+                    <AdminBadge tone={order.status === "delivered" ? "success" : order.status === "cancelled" ? "danger" : "warning"}>
+                      {order.status}
+                    </AdminBadge>
+                    <p className="mt-2 text-sm text-[#171717]">{formatMoney(order.total, order.currency)}</p>
+                  </div>
                 </div>
               </Link>
             ))}
           </div>
-        </div>
-        <div className="rounded-[1.75rem] border border-white/10 bg-[#111213] p-6">
-          <h2 className="text-xl">Recent activity</h2>
-          <div className="mt-6 grid gap-3">
-            {store.activityLogs.slice(-5).reverse().map((log, index) => (
-              <div key={`${log.id}-${index}`} className="rounded-2xl border border-white/8 p-4">
-                <p className="font-medium capitalize">{log.action.replaceAll("_", " ")}</p>
-                <p className="text-sm text-white/52">{log.actor} on {new Date(log.timestamp).toLocaleDateString("en-US")}</p>
-              </div>
-            ))}
-          </div>
+        </AdminCard>
+
+        <div className="space-y-6">
+          <AdminCard>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8b7e70]">Restock</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">Low-stock products</h2>
+            <div className="mt-5 grid gap-3">
+              {lowStockProducts.length ? (
+                lowStockProducts.map((product) => (
+                  <Link
+                    key={product.id}
+                    href={`/admin/products/${product.id}`}
+                    className="rounded-[1.25rem] border border-[#eee6da] px-4 py-4 hover:bg-[#fcfaf6]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-[#171717]">{product.name}</p>
+                        <p className="mt-1 text-sm text-[#6f6558]">{product.sku}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-[#171717]">{product.inventoryQuantity} left</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#9a6d2f]">Threshold {product.lowStockThreshold}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))
+              ) : (
+                <div className="rounded-[1.25rem] border border-dashed border-[#ddd2c3] bg-[#fcfaf6] px-4 py-8 text-sm text-[#6f6558]">
+                  No low-stock products right now.
+                </div>
+              )}
+            </div>
+          </AdminCard>
+
+          <AdminCard>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#8b7e70]">Recent activity</p>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[#171717]">Latest admin actions</h2>
+            <div className="mt-5 grid gap-3">
+              {store.activityLogs.slice(-6).reverse().map((log) => (
+                <div key={log.id} className="rounded-[1.25rem] border border-[#eee6da] px-4 py-4">
+                  <p className="font-medium capitalize text-[#171717]">{log.action.replaceAll("_", " ")}</p>
+                  <p className="mt-1 text-sm text-[#6f6558]">
+                    {log.actor} · {new Date(log.timestamp).toLocaleString("en-PK")}
+                  </p>
+                  {log.detail ? <p className="mt-2 text-sm text-[#5b5247]">{log.detail}</p> : null}
+                </div>
+              ))}
+            </div>
+          </AdminCard>
         </div>
       </div>
     </div>

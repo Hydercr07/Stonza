@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Loader2, Star, Trash2, Upload } from "lucide-react";
 import { humanFileSize, validateMediaInput } from "@/lib/media";
 import { cn } from "@/lib/utils";
+import { useUploadStatus } from "@/components/admin/upload-status-context";
 import type { ProductMediaItem } from "@/types/domain";
 
 type UploadAssetResponse = {
@@ -54,12 +55,47 @@ export function AdminMediaUploader({
   multiple?: boolean;
 }) {
   const inputId = useId();
+  const { setUploading: reportUploading } = useUploadStatus();
   const [items, setItems] = useState<ProductMediaItem[]>(normalizeFeatured(initialItems));
   const [dragOver, setDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploadingState] = useState(false);
+  // Mirrors local `uploading` into the shared cross-uploader context (keyed
+  // by this instance's stable id) so UploadAwareSubmitButton can disable the
+  // form's Save button while ANY uploader on the page is mid-upload -- not
+  // just while the server action itself is submitting. Previously, clicking
+  // Save while an image was still uploading submitted the pre-upload media
+  // list, silently dropping the in-flight image from the saved product.
+  const setUploading = (value: boolean) => {
+    setUploadingState(value);
+    reportUploading(inputId, value);
+  };
+  useEffect(() => {
+    // Clear this uploader's busy flag if it unmounts mid-upload (e.g. the
+    // admin navigates away), so it can never permanently disable a submit
+    // button elsewhere that shares the same provider.
+    return () => reportUploading(inputId, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputId]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
   const dragItemId = useRef<string | null>(null);
+
+  function syncItems(
+    updater: ProductMediaItem[] | ((current: ProductMediaItem[]) => ProductMediaItem[]),
+  ) {
+    setItems((current) => {
+      const nextItems =
+        typeof updater === "function"
+          ? (updater as (current: ProductMediaItem[]) => ProductMediaItem[])(current)
+          : updater;
+      const normalized = normalizeFeatured(nextItems);
+      if (hiddenInputRef.current) {
+        hiddenInputRef.current.value = JSON.stringify(normalized);
+      }
+      return normalized;
+    });
+  }
 
   const accept = imageOnly
     ? ".jpg,.jpeg,.png,.webp,.avif"
@@ -114,21 +150,19 @@ export function AdminMediaUploader({
           xhr.send(payload);
         });
 
-        setItems((current) =>
-          normalizeFeatured([
-            ...current,
-            {
-              id: `product-media-${uploaded.id}`,
-              assetId: uploaded.id,
-              url: uploaded.publicUrl,
-              altText: uploaded.altText || file.name.replace(/\.[^.]+$/, ""),
-              fileName: uploaded.originalFilename,
-              size: uploaded.size,
-              featured: current.length === 0,
-              sortOrder: current.length + 1,
-            },
-          ]),
-        );
+        syncItems((current) => [
+          ...current,
+          {
+            id: `product-media-${uploaded.id}`,
+            assetId: uploaded.id,
+            url: uploaded.publicUrl,
+            altText: uploaded.altText || file.name.replace(/\.[^.]+$/, ""),
+            fileName: uploaded.originalFilename,
+            size: uploaded.size,
+            featured: current.length === 0,
+            sortOrder: current.length + 1,
+          },
+        ]);
       }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
@@ -139,16 +173,16 @@ export function AdminMediaUploader({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-admin-uploading={uploading ? "true" : undefined}>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-white">{label}</p>
-          <p className="text-sm leading-6 text-white/58">{description}</p>
+          <p className="text-sm font-medium text-[#171717]">{label}</p>
+          <p className="text-sm leading-6 text-[#6f6558]">{description}</p>
         </div>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="rounded-full border border-white/12 px-4 py-2 text-sm text-white transition hover:border-white/24 hover:bg-white/6"
+          className="rounded-full border border-[#d8ccb9] bg-white px-4 py-2 text-sm text-[#5f564b] transition hover:border-[#cdbda8] hover:bg-[#f9f5ee] hover:text-[#171717]"
         >
           Browse Files
         </button>
@@ -158,6 +192,7 @@ export function AdminMediaUploader({
         ref={fileInputRef}
         id={inputId}
         type="file"
+        form={`${inputId}-detached`}
         accept={accept}
         multiple={multiple}
         className="sr-only"
@@ -183,19 +218,19 @@ export function AdminMediaUploader({
         }}
         className={cn(
           "flex min-h-44 w-full flex-col items-center justify-center rounded-[1.75rem] border border-dashed px-6 text-center transition",
-          dragOver ? "border-[#d5c7a9] bg-[#1c1a16]" : "border-white/14 bg-black/20 hover:border-white/28",
+          dragOver ? "border-[#c9ae7b] bg-[#f8f1e5]" : "border-[#ddcfbc] bg-[#fdfaf4] hover:border-[#c9ae7b] hover:bg-[#faf3e8]",
         )}
       >
         {uploading ? <Loader2 className="mb-4 h-7 w-7 animate-spin text-accent" /> : <Upload className="mb-4 h-7 w-7 text-accent" />}
-        <p className="text-base font-medium text-white">Drag and drop files here</p>
-        <p className="mt-2 max-w-md text-sm leading-6 text-white/55">
+        <p className="text-base font-medium text-[#171717]">Drag and drop files here</p>
+        <p className="mt-2 max-w-md text-sm leading-6 text-[#6f6558]">
           Or use Browse Files.
         </p>
       </button>
 
       {error ? <p className="rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p> : null}
 
-      <input type="hidden" name={name} value={JSON.stringify(items)} />
+      <input ref={hiddenInputRef} type="hidden" name={name} defaultValue={JSON.stringify(items)} />
 
       {items.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -209,7 +244,7 @@ export function AdminMediaUploader({
               onDragOver={(event) => event.preventDefault()}
               onDrop={() => {
                 if (!dragItemId.current || dragItemId.current === item.id) return;
-                setItems((current) => normalizeFeatured(reorderItems(current, dragItemId.current!, item.id)));
+                syncItems((current) => reorderItems(current, dragItemId.current!, item.id));
               }}
               className="overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#151617]"
             >
@@ -217,17 +252,13 @@ export function AdminMediaUploader({
                 {previewableImage(item.url) ? (
                   <Image src={item.url} alt={item.altText} fill loading="eager" sizes="(min-width: 1280px) 20vw, (min-width: 768px) 40vw, 100vw" className="object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center p-4 text-center text-sm text-white/55">
+                  <div className="flex h-full items-center justify-center p-4 text-center text-sm text-[#6f6558]">
                     {item.fileName}
                   </div>
                 )}
                 <button
                   type="button"
-                  onClick={() =>
-                    setItems((current) =>
-                      normalizeFeatured(current.map((entry) => ({ ...entry, featured: entry.id === item.id }))),
-                    )
-                  }
+                  onClick={() => syncItems((current) => current.map((entry) => ({ ...entry, featured: entry.id === item.id })))}
                   className={cn(
                     "absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium",
                     item.featured ? "bg-[#d5c7a9] text-black" : "bg-black/65 text-white",
@@ -239,36 +270,35 @@ export function AdminMediaUploader({
               </div>
               <div className="space-y-3 p-4">
                 <div>
-                  <p className="truncate text-sm font-medium text-white">{item.fileName}</p>
-                  <p className="text-xs text-white/50">{humanFileSize(item.size)}</p>
+                  <p className="truncate text-sm font-medium text-[#171717]">{item.fileName}</p>
+                  <p className="text-xs text-[#8b7e70]">{humanFileSize(item.size)}</p>
                 </div>
-                <label className="grid gap-2 text-xs uppercase tracking-[0.22em] text-white/45">
+                <label className="grid gap-2 text-xs uppercase tracking-[0.22em] text-[#8b7e70]">
                   Alt text
                   <input
                     value={item.altText}
                     onChange={(event) =>
-                      setItems((current) =>
+                      syncItems((current) =>
                         current.map((entry) =>
                           entry.id === item.id ? { ...entry, altText: event.target.value } : entry,
                         ),
                       )
                     }
-                    className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-sm normal-case tracking-normal text-white"
+                    className="rounded-2xl border border-[#d8ccb9] bg-[#fffdf9] px-3 py-2 text-sm normal-case tracking-normal text-[#171717]"
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => {
-                      const next = items.filter((entry) => entry.id !== item.id);
-                      setItems(normalizeFeatured(next));
+                      syncItems((current) => current.filter((entry) => entry.id !== item.id));
                     }}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-white/70 transition hover:bg-white/6 hover:text-white"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#d8ccb9] bg-white px-3 py-2 text-xs text-[#5f564b] transition hover:bg-[#f9f5ee] hover:text-[#171717]"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Remove
                   </button>
-                  <span className="inline-flex items-center rounded-full border border-white/10 px-3 py-2 text-xs text-white/50">
+                  <span className="inline-flex items-center rounded-full border border-[#d8ccb9] bg-white px-3 py-2 text-xs text-[#8b7e70]">
                     Drag to reorder
                   </span>
                 </div>

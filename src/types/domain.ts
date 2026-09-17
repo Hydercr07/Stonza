@@ -55,6 +55,7 @@ export interface Category {
   id: string;
   name: string;
   slug: string;
+  slugHistory?: string[];
   shortDescription: string;
   description: string;
   featuredImage: string;
@@ -81,12 +82,16 @@ export interface Collection {
   id: string;
   name: string;
   slug: string;
+  slugHistory?: string[];
   description: string;
   featuredImage: string;
   heroMedia: string;
   active: boolean;
   featured: boolean;
   sortOrder: number;
+  seoTitle?: string;
+  seoDescription?: string;
+  openGraphImage?: string;
 }
 
 export interface ProductMediaItem {
@@ -100,10 +105,31 @@ export interface ProductMediaItem {
   sortOrder: number;
 }
 
+export interface SizeChartRow {
+  id: string;
+  sizeLabel: string;
+  measurement: string;
+  notes?: string;
+}
+
+export interface ProductSizeChart {
+  title: string;
+  notes?: string;
+  rows: SizeChartRow[];
+}
+
+export interface ProductVariantOption {
+  id: string;
+  value: string;
+  label?: string;
+  active: boolean;
+}
+
 export interface Product {
   id: string;
   name: string;
   slug: string;
+  slugHistory?: string[];
   sku: string;
   shortDescription: string;
   description: string;
@@ -116,9 +142,11 @@ export interface Product {
   oneOfOne: boolean;
   allowEnquiry: boolean;
   allowCartPurchase: boolean;
+  visibility: "visible" | "hidden";
   stoneType: string;
   categorySlug: string;
   categorySlugs?: string[];
+  subcategorySlug?: string;
   collectionSlug: string;
   weight: string;
   carat: number;
@@ -148,6 +176,14 @@ export interface Product {
   relatedProductSlugs: string[];
   tags: string[];
   searchKeywords: string[];
+  sizes?: string[];
+  variantLabel?: string;
+  variants?: ProductVariantOption[];
+  sizeChart?: ProductSizeChart;
+  specifications?: Array<{
+    label: string;
+    value: string;
+  }>;
   seoTitle?: string;
   seoDescription?: string;
   canonicalOverride?: string;
@@ -291,14 +327,30 @@ export interface HomepageSection {
   updatedBy?: string;
 }
 
+export interface HomepageBanner {
+  id: string;
+  title: string;
+  imageUrl: string;
+  linkUrl?: string;
+  afterSectionKey: string;
+  enabled: boolean;
+  order: number;
+  altText: string;
+  status: "draft" | "published";
+  updatedAt: string;
+  updatedBy: string;
+  deletedAt?: string;
+}
+
 export interface ManagedPage {
   id: string;
   title: string;
   slug: string;
+  slugHistory?: string[];
   heroHeading: string;
   heroMedia?: string;
   content: string;
-  status: "draft" | "published";
+  status: "draft" | "published" | "archived" | "trash";
   seoTitle?: string;
   seoDescription?: string;
   openGraphImage?: string;
@@ -414,10 +466,71 @@ export interface ActivityLogEntry {
   detail?: string;
 }
 
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "cancelled";
+
+export type PaymentStatus = "pending" | "paid" | "failed" | "cod";
+
+export interface CartLineInput {
+  productId: string;
+  quantity: number;
+  selectedSize?: string;
+  selectedVariant?: string;
+}
+
+export interface OrderItem {
+  id: string;
+  productId: string;
+  productName: string;
+  productSlug: string;
+  sku: string;
+  image: string;
+  quantity: number;
+  unitPrice: number;
+  selectedSize?: string;
+  selectedVariant?: string;
+}
+
+export interface CustomerOrderDetails {
+  fullName: string;
+  email: string;
+  phone: string;
+  country: string;
+  city: string;
+  addressLine1: string;
+  addressLine2?: string;
+  postalCode?: string;
+  orderNotes?: string;
+}
+
+export interface OrderRecord {
+  id: string;
+  orderNumber: string;
+  submissionToken?: string;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: string;
+  currency: string;
+  subtotal: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  items: OrderItem[];
+  customer: CustomerOrderDetails;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StoreData {
   settings: SiteSettings;
   hero: HeroSettings;
   homepageSections: HomepageSection[];
+  homepageBanners: HomepageBanner[];
   categories: Category[];
   collections: Collection[];
   products: Product[];
@@ -426,4 +539,5 @@ export interface StoreData {
   mediaAssets: MediaAsset[];
   contentLabels?: ContentLabel[];
   activityLogs: ActivityLogEntry[];
+  orders?: OrderRecord[];
 }

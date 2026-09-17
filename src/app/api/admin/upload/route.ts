@@ -2,7 +2,9 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { NextResponse } from "next/server";
 import { addMediaAsset } from "@/lib/data/store";
-import { parseAdminSessionCookie } from "@/lib/auth/session";
+import { getAdminSession } from "@/lib/auth/session";
+import { canRole } from "@/lib/permissions";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { env } from "@/lib/env";
 import { safeFilename, validateMediaInput } from "@/lib/media";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -159,15 +161,22 @@ async function saveFile(file: File, sessionEmail: string): Promise<MediaAsset> {
 }
 
 export async function POST(request: Request) {
-  const cookieHeader = request.headers.get("cookie") ?? "";
-  const sessionCookie = cookieHeader
-    .split(";")
-    .map((entry) => entry.trim())
-    .find((entry) => entry.startsWith("stonza-admin-session="))
-    ?.slice("stonza-admin-session=".length);
-  const session = parseAdminSessionCookie(sessionCookie ? decodeURIComponent(sessionCookie) : undefined);
-  if (!session) {
+  // getAdminSession() checks whichever backend is actually active (the
+  // signed demo cookie, or a real Supabase Auth session) -- this route used
+  // to hand-parse only the legacy demo cookie directly off the request
+  // headers, so every upload silently 401'd once ADMIN_AUTH_BACKEND=supabase
+  // went live, since Supabase Auth doesn't set that cookie at all.
+  const session = await getAdminSession();
+  if (!session || !canRole(session.role, "media:write")) {
     return unauthorized();
+  }
+
+  const limit = checkRateLimit(`upload:${session.email}`, 30, 10 * 60 * 1000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: `Too many uploads. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s).` },
+      { status: 429 },
+    );
   }
 
   const formData = await request.formData();

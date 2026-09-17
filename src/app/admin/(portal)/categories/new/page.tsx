@@ -1,7 +1,11 @@
 import { CategoryForm } from "@/components/admin/category-form";
-import { listCategories } from "@/lib/data/store";
+import { listAdminProducts, listCategories } from "@/lib/data/store";
 
 export default async function NewCategoryPage() {
-  const categories = await listCategories({ admin: true, includeInactive: true });
-  return <CategoryForm categories={categories} />;
+  const [categories, products] = await Promise.all([
+    listCategories({ admin: true, includeInactive: true }),
+    listAdminProducts(),
+  ]);
+
+  return <CategoryForm categories={categories} products={products} />;
 }

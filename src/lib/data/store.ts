@@ -2,33 +2,100 @@ import "server-only";
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { timingSafeEqual } from "node:crypto";
+import { cache } from "react";
 import { unstable_noStore as noStore } from "next/cache";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  createOrderInPostgres,
+  fetchCategoryById,
+  fetchCategoryBySlug,
+  fetchCollectionById,
+  fetchCollectionBySlug,
+  fetchJournalPostById,
+  fetchJournalPostBySlug,
+  fetchMediaAssetById,
+  fetchPageById,
+  fetchPageBySlug,
+  fetchProductById,
+  fetchProductBySlug,
+  fetchSingletonTable,
+  fetchTable,
+  isPostgresStoreConfigured,
+  readStoreFromPostgres,
+  updateOrderStatusInPostgres,
+  writeStoreToPostgres,
+} from "@/lib/data/postgres-adapter";
+import { canPurchaseProduct, getEffectivePrice } from "@/lib/commerce";
+import { sidebarCategoryHierarchy } from "@/lib/category-hierarchy";
 import type {
   ActivityLogEntry,
+  CartLineInput,
   Category,
   Collection,
   ContentLabel,
+  CustomerOrderDetails,
   FooterSection,
   HeroSettings,
+  HomepageBanner,
   HomepageSection,
   JournalPost,
   ManagedPage,
   MediaAsset,
   NavigationItem,
+  OrderItem,
+  OrderRecord,
   Product,
   ProductMediaItem,
+  ProductSizeChart,
+  ProductVariantOption,
   SiteSettings,
+  SizeChartRow,
   StoreData,
 } from "@/types/domain";
 import { slugify } from "@/lib/utils";
 import { env } from "@/lib/env";
 
-const storeSeedPath = path.join(process.cwd(), "src", "data", "dev-store.json");
 const storeRuntimeDir = path.join(process.cwd(), ".stonza", "runtime");
 const storePath = path.join(storeRuntimeDir, "dev-store.json");
 const remoteStoreBucket = "documents";
 const remoteStoreObjectPath = "runtime/dev-store.json";
+
+function createEmptyStore(): StoreData {
+  return {
+    settings: normalizeSettings(undefined),
+    hero: normalizeHero({
+      activeMode: "carousel",
+      mode: "carousel",
+      carousel: {
+        autoplay: true,
+        autoplayInterval: 3000,
+        loop: true,
+        pauseOnHover: false,
+        showArrows: false,
+        showDots: true,
+        transitionStyle: "fade",
+        slides: [],
+        status: "published",
+      },
+    }),
+    homepageSections: normalizeSections([]),
+    homepageBanners: [],
+    categories: [],
+    collections: [],
+    products: [],
+    pages: [],
+    journalPosts: [],
+    mediaAssets: [],
+    contentLabels: defaultContentLabels,
+    activityLogs: [],
+    orders: [],
+  };
+}
+
+function isReadOnlyRuntime() {
+  return Boolean(process.env.VERCEL);
+}
 
 const defaultNavigation: NavigationItem[] = [
   { id: "nav-shop", label: "Shop", href: "/shop", order: 1, visible: true },
@@ -81,7 +148,7 @@ const defaultLabels: Record<string, string> = {
   productShippingHeading: "Shipping",
   productReturnsHeading: "Returns",
   productEnquiryLabel: "Request Details",
-  productWhatsappLabel: "WhatsApp Concierge",
+  productWhatsappLabel: "WHATSAPP",
   productCertificateHeading: "Certificate & Provenance",
   notFoundTitle: "The stone you were looking for could not be found.",
 };
@@ -94,38 +161,70 @@ const defaultContentLabels: ContentLabel[] = Object.entries(defaultLabels).map((
   updatedBy: "system",
 }));
 
-const defaultHeroSlides = [
-  {
-    id: "slide-1",
-    desktopImage: "/placeholders/hero-strata.svg",
-    mobileImage: "/placeholders/hero-strata-mobile.svg",
-    eyebrow: "Original stones. Editorial rarity.",
-    heading: "Mineral luxury shaped by time, pressure and provenance.",
-    description:
-      "Discover obsidian drama, quiet platinum tones and collector-grade pieces chosen for character, origin and enduring presence.",
-    primaryCtaLabel: "Explore the stones",
-    primaryCtaUrl: "/shop",
-    secondaryCtaLabel: "Read the provenance",
-    secondaryCtaUrl: "/authenticity",
-    textAlignment: "left" as const,
-    textPosition: "center" as const,
-    overlayOpacity: 0.46,
-    focalPoint: "center",
-    active: true,
-    sortOrder: 1,
-  },
-];
+const defaultHeroSlides: HeroSettings["carousel"]["slides"] = [];
+
+const placeholderAssetPattern = /(^\/placeholders\/)|(^\/brand\/stonza-logo\.png$)/i;
+
+function isPlaceholderAsset(value: string | undefined) {
+  return Boolean(value && placeholderAssetPattern.test(value));
+}
+
+function replaceSlugValue(values: string[] | undefined, previousSlug: string, nextSlug: string) {
+  if (!values?.length) return values;
+  return [...new Set(values.map((value) => (value === previousSlug ? nextSlug : value)))];
+}
+
+function replaceNavigationHref(items: NavigationItem[], previousPath: string, nextPath: string) {
+  return items.map((item) => ({
+    ...item,
+    href: item.href === previousPath ? nextPath : item.href,
+    children: item.children?.map((child) => ({
+      ...child,
+      href: child.href === previousPath ? nextPath : child.href,
+    })),
+  }));
+}
+
+function resolveEntitySlug({
+  requestedSlug,
+  fallbackName,
+  existingSlug,
+  existingName,
+  existingId,
+  entries,
+}: {
+  requestedSlug?: string;
+  fallbackName: string;
+  existingSlug?: string;
+  existingName?: string;
+  existingId?: string;
+  entries: Array<{ id: string; slug: string }>;
+}) {
+  const normalizedRequestedSlug = requestedSlug?.trim() ? slugify(requestedSlug) : undefined;
+  const existingAutoSlug = existingName ? slugify(existingName) : undefined;
+  const shouldAutoGenerate =
+    !normalizedRequestedSlug ||
+    (existingSlug === normalizedRequestedSlug && existingAutoSlug === existingSlug);
+
+  const preferred = shouldAutoGenerate ? fallbackName : normalizedRequestedSlug ?? fallbackName;
+  return ensureUniqueSlug(
+    entries.map((entry) => entry.slug),
+    preferred,
+    existingId,
+    entries,
+  );
+}
 
 function defaultSettings(): SiteSettings {
   return {
     siteTitle: "STONZA",
     siteDescription:
       "Original natural stones, elevated through cinematic curation and authentic provenance.",
-    whatsappNumber: "+923001112233",
+    whatsappNumber: "+923058599096",
     email: "atelier@stonza.pk",
     address: "Lahore Design District, Pakistan",
     businessHours: "Mon-Sat, 10:00-19:00",
-    currency: "USD",
+    currency: "PKR",
     maintenanceMode: false,
     checkoutMode: "standard",
     shippingText:
@@ -134,9 +233,9 @@ function defaultSettings(): SiteSettings {
       "Returns are reviewed case-by-case for natural one-of-one stones after condition inspection.",
     lowStockDefault: 1,
     announcement: {
-      enabled: true,
-      text: "Private sourcing appointments now open for the July 2026 collection release.",
-      linkLabel: "Book now",
+      enabled: false,
+      text: "",
+      linkLabel: "",
       link: "/contact",
       backgroundStyle: "graphite",
     },
@@ -162,17 +261,16 @@ function defaultSettings(): SiteSettings {
       showWishlist: true,
       showCart: true,
       contactButton: {
-        label: "WhatsApp Concierge",
-        destination: "/contact",
+        label: "WHATSAPP",
+        destination: "https://wa.me/923058599096",
         enabled: true,
       },
       navigation: defaultNavigation,
     },
     footer: {
-      description:
-        "Natural stones selected for provenance, atmosphere and enduring presence. STONZA pairs editorial curation with transparent authenticity.",
-      newsletterHeading: "Private release notes",
-      newsletterBody: "Receive quiet release alerts, sourcing notes and collector updates.",
+      description: "",
+      newsletterHeading: "Stay connected",
+      newsletterBody: "",
       copyright: "© 2026 STONZA. All rights reserved.",
       legalLinks: [
         { id: "footer-legal-1", label: "Privacy Policy", href: "/privacy-policy", order: 1, visible: true },
@@ -196,8 +294,8 @@ function defaultSettings(): SiteSettings {
     },
     labels: defaultLabels,
     contactButton: {
-      label: "WhatsApp Concierge",
-      destination: "/contact",
+      label: "WHATSAPP",
+      destination: "https://wa.me/923058599096",
       enabled: true,
     },
   };
@@ -208,6 +306,7 @@ function normalizeSettings(settings: Partial<SiteSettings> | undefined): SiteSet
   return {
     ...defaults,
     ...settings,
+    currency: "PKR",
     announcement: {
       ...defaults.announcement,
       ...settings?.announcement,
@@ -306,6 +405,80 @@ function normalizeProductMedia(product: Partial<Product>): ProductMediaItem[] {
   }));
 }
 
+function normalizeSlugHistory(history: string[] | undefined, currentSlug: string) {
+  return [...new Set((history ?? []).filter((entry) => entry && entry !== currentSlug))];
+}
+
+function normalizeSizeChart(sizeChart: Product["sizeChart"] | string | undefined, sizes: string[] = []): ProductSizeChart | undefined {
+  if (!sizeChart) {
+    return undefined;
+  }
+
+  if (typeof sizeChart === "string") {
+    const trimmed = sizeChart.trim();
+    if (!trimmed) return undefined;
+
+    const rows: SizeChartRow[] = sizes.map((size, index) => ({
+      id: `size-row-${index + 1}`,
+      sizeLabel: size,
+      measurement: "",
+    }));
+
+    return {
+      title: "Size Chart",
+      notes: trimmed,
+      rows,
+    };
+  }
+
+  return {
+    title: sizeChart.title?.trim() || "Size Chart",
+    notes: sizeChart.notes?.trim() || undefined,
+    rows: (sizeChart.rows ?? [])
+      .map((row, index) => ({
+        id: row.id || `size-row-${index + 1}`,
+        sizeLabel: row.sizeLabel?.trim() || `Size ${index + 1}`,
+        measurement: row.measurement?.trim() || "",
+        notes: row.notes?.trim() || undefined,
+      }))
+      .filter((row) => row.sizeLabel || row.measurement || row.notes),
+  };
+}
+
+function normalizeVariants(variants: Product["variants"] | string[] | undefined): ProductVariantOption[] {
+  if (!variants?.length) {
+    return [];
+  }
+
+  return variants
+    .map((variant, index) => {
+      if (typeof variant === "string") {
+        return {
+          id: `variant-${index + 1}`,
+          value: variant.trim(),
+          active: true,
+        } satisfies ProductVariantOption;
+      }
+
+      return {
+        id: variant.id || `variant-${index + 1}`,
+        value: variant.value?.trim() ?? "",
+        label: variant.label?.trim() || undefined,
+        active: variant.active ?? true,
+      } satisfies ProductVariantOption;
+    })
+    .filter((variant) => variant.value);
+}
+
+function normalizeSpecifications(specifications: Product["specifications"] | undefined) {
+  return (specifications ?? [])
+    .map((specification) => ({
+      label: specification.label?.trim() || "",
+      value: specification.value?.trim() || "",
+    }))
+    .filter((specification) => specification.label && specification.value);
+}
+
 function normalizeProduct(product: Partial<Product>): Product {
   const media = normalizeProductMedia(product);
   const featuredItem = media.find((item) => item.featured) ?? media[0];
@@ -314,26 +487,32 @@ function normalizeProduct(product: Partial<Product>): Product {
     : product.categorySlug
       ? [product.categorySlug]
       : [];
+  const nextSlug = product.slug ?? slugify(product.name ?? "untitled-stone");
+  const sizeChart = normalizeSizeChart(product.sizeChart, product.sizes ?? []);
+  const variants = normalizeVariants(product.variants);
 
   return {
     id: product.id ?? `prd-${crypto.randomUUID()}`,
     name: product.name ?? "Untitled stone",
-    slug: product.slug ?? slugify(product.name ?? "untitled-stone"),
+    slug: nextSlug,
+    slugHistory: normalizeSlugHistory(product.slugHistory, nextSlug),
     sku: product.sku ?? "STONZA-DRAFT",
     shortDescription: product.shortDescription ?? "",
     description: product.description ?? "",
     price: product.price ?? 0,
     salePrice: product.salePrice,
-    currency: product.currency ?? "USD",
+    currency: "PKR",
     costPrice: product.costPrice ?? 0,
     inventoryQuantity: product.inventoryQuantity ?? 0,
     lowStockThreshold: product.lowStockThreshold ?? 1,
     oneOfOne: product.oneOfOne ?? false,
     allowEnquiry: product.allowEnquiry ?? true,
     allowCartPurchase: product.allowCartPurchase ?? true,
+    visibility: product.visibility ?? "visible",
     stoneType: product.stoneType ?? "",
     categorySlug: categorySlugs[0] ?? product.categorySlug ?? "",
     categorySlugs,
+    subcategorySlug: product.subcategorySlug ?? "",
     collectionSlug: product.collectionSlug ?? "",
     weight: product.weight ?? "0 kg",
     carat: product.carat ?? 0,
@@ -349,7 +528,7 @@ function normalizeProduct(product: Partial<Product>): Product {
     certificateNumber: product.certificateNumber,
     certificateImage: product.certificateImage,
     certificatePdf: product.certificatePdf,
-    featuredImage: featuredItem?.url ?? product.featuredImage ?? "/placeholders/product-obsidian.svg",
+    featuredImage: featuredItem?.url ?? product.featuredImage ?? "",
     galleryImages: media.map((item) => item.url),
     media,
     productVideo: product.productVideo,
@@ -363,6 +542,11 @@ function normalizeProduct(product: Partial<Product>): Product {
     relatedProductSlugs: product.relatedProductSlugs ?? [],
     tags: product.tags ?? [],
     searchKeywords: product.searchKeywords ?? [],
+    sizes: product.sizes ?? [],
+    variantLabel: product.variantLabel?.trim() || undefined,
+    variants,
+    sizeChart,
+    specifications: normalizeSpecifications(product.specifications),
     seoTitle: product.seoTitle,
     seoDescription: product.seoDescription,
     canonicalOverride: product.canonicalOverride,
@@ -374,17 +558,38 @@ function normalizeProduct(product: Partial<Product>): Product {
   };
 }
 
+function normalizeCollection(collection: Partial<Collection>): Collection {
+  const nextSlug = collection.slug ?? slugify(collection.name ?? "untitled-collection");
+  return {
+    id: collection.id ?? `col-${crypto.randomUUID()}`,
+    name: collection.name ?? "Untitled collection",
+    slug: nextSlug,
+    slugHistory: normalizeSlugHistory(collection.slugHistory, nextSlug),
+    description: collection.description ?? "",
+    featuredImage: collection.featuredImage ?? "",
+    heroMedia: collection.heroMedia ?? collection.featuredImage ?? "",
+    active: collection.active ?? true,
+    featured: collection.featured ?? false,
+    sortOrder: collection.sortOrder ?? 0,
+    seoTitle: collection.seoTitle,
+    seoDescription: collection.seoDescription,
+    openGraphImage: collection.openGraphImage ?? collection.featuredImage,
+  };
+}
+
 function normalizeCategory(category: Partial<Category>): Category {
   const now = new Date().toISOString();
+  const nextSlug = category.slug ?? slugify(category.name ?? "untitled-category");
   return {
     id: category.id ?? `cat-${crypto.randomUUID()}`,
     name: category.name ?? "Untitled category",
-    slug: category.slug ?? slugify(category.name ?? "untitled-category"),
+    slug: nextSlug,
+    slugHistory: normalizeSlugHistory(category.slugHistory, nextSlug),
     shortDescription: category.shortDescription ?? category.description ?? "",
     description: category.description ?? category.shortDescription ?? "",
-    featuredImage: category.featuredImage ?? "/placeholders/category-statement.svg",
-    heroImage: category.heroImage ?? category.featuredImage ?? "/placeholders/category-statement.svg",
-    mobileImage: category.mobileImage ?? category.featuredImage ?? "/placeholders/category-statement.svg",
+    featuredImage: category.featuredImage ?? "",
+    heroImage: category.heroImage ?? category.featuredImage ?? "",
+    mobileImage: category.mobileImage ?? category.featuredImage ?? "",
     video: category.video,
     altText: category.altText ?? category.name ?? "STONZA category",
     parentCategorySlug: category.parentCategorySlug,
@@ -400,6 +605,35 @@ function normalizeCategory(category: Partial<Category>): Category {
     createdBy: category.createdBy ?? "system",
     updatedBy: category.updatedBy ?? "system",
     deletedAt: category.deletedAt,
+  };
+}
+
+function normalizeManagedPage(page: Partial<ManagedPage>): ManagedPage {
+  const now = new Date().toISOString();
+  const nextSlug = page.slug ?? slugify(page.title ?? "page");
+
+  return {
+    id: page.id ?? `page-${crypto.randomUUID()}`,
+    title: page.title ?? "Untitled page",
+    slug: nextSlug,
+    slugHistory: normalizeSlugHistory(page.slugHistory, nextSlug),
+    heroHeading: page.heroHeading ?? page.title ?? "Untitled page",
+    heroMedia: page.heroMedia,
+    content: page.content ?? "",
+    status: page.status ?? "draft",
+    seoTitle: page.seoTitle,
+    seoDescription: page.seoDescription,
+    openGraphImage: page.openGraphImage,
+    updatedAt: page.updatedAt ?? now,
+  };
+}
+
+function normalizeJournalPost(post: Partial<JournalPost>): JournalPost {
+  const base = normalizeManagedPage(post);
+  return {
+    ...base,
+    excerpt: post.excerpt?.trim() || "",
+    publishedAt: post.publishedAt ?? new Date().toISOString(),
   };
 }
 
@@ -426,7 +660,7 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     showScrollIndicator: hero?.showScrollIndicator ?? true,
     model3d: hero?.model3d,
     splineUrl: hero?.splineUrl,
-    backgroundImage: hero?.desktopBannerImage ?? "/placeholders/hero-strata.svg",
+    backgroundImage: hero?.desktopBannerImage,
     status: "published" as const,
   };
 
@@ -434,11 +668,11 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     id: hero?.id ?? "hero-1",
     mode: activeMode,
     activeMode,
-    desktopBannerImage: hero?.desktopBannerImage ?? "/placeholders/hero-strata.svg",
-    mobileBannerImage: hero?.mobileBannerImage ?? "/placeholders/hero-strata-mobile.svg",
+    desktopBannerImage: hero?.desktopBannerImage,
+    mobileBannerImage: hero?.mobileBannerImage,
     desktopBackgroundVideo: hero?.desktopBackgroundVideo,
     mobileBackgroundVideo: hero?.mobileBackgroundVideo,
-    videoPoster: hero?.videoPoster ?? "/placeholders/hero-poster.svg",
+    videoPoster: hero?.videoPoster,
     model3d: hero?.model3d,
     splineUrl: hero?.splineUrl,
     eyebrow: interactive3d.eyebrow,
@@ -462,10 +696,10 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     status: hero?.status ?? "published",
     carousel: {
       autoplay: true,
-      autoplayInterval: 6500,
+      autoplayInterval: 3000,
       loop: true,
-      pauseOnHover: true,
-      showArrows: true,
+      pauseOnHover: false,
+      showArrows: false,
       showDots: true,
       transitionStyle: "fade",
       slides: hero?.carousel?.slides?.length ? hero.carousel.slides : defaultHeroSlides,
@@ -474,8 +708,8 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     video: {
       desktopVideo: hero?.video?.desktopVideo ?? hero?.desktopBackgroundVideo,
       mobileVideo: hero?.video?.mobileVideo ?? hero?.mobileBackgroundVideo,
-      posterImage: hero?.video?.posterImage ?? hero?.videoPoster ?? "/placeholders/hero-poster.svg",
-      mobilePosterImage: hero?.video?.mobilePosterImage ?? hero?.mobileBannerImage ?? "/placeholders/hero-poster.svg",
+      posterImage: hero?.video?.posterImage ?? hero?.videoPoster,
+      mobilePosterImage: hero?.video?.mobilePosterImage ?? hero?.mobileBannerImage,
       heading: hero?.video?.heading ?? interactive3d.heading,
       description: hero?.video?.description ?? interactive3d.description,
       primaryCtaLabel: hero?.video?.primaryCtaLabel ?? interactive3d.primaryCtaLabel,
@@ -497,8 +731,8 @@ function normalizeHero(hero: Partial<HeroSettings> | undefined): HeroSettings {
     },
     hybrid: {
       ...interactive3d,
-      desktopImage: hero?.hybrid?.desktopImage ?? hero?.desktopBannerImage ?? "/placeholders/hero-strata.svg",
-      mobileImage: hero?.hybrid?.mobileImage ?? hero?.mobileBannerImage ?? "/placeholders/hero-strata-mobile.svg",
+      desktopImage: hero?.hybrid?.desktopImage ?? hero?.desktopBannerImage,
+      mobileImage: hero?.hybrid?.mobileImage ?? hero?.mobileBannerImage,
       status: hero?.hybrid?.status ?? "draft",
     },
     updatedAt: hero?.updatedAt ?? now,
@@ -548,35 +782,135 @@ function normalizeSections(sections: StoreData["homepageSections"] | undefined):
   return normalized;
 }
 
+function normalizeHomepageBanner(banner: Partial<HomepageBanner>, index = 0): HomepageBanner {
+  const now = new Date().toISOString();
+  return {
+    id: banner.id ?? `homepage-banner-${crypto.randomUUID()}`,
+    title: banner.title?.trim() || `Homepage banner ${index + 1}`,
+    imageUrl: banner.imageUrl ?? "",
+    linkUrl: banner.linkUrl?.trim() || undefined,
+    afterSectionKey: banner.afterSectionKey?.trim() || "featured-categories",
+    enabled: banner.enabled ?? true,
+    order: banner.order ?? index + 1,
+    altText: banner.altText?.trim() || banner.title?.trim() || "STONZA promotional banner",
+    status: banner.status ?? "published",
+    updatedAt: banner.updatedAt ?? now,
+    updatedBy: banner.updatedBy ?? "system",
+    deletedAt: banner.deletedAt,
+  };
+}
+
 function normalizeStore(store: Partial<StoreData>): StoreData {
   const settings = normalizeSettings(store.settings);
   return {
     settings,
-    hero: normalizeHero(store.hero),
+    hero: normalizeHero(
+      store.hero
+        ? {
+            ...store.hero,
+            activeMode: "carousel",
+            mode: "carousel",
+            carousel: {
+              ...store.hero.carousel,
+              autoplay: true,
+              autoplayInterval: 3000,
+              loop: true,
+              pauseOnHover: false,
+              showArrows: false,
+              showDots: true,
+              transitionStyle: "fade",
+            },
+          }
+        : undefined,
+    ),
     homepageSections: normalizeSections(store.homepageSections).sort((a, b) => a.order - b.order),
+    homepageBanners: (store.homepageBanners ?? [])
+      .map((banner, index) => normalizeHomepageBanner(banner, index))
+      .filter((banner) => !banner.deletedAt)
+      .sort((a, b) => a.order - b.order),
     categories: (store.categories ?? []).map(normalizeCategory).sort((a, b) => a.sortOrder - b.sortOrder),
-    collections: (store.collections ?? []).sort((a, b) => a.sortOrder - b.sortOrder),
+    collections: (store.collections ?? []).map(normalizeCollection).sort((a, b) => a.sortOrder - b.sortOrder),
     products: (store.products ?? []).map(normalizeProduct),
-    pages: store.pages ?? [],
-    journalPosts: store.journalPosts ?? [],
+    pages: (store.pages ?? []).map(normalizeManagedPage),
+    journalPosts: (store.journalPosts ?? []).map(normalizeJournalPost),
     mediaAssets: (store.mediaAssets ?? []).filter((asset) => !asset.deletedAt),
     contentLabels: store.contentLabels?.length ? store.contentLabels : defaultContentLabels,
     activityLogs: (store.activityLogs ?? []) as ActivityLogEntry[],
+    orders: (store.orders ?? [])
+      .map((order) => ({
+        ...order,
+        currency: "PKR",
+      }))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   };
 }
 
-async function readStore(): Promise<StoreData> {
+function getRequestedQuantityForProduct(
+  lines: CartLineInput[],
+  productId: string,
+) {
+  return lines.reduce((total, line) => (line.productId === productId ? total + line.quantity : total), 0);
+}
+
+// Carries the just-read snapshot alongside the StoreData object returned by
+// readStore() so writeStore() can later diff against it and persist only
+// the collections that actually changed. Non-enumerable so it never leaks
+// into JSON.stringify(store) or shows up in normal property iteration.
+const ORIGINAL_SNAPSHOT = Symbol("originalSnapshot");
+
+async function readStoreUncached(): Promise<StoreData> {
   noStore();
+
+  if (isPostgresStoreConfigured()) {
+    const raw = await readStoreFromPostgres();
+    const normalized = normalizeStore(raw);
+    Object.defineProperty(normalized, ORIGINAL_SNAPSHOT, {
+      value: structuredClone(normalized),
+      enumerable: false,
+    });
+    return normalized;
+  }
+
   const raw = await readStoreSource();
   const parsed = JSON.parse(raw) as Partial<StoreData>;
   return normalizeStore(parsed);
 }
 
+// A single page render/server action commonly calls several store getters
+// (getSiteSettings, listCategories, getProductBySlug, ...), each of which
+// used to trigger its own full readStoreFromPostgres() -- a dozen-plus
+// Postgres round trips per request. react's cache() dedupes readStore()
+// calls within one request/render (a fresh cache per request, so this never
+// serves stale data across requests, and mutations always read-modify-write
+// within a single readStore()/writeStore() pair regardless).
+const readStore = cache(readStoreUncached);
+
 async function writeStore(store: StoreData) {
+  if (isPostgresStoreConfigured()) {
+    const original = (store as unknown as Record<symbol, StoreData>)[ORIGINAL_SNAPSHOT];
+    await writeStoreToPostgres(store, original);
+    return;
+  }
+
   const payload = `${JSON.stringify(store, null, 2)}\n`;
 
   if (shouldUseRemoteStore()) {
     await writeRemoteStore(payload);
+    return;
+  }
+
+  if (isReadOnlyRuntime()) {
+    throw new Error(
+      "Store mutations require remote storage on Vercel. Add NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY, then create the documents bucket.",
+    );
+  }
+
+  await fs.mkdir(storeRuntimeDir, { recursive: true });
+  await fs.writeFile(storePath, payload, "utf8");
+}
+
+async function persistLocalMirror(payload: string) {
+  if (isReadOnlyRuntime()) {
     return;
   }
 
@@ -585,7 +919,7 @@ async function writeStore(store: StoreData) {
 }
 
 function shouldUseRemoteStore() {
-  return Boolean(process.env.VERCEL && env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
+  return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY);
 }
 
 async function readLocalStore() {
@@ -597,10 +931,14 @@ async function readLocalStore() {
       throw error;
     }
 
-    const seed = await fs.readFile(storeSeedPath, "utf8");
-    await fs.mkdir(storeRuntimeDir, { recursive: true });
-    await fs.writeFile(storePath, seed, "utf8");
-    return seed;
+    const emptyStore = `${JSON.stringify(createEmptyStore(), null, 2)}\n`;
+
+    if (!isReadOnlyRuntime()) {
+      await fs.mkdir(storeRuntimeDir, { recursive: true });
+      await fs.writeFile(storePath, emptyStore, "utf8");
+    }
+
+    return emptyStore;
   }
 }
 
@@ -610,13 +948,19 @@ async function readStoreSource() {
   }
 
   try {
-    return await readRemoteStore();
+    const remote = await readRemoteStore();
+    await persistLocalMirror(remote);
+    return remote;
   } catch (error) {
     const message = error instanceof Error ? error.message.toLowerCase() : "";
     if (message.includes("not found") || message.includes("404")) {
       const seed = await readLocalStore();
       await writeRemoteStore(seed);
       return seed;
+    }
+
+     if (!isReadOnlyRuntime() && (message.includes("fetch failed") || message.includes("timeout"))) {
+      return readLocalStore();
     }
 
     throw error;
@@ -654,6 +998,8 @@ async function writeRemoteStore(payload: string) {
 
     throw new Error(`Supabase store write failed: ${error.message}`);
   }
+
+  await persistLocalMirror(payload);
 }
 
 async function ensureRemoteStoreBucket() {
@@ -683,174 +1029,534 @@ async function ensureRemoteStoreBucket() {
 }
 
 function visibleCategory(category: Category) {
-  return category.active && category.status === "published" && !category.deletedAt;
+  return category.active && category.status === "published" && !category.deletedAt && !isLikelyDemoRecord(category);
 }
 
 function visibleProduct(product: Product) {
-  return ["published", "reserved", "out_of_stock", "sold"].includes(product.status);
+  return (
+    product.visibility !== "hidden" &&
+    ["published", "reserved", "out_of_stock", "sold"].includes(product.status) &&
+    !isLikelyDemoRecord(product)
+  );
+}
+
+function visibleCollection(collection: Collection) {
+  return collection.active && !isLikelyDemoRecord(collection);
+}
+
+// Matches "test"/"demo"/etc. only as whole words, not as a raw substring --
+// a plain .includes("test") also hides any genuine product/category/
+// collection whose real name merely CONTAINS one of these as a fragment
+// ("Latest Arrivals", "Contest Winner Ring", "Attestation Certificate
+// Stone"), silently vanishing it from every storefront listing with no
+// error or admin-visible explanation, while it still shows as normal and
+// published in every admin screen (which doesn't apply this filter).
+const DEMO_RECORD_PATTERN = /\b(playwright|demo|sample|dummy|placeholder|test)\b/i;
+
+function isLikelyDemoRecord(record: { name?: string; title?: string; featuredImage?: string; heroImage?: string; heroMedia?: string }) {
+  const title = `${record.name ?? record.title ?? ""}`;
+  return (
+    DEMO_RECORD_PATTERN.test(title) ||
+    isPlaceholderAsset(record.featuredImage) ||
+    isPlaceholderAsset(record.heroImage) ||
+    isPlaceholderAsset(record.heroMedia)
+  );
+}
+
+function ensureUniqueSlug(
+  existingSlugs: string[],
+  preferred: string,
+  currentId?: string,
+  entries?: Array<{ id: string; slug: string; slugHistory?: string[] }>,
+) {
+  const base = slugify(preferred) || "item";
+  // Must also block slugs still remembered in another entry's slugHistory,
+  // not just its current slug -- otherwise a brand-new record can claim the
+  // exact slug an older, renamed record still redirects from, and slug
+  // lookups (which check slugHistory too) resolve to the wrong record.
+  const taken = new Set(
+    entries
+      ? entries
+          .filter((entry) => entry.id !== currentId)
+          .flatMap((entry) => [entry.slug, ...(entry.slugHistory ?? [])])
+      : existingSlugs,
+  );
+  if (!taken.has(base)) return base;
+  let index = 2;
+  while (taken.has(`${base}-${index}`)) {
+    index += 1;
+  }
+  return `${base}-${index}`;
+}
+
+function buildCategoryNavigation(categories: Category[]) {
+  const visibleCategories = categories.filter(visibleCategory).sort((a, b) => a.sortOrder - b.sortOrder);
+  const bySlug = new Map(visibleCategories.map((category) => [category.slug, category]));
+
+  return sidebarCategoryHierarchy
+    .map((group, index) => {
+      const category = bySlug.get(group.parentSlug);
+      if (!category) return null;
+
+      return {
+        id: `nav-category-${category.id}`,
+        label: category.name,
+        href: `/shop?category=${encodeURIComponent(category.slug)}`,
+        order: index + 1,
+        visible: true,
+        children: group.childSlugs
+          .map((slug, childIndex) => {
+            const child = bySlug.get(slug);
+            if (!child || child.parentCategorySlug !== category.slug) return null;
+
+            return {
+              id: `nav-category-${child.id}`,
+              label: child.name,
+              href: `/shop?category=${encodeURIComponent(category.slug)}&subcategory=${encodeURIComponent(child.slug)}`,
+              order: childIndex + 1,
+              visible: true,
+            };
+          })
+          .filter((child): child is NonNullable<typeof child> => Boolean(child)),
+      };
+    })
+    .filter((group): group is NonNullable<typeof group> => Boolean(group));
 }
 
 export async function getStoreData() {
   return readStore();
 }
 
-export async function listMediaAssets(): Promise<MediaAsset[]> {
-  const store = await readStore();
-  return store.mediaAssets.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+// --- Scoped Postgres readers -------------------------------------------
+// Each queries only the one table (or one row) a getter actually needs,
+// instead of readStore()'s "fetch all ten tables" -- the remaining half of
+// the product-page load-time fix (see the middleware/cache() changes
+// nearby). Every normalize* call here is a pure, single-entity function --
+// none of them depend on any other table's data -- so applying them to a
+// scoped fetch is exactly equivalent to what normalizeStore() already did
+// to that same row as part of the whole store. The JSON-blob (non-Postgres)
+// path below each of these is untouched.
+
+async function fetchCategoriesScoped(): Promise<Category[]> {
+  const raw = (await fetchTable("categories")) as Partial<Category>[];
+  return raw.map(normalizeCategory);
 }
 
-export async function getMediaAssetById(id: string) {
+async function fetchCollectionsScoped(): Promise<Collection[]> {
+  const raw = (await fetchTable("collections")) as Partial<Collection>[];
+  return raw.map(normalizeCollection);
+}
+
+async function fetchProductsScoped(): Promise<Product[]> {
+  const raw = (await fetchTable("products")) as Partial<Product>[];
+  return raw.map(normalizeProduct);
+}
+
+async function fetchPagesScoped(): Promise<ManagedPage[]> {
+  const raw = (await fetchTable("pages")) as Partial<ManagedPage>[];
+  return raw.map(normalizeManagedPage);
+}
+
+async function fetchJournalPostsScoped(): Promise<JournalPost[]> {
+  const raw = (await fetchTable("journalPosts")) as Partial<JournalPost>[];
+  return raw.map(normalizeJournalPost);
+}
+
+async function fetchMediaAssetsScoped(): Promise<MediaAsset[]> {
+  const raw = (await fetchTable("mediaAssets")) as MediaAsset[];
+  return raw.filter((asset) => !asset.deletedAt);
+}
+
+async function fetchContentLabelsScoped(): Promise<ContentLabel[]> {
+  const raw = (await fetchTable("contentLabels")) as ContentLabel[];
+  return raw.length ? raw : defaultContentLabels;
+}
+
+async function fetchHomepageSectionsScoped(): Promise<HomepageSection[]> {
+  const raw = (await fetchTable("homepageSections")) as StoreData["homepageSections"];
+  return normalizeSections(raw).sort((a, b) => a.order - b.order);
+}
+
+async function fetchHomepageBannersScoped(): Promise<HomepageBanner[]> {
+  const raw = (await fetchTable("homepageBanners")) as Array<Partial<HomepageBanner>>;
+  return raw
+    .map((banner, index) => normalizeHomepageBanner(banner, index))
+    .filter((banner) => !banner.deletedAt)
+    .sort((a, b) => a.order - b.order);
+}
+
+async function fetchSettingsScoped(): Promise<SiteSettings> {
+  const raw = (await fetchSingletonTable("settings")) as Partial<SiteSettings> | undefined;
+  return normalizeSettings(raw);
+}
+
+async function fetchHeroScoped(): Promise<HeroSettings> {
+  const raw = (await fetchSingletonTable("hero")) as Partial<HeroSettings> | undefined;
+  return normalizeHero(raw);
+}
+
+export const listMediaAssets = cache(async (): Promise<MediaAsset[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchMediaAssetsScoped() : (await readStore()).mediaAssets;
+  return [...items].sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+});
+
+export const getMediaAssetById = cache(async (id: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchMediaAssetById(id);
+    return raw ? (raw as MediaAsset) : null;
+  }
   const store = await readStore();
   return store.mediaAssets.find((asset) => asset.id === id) ?? null;
-}
+});
 
-export async function getSiteSettings() {
-  const store = await readStore();
-  return store.settings;
-}
+export const getSiteSettings = cache(async () => {
+  noStore();
+  const [settings, categories] = isPostgresStoreConfigured()
+    ? await Promise.all([fetchSettingsScoped(), fetchCategoriesScoped()])
+    : await (async () => {
+        const store = await readStore();
+        return [store.settings, store.categories] as const;
+      })();
 
-export async function getContentLabels() {
-  const store = await readStore();
-  return store.contentLabels ?? defaultContentLabels;
-}
+  return {
+    ...settings,
+    header: {
+      ...settings.header,
+      navigation: [
+        ...buildCategoryNavigation(categories),
+        ...settings.header.navigation.filter((item) => item.visible && item.href !== "/shop"),
+      ],
+    },
+  };
+});
+
+export const getAdminSiteSettings = cache(async () => {
+  noStore();
+  return isPostgresStoreConfigured() ? fetchSettingsScoped() : (await readStore()).settings;
+});
+
+export const getContentLabels = cache(async () => {
+  noStore();
+  return isPostgresStoreConfigured() ? fetchContentLabelsScoped() : ((await readStore()).contentLabels ?? defaultContentLabels);
+});
 
 export async function getLabelMap() {
   const settings = await getSiteSettings();
   return settings.labels;
 }
 
-export async function getHeroSettings(): Promise<HeroSettings> {
-  const store = await readStore();
-  return store.hero;
-}
+export const getHeroSettings = cache(async (): Promise<HeroSettings> => {
+  noStore();
+  return isPostgresStoreConfigured() ? fetchHeroScoped() : (await readStore()).hero;
+});
 
-export async function getHomepageSections(includeDisabled = false): Promise<HomepageSection[]> {
-  const store = await readStore();
-  return store.homepageSections
-    .filter((section) => includeDisabled || section.enabled)
+export const getHomepageSections = cache(async (includeDisabled = false): Promise<HomepageSection[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchHomepageSectionsScoped() : (await readStore()).homepageSections;
+  return items.filter((section) => includeDisabled || section.enabled).sort((a, b) => a.order - b.order);
+});
+
+export const getHomepageBanners = cache(async (includeDisabled = false): Promise<HomepageBanner[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchHomepageBannersScoped() : (await readStore()).homepageBanners;
+  return items
+    .filter((banner) => !banner.deletedAt)
+    .filter((banner) => includeDisabled || banner.enabled)
     .sort((a, b) => a.order - b.order);
-}
+});
 
-export async function listCategories(options?: {
-  admin?: boolean;
-  featuredOnly?: boolean;
-  includeInactive?: boolean;
-  search?: string;
-}) {
-  const store = await readStore();
-  let items = store.categories;
+export const listCategories = cache(
+  async (options?: { admin?: boolean; featuredOnly?: boolean; includeInactive?: boolean; search?: string }) => {
+    noStore();
+    let items = isPostgresStoreConfigured() ? await fetchCategoriesScoped() : (await readStore()).categories;
 
-  if (!options?.admin) {
-    items = items.filter(visibleCategory);
+    if (!options?.admin) {
+      items = items.filter(visibleCategory);
+    }
+
+    if (!options?.includeInactive) {
+      items = items.filter((category) => category.status !== "trash");
+    }
+
+    if (options?.featuredOnly) {
+      items = items.filter((category) => category.featured);
+    }
+
+    if (options?.search) {
+      const query = options.search.toLowerCase();
+      items = items.filter((category) =>
+        [category.name, category.shortDescription, category.description].join(" ").toLowerCase().includes(query),
+      );
+    }
+
+    return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+  },
+);
+
+export const getCategoryBySlug = cache(async (slug: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchCategoryBySlug(slug);
+    if (raw) {
+      const category = normalizeCategory(raw as Partial<Category>);
+      return visibleCategory(category) ? category : null;
+    }
+    // No exact slug match -- fall back to a full scan for a renamed
+    // category's old slug (slugHistory). Rare, so only worth paying for on
+    // a miss rather than on every request.
+    const all = await listCategories();
+    return all.find((category) => category.slugHistory?.includes(slug)) ?? null;
   }
 
-  if (!options?.includeInactive) {
-    items = items.filter((category) => category.status !== "trash");
-  }
-
-  if (options?.featuredOnly) {
-    items = items.filter((category) => category.featured);
-  }
-
-  if (options?.search) {
-    const query = options.search.toLowerCase();
-    items = items.filter((category) =>
-      [category.name, category.shortDescription, category.description].join(" ").toLowerCase().includes(query),
-    );
-  }
-
-  return items.sort((a, b) => a.sortOrder - b.sortOrder);
-}
-
-export async function getCategoryBySlug(slug: string) {
   const categories = await listCategories();
-  return categories.find((category) => category.slug === slug) ?? null;
-}
+  return categories.find((category) => category.slug === slug || category.slugHistory?.includes(slug)) ?? null;
+});
 
-export async function getCategoryById(id: string) {
+export const getCategoryById = cache(async (id: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchCategoryById(id);
+    return raw ? normalizeCategory(raw as Partial<Category>) : null;
+  }
   const store = await readStore();
   return store.categories.find((category) => category.id === id) ?? null;
-}
+});
 
-export async function listCollections(featuredOnly = false): Promise<Collection[]> {
-  const store = await readStore();
-  return store.collections
-    .filter((collection) => collection.active && (!featuredOnly || collection.featured))
+export const listCollections = cache(async (featuredOnly = false): Promise<Collection[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchCollectionsScoped() : (await readStore()).collections;
+  return items
+    .filter((collection) => visibleCollection(collection) && (!featuredOnly || collection.featured))
     .sort((a, b) => a.sortOrder - b.sortOrder);
-}
+});
 
-export async function getCollectionBySlug(slug: string) {
+export const listAdminCollections = cache(async (): Promise<Collection[]> => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchCollectionsScoped() : (await readStore()).collections;
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder);
+});
+
+export const getCollectionBySlug = cache(async (slug: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchCollectionBySlug(slug);
+    if (raw) {
+      const collection = normalizeCollection(raw as Partial<Collection>);
+      return visibleCollection(collection) ? collection : null;
+    }
+    const all = await listCollections(false);
+    return all.find((collection) => collection.slugHistory?.includes(slug)) ?? null;
+  }
+
   const collections = await listCollections(false);
-  return collections.find((collection) => collection.slug === slug) ?? null;
-}
+  return collections.find((collection) => collection.slug === slug || collection.slugHistory?.includes(slug)) ?? null;
+});
 
-export async function listProducts(options?: {
-  featuredOnly?: boolean;
-  newOnly?: boolean;
-  collectionSlug?: string;
-  categorySlug?: string;
-  search?: string;
-}) {
-  const store = await readStore();
-  let items = store.products.filter(visibleProduct);
-
-  if (options?.featuredOnly) items = items.filter((product) => product.featured);
-  if (options?.newOnly) items = items.filter((product) => product.newArrival);
-  if (options?.collectionSlug) items = items.filter((product) => product.collectionSlug === options.collectionSlug);
-  if (options?.categorySlug) {
-    items = items.filter((product) => product.categorySlugs?.includes(options.categorySlug!) || product.categorySlug === options.categorySlug);
+export const getCollectionById = cache(async (id: string) => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchCollectionById(id);
+    return raw ? normalizeCollection(raw as Partial<Collection>) : null;
   }
-  if (options?.search) {
-    const query = options.search.toLowerCase();
-    items = items.filter((product) =>
-      [
-        product.name,
-        product.shortDescription,
-        product.stoneType,
-        product.origin,
-        ...product.searchKeywords,
-        ...(product.categorySlugs ?? []),
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
-    );
+  const store = await readStore();
+  return store.collections.find((collection) => collection.id === id) ?? null;
+});
+
+export const listProducts = cache(
+  async (options?: {
+    featuredOnly?: boolean;
+    newOnly?: boolean;
+    collectionSlug?: string;
+    categorySlug?: string;
+    subcategorySlug?: string;
+    search?: string;
+  }) => {
+    noStore();
+    const all = isPostgresStoreConfigured() ? await fetchProductsScoped() : (await readStore()).products;
+    let items = all.filter(visibleProduct);
+
+    if (options?.featuredOnly) items = items.filter((product) => product.featured);
+    if (options?.newOnly) items = items.filter((product) => product.newArrival);
+    if (options?.collectionSlug) items = items.filter((product) => product.collectionSlug === options.collectionSlug);
+    if (options?.categorySlug) {
+      items = items.filter((product) => product.categorySlugs?.includes(options.categorySlug!) || product.categorySlug === options.categorySlug);
+    }
+    if (options?.subcategorySlug) {
+      items = items.filter((product) => product.subcategorySlug === options.subcategorySlug);
+    }
+    if (options?.search) {
+      const query = options.search.toLowerCase();
+      items = items.filter((product) =>
+        [
+          product.name,
+          product.shortDescription,
+          product.stoneType,
+          product.origin,
+          product.sku,
+          product.variantLabel,
+          ...(product.variants ?? []).map((variant) => variant.value),
+          ...product.searchKeywords,
+          ...(product.categorySlugs ?? []),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query),
+      );
+    }
+
+    return items;
+  },
+);
+
+export async function listOrders() {
+  const store = await readStore();
+  return [...(store.orders ?? [])].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  );
+}
+
+export async function getOrderByNumber(orderNumber: string) {
+  const store = await readStore();
+  return store.orders?.find((order) => order.orderNumber === orderNumber) ?? null;
+}
+
+/**
+ * Order numbers (STZ-YYYYMMDD-001, -002, ...) are sequential and easy to
+ * guess, so the public confirmation page must never be reachable by order
+ * number alone — that would let anyone enumerate other customers' names,
+ * emails, phone numbers, and addresses. This requires the unguessable
+ * per-order token that is only ever handed to the customer who placed it.
+ */
+export async function getOrderForConfirmation(orderNumber: string, token: string | undefined) {
+  if (!token) return null;
+  const order = await getOrderByNumber(orderNumber);
+  if (!order?.submissionToken) return null;
+
+  const provided = Buffer.from(token);
+  const expected = Buffer.from(order.submissionToken);
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+    return null;
   }
 
-  return items;
+  return order;
 }
 
-export async function listAdminProducts() {
+export const listAdminProducts = cache(async () => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchProductsScoped() : (await readStore()).products;
+  return [...items].sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime());
+});
+
+export const getProductBySlug = cache(async (slug: string): Promise<Product | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchProductBySlug(slug);
+    if (raw) {
+      const product = normalizeProduct(raw as Partial<Product>);
+      return visibleProduct(product) ? product : null;
+    }
+    const all = await listProducts();
+    return all.find((product) => product.slugHistory?.includes(slug)) ?? null;
+  }
+
   const store = await readStore();
-  return store.products;
-}
+  return (
+    store.products.find(
+      (product) => visibleProduct(product) && (product.slug === slug || product.slugHistory?.includes(slug)),
+    ) ?? null
+  );
+});
 
-export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const store = await readStore();
-  return store.products.find((product) => product.slug === slug) ?? null;
-}
-
-export async function getProductById(id: string): Promise<Product | null> {
+export const getProductById = cache(async (id: string): Promise<Product | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchProductById(id);
+    return raw ? normalizeProduct(raw as Partial<Product>) : null;
+  }
   const store = await readStore();
   return store.products.find((product) => product.id === id) ?? null;
-}
+});
 
-export async function listJournalPosts() {
-  const store = await readStore();
-  return store.journalPosts
+export const listJournalPosts = cache(async () => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchJournalPostsScoped() : (await readStore()).journalPosts;
+  return items
     .filter((post) => post.status === "published")
     .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
-}
+});
 
-export async function getJournalPostBySlug(slug: string): Promise<JournalPost | null> {
-  const store = await readStore();
-  return store.journalPosts.find((post) => post.slug === slug && post.status === "published") ?? null;
-}
+export const listAdminJournalPosts = cache(async () => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchJournalPostsScoped() : (await readStore()).journalPosts;
+  return [...items].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+});
 
-export async function getManagedPage(slug: string): Promise<ManagedPage | null> {
+export const getJournalPostById = cache(async (id: string): Promise<JournalPost | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchJournalPostById(id);
+    return raw ? normalizeJournalPost(raw as Partial<JournalPost>) : null;
+  }
   const store = await readStore();
-  return store.pages.find((page) => page.slug === slug && page.status === "published") ?? null;
-}
+  return store.journalPosts.find((post) => post.id === id) ?? null;
+});
+
+export const getJournalPostBySlug = cache(async (slug: string): Promise<JournalPost | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchJournalPostBySlug(slug);
+    if (raw) {
+      const post = normalizeJournalPost(raw as Partial<JournalPost>);
+      return post.status === "published" ? post : null;
+    }
+    const all = await listAdminJournalPosts();
+    return all.find((post) => post.status === "published" && post.slugHistory?.includes(slug)) ?? null;
+  }
+
+  const store = await readStore();
+  return (
+    store.journalPosts.find(
+      (post) => (post.slug === slug || post.slugHistory?.includes(slug)) && post.status === "published",
+    ) ?? null
+  );
+});
+
+export const getManagedPage = cache(async (slug: string): Promise<ManagedPage | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchPageBySlug(slug);
+    if (raw) {
+      const page = normalizeManagedPage(raw as Partial<ManagedPage>);
+      return page.status === "published" ? page : null;
+    }
+    const all = await listManagedPages();
+    return all.find((page) => page.status === "published" && page.slugHistory?.includes(slug)) ?? null;
+  }
+
+  const store = await readStore();
+  return (
+    store.pages.find((page) => (page.slug === slug || page.slugHistory?.includes(slug)) && page.status === "published") ??
+    null
+  );
+});
+
+export const listManagedPages = cache(async () => {
+  noStore();
+  const items = isPostgresStoreConfigured() ? await fetchPagesScoped() : (await readStore()).pages;
+  return [...items].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+});
+
+export const getManagedPageById = cache(async (id: string): Promise<ManagedPage | null> => {
+  noStore();
+  if (isPostgresStoreConfigured()) {
+    const raw = await fetchPageById(id);
+    return raw ? normalizeManagedPage(raw as Partial<ManagedPage>) : null;
+  }
+  const store = await readStore();
+  return store.pages.find((page) => page.id === id) ?? null;
+});
 
 export async function logActivity(entry: Omit<ActivityLogEntry, "id" | "timestamp">) {
   const store = await readStore();
@@ -866,13 +1572,54 @@ export async function logActivity(entry: Omit<ActivityLogEntry, "id" | "timestam
 
 export async function upsertCategory(payload: Partial<Category> & Pick<Category, "name">) {
   const store = await readStore();
-  const nextCategory = normalizeCategory(payload);
+  const existing = payload.id ? store.categories.find((item) => item.id === payload.id) : null;
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.name,
+    existingSlug: existing?.slug,
+    existingName: existing?.name,
+    existingId: payload.id,
+    entries: store.categories,
+  });
+  const nextCategory = normalizeCategory({
+    ...(existing ?? {}),
+    ...payload,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
   const index = store.categories.findIndex((item) => item.id === nextCategory.id);
 
   if (index >= 0) {
     store.categories[index] = nextCategory;
   } else {
     store.categories.push(nextCategory);
+  }
+
+  if (existing && existing.slug !== nextCategory.slug) {
+    store.categories = store.categories.map((item) =>
+      item.parentCategorySlug === existing.slug
+        ? normalizeCategory({ ...item, parentCategorySlug: nextCategory.slug, updatedAt: new Date().toISOString() })
+        : item,
+    );
+    store.products = store.products.map((product) => {
+      if (product.categorySlug !== existing.slug && !product.categorySlugs?.includes(existing.slug)) {
+        return product;
+      }
+
+      const nextCategorySlugs = replaceSlugValue(product.categorySlugs ?? [product.categorySlug], existing.slug, nextCategory.slug) ?? [];
+      return normalizeProduct({
+        ...product,
+        categorySlug: nextCategorySlugs[0] ?? nextCategory.slug,
+        categorySlugs: nextCategorySlugs,
+      });
+    });
+    store.homepageSections = store.homepageSections.map((section) => ({
+      ...section,
+      categorySlugs: replaceSlugValue(section.categorySlugs, existing.slug, nextCategory.slug) ?? [],
+    }));
   }
 
   await writeStore(store);
@@ -883,11 +1630,30 @@ export async function updateCategoryStatus(id: string, status: Category["status"
   const store = await readStore();
   const category = store.categories.find((item) => item.id === id);
   if (!category) throw new Error("Category not found");
+  const wasPublished = category.status === "published";
   category.status = status;
   category.active = status === "published";
   category.deletedAt = status === "trash" ? new Date().toISOString() : undefined;
   category.updatedAt = new Date().toISOString();
   category.updatedBy = actor;
+
+  // A category leaving "published" (trashed or archived) disappears from
+  // visibleCategory() -- unlike the slug-rename cascade above, this used to
+  // update nothing else, leaving child categories pointing at a
+  // parentCategorySlug that no longer resolves to anything visible (a
+  // broken breadcrumb link, and the child silently vanishing from category
+  // navigation since buildCategoryNavigation looks parents up by slug).
+  // Clearing the link promotes the child to top-level instead, which is
+  // recoverable (an admin can re-parent it) rather than silently broken.
+  if (wasPublished && status !== "published") {
+    const now = new Date().toISOString();
+    store.categories = store.categories.map((item) =>
+      item.parentCategorySlug === category.slug
+        ? { ...item, parentCategorySlug: undefined, updatedAt: now }
+        : item,
+    );
+  }
+
   await writeStore(store);
   return category;
 }
@@ -916,15 +1682,44 @@ export async function duplicateCategory(id: string, actor: string) {
 
 export async function upsertCollection(payload: Omit<Collection, "id" | "slug"> & { id?: string; slug?: string }) {
   const store = await readStore();
+  const existing = payload.id ? store.collections.find((item) => item.id === payload.id) : null;
   const id = payload.id ?? `col-${crypto.randomUUID()}`;
-  const slug = payload.slug || slugify(payload.name);
-  const nextCollection: Collection = { ...payload, id, slug };
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.name,
+    existingSlug: existing?.slug,
+    existingName: existing?.name,
+    existingId: payload.id,
+    entries: store.collections,
+  });
+  const nextCollection: Collection = normalizeCollection({
+    ...(existing ?? {}),
+    ...payload,
+    id,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
   const index = store.collections.findIndex((item) => item.id === id);
 
   if (index >= 0) {
     store.collections[index] = nextCollection;
   } else {
     store.collections.push(nextCollection);
+  }
+
+  if (existing && existing.slug !== nextCollection.slug) {
+    store.products = store.products.map((product) =>
+      product.collectionSlug === existing.slug
+        ? normalizeProduct({ ...product, collectionSlug: nextCollection.slug })
+        : product,
+    );
+    store.homepageSections = store.homepageSections.map((section) => ({
+      ...section,
+      collectionSlugs: replaceSlugValue(section.collectionSlugs, existing.slug, nextCollection.slug) ?? [],
+    }));
   }
 
   await writeStore(store);
@@ -943,6 +1738,15 @@ export async function updateHomepageSections(sections: HomepageSection[]) {
   store.homepageSections = normalizeSections(sections);
   await writeStore(store);
   return store.homepageSections;
+}
+
+export async function updateHomepageBanners(banners: HomepageBanner[]) {
+  const store = await readStore();
+  store.homepageBanners = banners
+    .map((banner, index) => normalizeHomepageBanner(banner, index))
+    .filter((banner) => !banner.deletedAt);
+  await writeStore(store);
+  return store.homepageBanners;
 }
 
 export async function updateSiteSettings(settings: SiteSettings) {
@@ -965,7 +1769,24 @@ export async function updateContentLabels(labels: ContentLabel[]) {
 
 export async function upsertProduct(payload: Product) {
   const store = await readStore();
-  const nextProduct = normalizeProduct(payload);
+  const existing = payload.id ? store.products.find((item) => item.id === payload.id) : null;
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.name,
+    existingSlug: existing?.slug,
+    existingName: existing?.name,
+    existingId: payload.id,
+    entries: store.products,
+  });
+  const nextProduct = normalizeProduct({
+    ...(existing ?? {}),
+    ...payload,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
   const index = store.products.findIndex((product) => product.id === nextProduct.id);
 
   if (index >= 0) {
@@ -974,8 +1795,278 @@ export async function upsertProduct(payload: Product) {
     store.products.push(nextProduct);
   }
 
+  if (existing && existing.slug !== nextProduct.slug) {
+    store.products = store.products.map((product) =>
+      product.id === nextProduct.id
+        ? product
+        : normalizeProduct({
+            ...product,
+            relatedProductSlugs: replaceSlugValue(product.relatedProductSlugs, existing.slug, nextProduct.slug) ?? [],
+          }),
+    );
+    store.homepageSections = store.homepageSections.map((section) => ({
+      ...section,
+      productSlugs: replaceSlugValue(section.productSlugs, existing.slug, nextProduct.slug) ?? [],
+    }));
+  }
+
   await writeStore(store);
   return nextProduct;
+}
+
+export async function duplicateProduct(id: string) {
+  const store = await readStore();
+  const original = store.products.find((entry) => entry.id === id);
+  if (!original) throw new Error("Product not found");
+
+  const clone = normalizeProduct({
+    ...original,
+    id: `prd-${crypto.randomUUID()}`,
+    name: `${original.name} Copy`,
+    slug: `${original.slug}-copy`,
+    sku: `${original.sku}-COPY`,
+    status: "draft",
+    visibility: "hidden",
+    featured: false,
+    newArrival: false,
+    bestseller: false,
+    inventoryQuantity: original.inventoryQuantity,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  store.products.unshift(clone);
+  await writeStore(store);
+  return clone;
+}
+
+export async function adjustProductInventory(id: string, delta: number) {
+  const store = await readStore();
+  const product = store.products.find((entry) => entry.id === id);
+  if (!product) {
+    throw new Error("Product not found");
+  }
+
+  const nextQuantity = Math.max(0, product.inventoryQuantity + delta);
+  product.inventoryQuantity = nextQuantity;
+
+  // Only toggle between "published" and "out_of_stock" -- i.e. only for a
+  // product whose status already tracks live inventory. Unconditionally
+  // force-setting status here (as this used to) meant a routine stock count
+  // on a still-unfinished "draft" product (or a "reserved"/"sold"/"archived"
+  // one) silently flipped it to "out_of_stock" -- a status visibleProduct()
+  // treats as publicly visible -- publishing it as a side effect, with none
+  // of canTransitionProductStatus's transition rules or the products:publish
+  // permission that a deliberate publish requires.
+  if (product.status === "published" && nextQuantity <= 0) {
+    product.status = "out_of_stock";
+  } else if (product.status === "out_of_stock" && nextQuantity > 0) {
+    product.status = "published";
+  }
+
+  product.updatedAt = new Date().toISOString();
+  await writeStore(store);
+  return product;
+}
+
+export async function upsertManagedPage(payload: Partial<ManagedPage> & Pick<ManagedPage, "title" | "slug" | "content" | "heroHeading" | "status">) {
+  const store = await readStore();
+  const existing = payload.id ? store.pages.find((item) => item.id === payload.id) : null;
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.title,
+    existingSlug: existing?.slug,
+    existingName: existing?.title,
+    existingId: payload.id,
+    entries: store.pages,
+  });
+  const nextPage = normalizeManagedPage({
+    ...(existing ?? {}),
+    ...payload,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
+  const index = store.pages.findIndex((page) => page.id === nextPage.id);
+
+  if (index >= 0) {
+    store.pages[index] = nextPage;
+  } else {
+    store.pages.push(nextPage);
+  }
+
+  if (existing && existing.slug !== nextPage.slug) {
+    const previousPath = `/${existing.slug}`;
+    const nextPath = `/${nextPage.slug}`;
+    store.settings = normalizeSettings({
+      ...store.settings,
+      header: {
+        ...store.settings.header,
+        navigation: replaceNavigationHref(store.settings.header.navigation, previousPath, nextPath),
+      },
+      footer: {
+        ...store.settings.footer,
+        legalLinks: replaceNavigationHref(store.settings.footer.legalLinks, previousPath, nextPath),
+        sections: store.settings.footer.sections.map((section) => ({
+          ...section,
+          links: section.links.map((link) => ({
+            ...link,
+            href: link.href === previousPath ? nextPath : link.href,
+          })),
+        })),
+      },
+      announcement: {
+        ...store.settings.announcement,
+        link: store.settings.announcement.link === previousPath ? nextPath : store.settings.announcement.link,
+      },
+      contactButton: {
+        ...store.settings.contactButton,
+        destination:
+          store.settings.contactButton.destination === previousPath
+            ? nextPath
+            : store.settings.contactButton.destination,
+      },
+    });
+  }
+
+  await writeStore(store);
+  return nextPage;
+}
+
+export async function upsertJournalPost(
+  payload: Partial<JournalPost> &
+    Pick<JournalPost, "title" | "slug" | "content" | "heroHeading" | "status" | "excerpt" | "publishedAt">,
+) {
+  const store = await readStore();
+  const existing = payload.id ? store.journalPosts.find((item) => item.id === payload.id) : null;
+  const slug = resolveEntitySlug({
+    requestedSlug: payload.slug,
+    fallbackName: payload.title,
+    existingSlug: existing?.slug,
+    existingName: existing?.title,
+    existingId: payload.id,
+    entries: store.journalPosts,
+  });
+  const nextPost = normalizeJournalPost({
+    ...(existing ?? {}),
+    ...payload,
+    slug,
+    slugHistory:
+      existing && existing.slug !== slug
+        ? [...(payload.slugHistory ?? existing.slugHistory ?? []), existing.slug]
+        : (payload.slugHistory ?? existing?.slugHistory),
+  });
+  const index = store.journalPosts.findIndex((post) => post.id === nextPost.id);
+
+  if (index >= 0) {
+    store.journalPosts[index] = nextPost;
+  } else {
+    store.journalPosts.push(nextPost);
+  }
+
+  await writeStore(store);
+  return nextPost;
+}
+
+export async function deleteCollection(id: string) {
+  const store = await readStore();
+  const collection = store.collections.find((item) => item.id === id);
+  if (!collection) throw new Error("Collection not found");
+
+  store.collections = store.collections.filter((item) => item.id !== id);
+  store.products = store.products.map((product) =>
+    product.collectionSlug === collection.slug ? normalizeProduct({ ...product, collectionSlug: "" }) : product,
+  );
+
+  await writeStore(store);
+  return collection;
+}
+
+export async function deleteManagedPage(id: string) {
+  const store = await readStore();
+  const page = store.pages.find((entry) => entry.id === id);
+  if (!page) throw new Error("Page not found");
+
+  store.pages = store.pages.filter((entry) => entry.id !== id);
+  await writeStore(store);
+  return page;
+}
+
+export async function deleteJournalPost(id: string) {
+  const store = await readStore();
+  const post = store.journalPosts.find((entry) => entry.id === id);
+  if (!post) throw new Error("Journal post not found");
+
+  store.journalPosts = store.journalPosts.filter((entry) => entry.id !== id);
+  await writeStore(store);
+  return post;
+}
+
+export async function assignProductsToCollection(collectionSlug: string, productSlugs: string[]) {
+  const store = await readStore();
+  const selected = new Set(productSlugs);
+  store.products = store.products.map((product) => {
+    if (product.collectionSlug === collectionSlug && !selected.has(product.slug)) {
+      return normalizeProduct({ ...product, collectionSlug: "" });
+    }
+
+    if (selected.has(product.slug)) {
+      return normalizeProduct({ ...product, collectionSlug });
+    }
+
+    return product;
+  });
+
+  await writeStore(store);
+}
+
+export async function assignProductsToCategory(categorySlug: string, productSlugs: string[]) {
+  const store = await readStore();
+  const category = store.categories.find((item) => item.slug === categorySlug);
+
+  if (!category) {
+    throw new Error("Category not found");
+  }
+
+  const selected = new Set(productSlugs);
+  store.products = store.products.map((product) => {
+    const currentCategorySlugs = [...new Set(product.categorySlugs?.length ? product.categorySlugs : [product.categorySlug])];
+    const belongsToCategory = currentCategorySlugs.includes(categorySlug);
+
+    if (selected.has(product.slug) && !belongsToCategory) {
+      const nextCategorySlugs = [...currentCategorySlugs, categorySlug];
+      return normalizeProduct({
+        ...product,
+        categorySlug: nextCategorySlugs[0] ?? categorySlug,
+        categorySlugs: nextCategorySlugs,
+      });
+    }
+
+    if (!selected.has(product.slug) && belongsToCategory) {
+      const nextCategorySlugs = currentCategorySlugs.filter((slug) => slug !== categorySlug);
+      return normalizeProduct({
+        ...product,
+        categorySlug: nextCategorySlugs[0] ?? "",
+        categorySlugs: nextCategorySlugs,
+      });
+    }
+
+    return product;
+  });
+
+  await writeStore(store);
+}
+
+export async function deleteProduct(id: string) {
+  const store = await readStore();
+  const product = store.products.find((entry) => entry.id === id);
+  if (!product) throw new Error("Product not found");
+
+  store.products = store.products.filter((entry) => entry.id !== id);
+  await writeStore(store);
+  return product;
 }
 
 export async function addMediaAsset(asset: MediaAsset) {
@@ -1015,4 +2106,188 @@ export async function setProductStatus(id: string, status: Product["status"]) {
   product.updatedAt = new Date().toISOString();
   await writeStore(store);
   return product;
+}
+
+export async function createOrder(payload: {
+  customer: CustomerOrderDetails;
+  cartLines: CartLineInput[];
+  paymentMethod: string;
+  submissionToken?: string;
+}) {
+  // The Postgres path locks every referenced product row and runs as a
+  // single transaction (see create_order in the migration) -- this is what
+  // actually closes the overselling/lost-order race the old JSON-blob store
+  // was exposed to, so it's used whenever Postgres is configured rather
+  // than falling through to the generic read-modify-write path below.
+  if (isPostgresStoreConfigured()) {
+    return createOrderInPostgres(payload);
+  }
+
+  const store = await readStore();
+  const existingOrder = payload.submissionToken
+    ? (store.orders ?? []).find((order) => order.submissionToken === payload.submissionToken)
+    : null;
+
+  if (existingOrder) {
+    return existingOrder;
+  }
+
+  const requestedQuantities = new Map<string, number>();
+  for (const line of payload.cartLines) {
+    requestedQuantities.set(line.productId, getRequestedQuantityForProduct(payload.cartLines, line.productId));
+  }
+
+  const lines = payload.cartLines.map((line) => {
+    const product = store.products.find((entry) => entry.id === line.productId);
+    if (!product) {
+      throw new Error("A product in your cart is no longer available.");
+    }
+
+    if (!visibleProduct(product) || !canPurchaseProduct(product)) {
+      throw new Error(`${product.name} is not currently available for checkout.`);
+    }
+
+    const requestedQuantity = requestedQuantities.get(product.id) ?? line.quantity;
+
+    if (product.oneOfOne && requestedQuantity > 1) {
+      throw new Error(`${product.name} is a one-of-one piece and can only be ordered once.`);
+    }
+
+    if (product.inventoryQuantity < requestedQuantity) {
+      throw new Error(`Only ${product.inventoryQuantity} unit(s) of ${product.name} remain in stock.`);
+    }
+
+    if (product.sizes?.length && !line.selectedSize) {
+      throw new Error(`Please select a size for ${product.name}.`);
+    }
+
+    if (line.selectedSize && product.sizes?.length && !product.sizes.includes(line.selectedSize)) {
+      throw new Error(`The selected size for ${product.name} is unavailable.`);
+    }
+
+    if (product.variants?.length && !line.selectedVariant) {
+      throw new Error(`Please select a ${product.variantLabel?.toLowerCase() || "variant"} for ${product.name}.`);
+    }
+
+    if (
+      line.selectedVariant &&
+      product.variants?.length &&
+      !product.variants.some((variant) => variant.active && variant.value === line.selectedVariant)
+    ) {
+      throw new Error(`The selected ${product.variantLabel?.toLowerCase() || "variant"} for ${product.name} is unavailable.`);
+    }
+
+    return { product, line };
+  });
+
+  const subtotal = lines.reduce((total, entry) => total + getEffectivePrice(entry.product) * entry.line.quantity, 0);
+  const shipping = subtotal > 0 ? 0 : 0;
+  const discount = 0;
+  const total = subtotal + shipping - discount;
+  const now = new Date().toISOString();
+  const orderNumber = generateOrderNumber(store.orders ?? []);
+  const items: OrderItem[] = lines.map(({ product, line }) => ({
+    id: `item-${crypto.randomUUID()}`,
+    productId: product.id,
+    productName: product.name,
+    productSlug: product.slug,
+    sku: product.sku,
+    image: product.featuredImage,
+    quantity: line.quantity,
+    unitPrice: getEffectivePrice(product),
+    selectedSize: line.selectedSize,
+    selectedVariant: line.selectedVariant,
+  }));
+
+  for (const { product, line } of lines) {
+    product.inventoryQuantity -= line.quantity;
+    if (product.inventoryQuantity <= 0) {
+      product.inventoryQuantity = 0;
+      product.status = "out_of_stock";
+    }
+    product.updatedAt = now;
+  }
+
+  const order: OrderRecord = {
+    id: `ord-${crypto.randomUUID()}`,
+    orderNumber,
+    submissionToken: payload.submissionToken,
+    status: "pending",
+    paymentStatus: payload.paymentMethod.toLowerCase().includes("cash") ? "cod" : "pending",
+    paymentMethod: payload.paymentMethod,
+    currency: "PKR",
+    subtotal,
+    shipping,
+    discount,
+    total,
+    items,
+    customer: payload.customer,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  store.activityLogs.unshift({
+    id: `log-${crypto.randomUUID()}`,
+    action: "order_created",
+    actor: payload.customer.email,
+    entity: "order",
+    entityId: order.id,
+    detail: order.orderNumber,
+    timestamp: now,
+  });
+  store.orders = [order, ...(store.orders ?? [])];
+  await writeStore(store);
+  return order;
+}
+
+export async function updateOrderStatus(orderNumber: string, status: OrderRecord["status"]) {
+  if (isPostgresStoreConfigured()) {
+    return updateOrderStatusInPostgres(orderNumber, status);
+  }
+
+  const store = await readStore();
+  const order = store.orders?.find((entry) => entry.orderNumber === orderNumber);
+  if (!order) {
+    throw new Error("Order not found");
+  }
+  if (status === "cancelled" && order.status !== "cancelled") {
+    for (const item of order.items) {
+      const product = store.products.find((entry) => entry.id === item.productId);
+      if (!product) continue;
+      product.inventoryQuantity += item.quantity;
+      if (["out_of_stock", "sold"].includes(product.status) && product.inventoryQuantity > 0) {
+        product.status = "published";
+      }
+      product.updatedAt = new Date().toISOString();
+    }
+  } else if (status !== "cancelled" && order.status === "cancelled") {
+    // Symmetric undo: an order that was cancelled (and had its items
+    // restocked above) is being moved back to an active status -- without
+    // re-deducting, that stock stays counted as available AND as committed
+    // to this now-active order at the same time, risking overselling the
+    // same physical one-of-a-kind stones.
+    for (const item of order.items) {
+      const product = store.products.find((entry) => entry.id === item.productId);
+      if (!product) continue;
+      product.inventoryQuantity = Math.max(0, product.inventoryQuantity - item.quantity);
+      if (product.status === "published" && product.inventoryQuantity <= 0) {
+        product.status = "out_of_stock";
+      }
+      product.updatedAt = new Date().toISOString();
+    }
+  }
+  order.status = status;
+  order.updatedAt = new Date().toISOString();
+  await writeStore(store);
+  return order;
+}
+
+function generateOrderNumber(existingOrders: OrderRecord[]) {
+  const today = new Date();
+  const y = today.getUTCFullYear();
+  const m = String(today.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(today.getUTCDate()).padStart(2, "0");
+  const prefix = `STZ-${y}${m}${d}`;
+  const count = existingOrders.filter((order) => order.orderNumber.startsWith(prefix)).length + 1;
+  return `${prefix}-${String(count).padStart(3, "0")}`;
 }

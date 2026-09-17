@@ -12,7 +12,11 @@ export function canPurchaseProduct(product: Pick<Product, "allowCartPurchase" | 
   return (
     product.allowCartPurchase &&
     product.inventoryQuantity > 0 &&
-    !["sold", "out_of_stock", "archived", "trash"].includes(product.status)
+    // "reserved" is a deliberate hold state between published and sold (an
+    // admin marking a one-of-a-kind stone aside for a customer mid-order) --
+    // it must never be purchasable, or a second customer can buy the same
+    // physical item out from under the one it was held for.
+    !["reserved", "sold", "out_of_stock", "archived", "trash"].includes(product.status)
   );
 }
 
@@ -20,4 +24,8 @@ export function validateCartQuantity(quantity: number, inventory: number, oneOfO
   if (quantity <= 0) return false;
   if (oneOfOne && quantity > 1) return false;
   return quantity <= inventory;
+}
+
+export function hasDiscount(product: Pick<Product, "price" | "salePrice">) {
+  return getEffectivePrice(product) < product.price;
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { installRequestedTaxonomyAction } from "@/actions/admin";
 import { listCategories, listProducts } from "@/lib/data/store";
 import { Button } from "@/components/shared/ui/button";
 
@@ -13,7 +14,11 @@ export default async function AdminCategoriesPage({
   const featuredOnly = typeof params.featured === "string" ? params.featured === "true" : false;
 
   const [categories, products] = await Promise.all([
-    listCategories({ admin: true, search }),
+    // includeInactive is required so the "Trash" status filter (below) has
+    // anything to show -- without it, listCategories() strips every
+    // status:"trash" row before this page's own filter ever runs, and a
+    // deleted category becomes permanently unfindable in the admin UI.
+    listCategories({ admin: true, search, includeInactive: true }),
     listProducts(),
   ]);
 
@@ -33,9 +38,14 @@ export default async function AdminCategoriesPage({
             Manage the stone families that appear across product forms, homepage selections and public storefront filtering.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/categories/new">New category</Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          <form action={installRequestedTaxonomyAction}>
+            <Button variant="outline">Install Men / Women taxonomy</Button>
+          </form>
+          <Button asChild>
+            <Link href="/admin/categories/new">New category</Link>
+          </Button>
+        </div>
       </div>
 
       <form className="grid gap-4 rounded-[1.75rem] border border-white/10 bg-[#111213] p-5 md:grid-cols-[1fr_180px_180px]">

@@ -1,26 +1,45 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Logo } from "@/components/shared/logo";
+import { hasDiscount } from "@/lib/commerce";
 import type { Category, Collection, Product } from "@/types/domain";
-import { formatMoney } from "@/lib/utils";
+import { cn, getProductDisplayPrice, formatMoney, humanizeSlug, isRemoteAsset } from "@/lib/utils";
+import { QuickBuyModal } from "@/components/storefront/quick-buy-modal";
+
+function VisualFallback({ label }: { label: string }) {
+  return (
+    <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,rgba(213,199,169,0.4),transparent_48%),linear-gradient(135deg,#fffaf2,#efe3cf)] px-8 text-center">
+      <div className="space-y-3">
+        <div className="flex justify-center">
+          <Logo dark href={false} src="/brand/stonza-logo.png" alt="STONZA" className="w-[88px] sm:w-[112px]" />
+        </div>
+        <p className="text-[11px] uppercase tracking-[0.28em] text-black/42">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 export function CollectionCard({ collection }: { collection: Collection }) {
   return (
-    <Link
-      href={`/collections/${collection.slug}`}
-      className="group overflow-hidden rounded-[2rem] border border-white/10 bg-white/4 transition duration-300 hover:-translate-y-1 hover:border-white/18"
-    >
-      <div className="relative h-72 overflow-hidden">
-        <Image
-          src={collection.featuredImage}
-          alt={collection.name}
-          fill
-          className="object-cover transition duration-700 group-hover:scale-105"
-        />
+    <Link href={`/collections/${collection.slug}`} className="sheen-card group block overflow-hidden rounded-[2rem] border border-[#e7dccd] bg-[#fffdfa] shadow-[0_20px_45px_rgba(23,18,12,0.05)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_26px_56px_rgba(23,18,12,0.08)]">
+      <div className="relative h-56 overflow-hidden bg-[#f2ece4] sm:h-72 lg:h-80">
+        {collection.featuredImage ? (
+          <Image
+            src={collection.featuredImage}
+            alt={collection.name}
+            fill
+            className="object-cover transition duration-700 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            unoptimized={isRemoteAsset(collection.featuredImage)}
+          />
+        ) : (
+          <VisualFallback label="Collection" />
+        )}
       </div>
-      <div className="space-y-2 p-6">
-        <p className="text-xs uppercase tracking-[0.28em] text-white/45">Collection</p>
-        <h3 className="text-display text-3xl text-white">{collection.name}</h3>
-        <p className="text-sm leading-7 text-white/62">{collection.description}</p>
+      <div className="space-y-3 px-5 py-6">
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7a4f]">Collection</p>
+        <h3 className="text-display text-2xl text-[#171717]">{collection.name}</h3>
+        <p className="text-sm leading-7 text-black/58">{collection.description}</p>
       </div>
     </Link>
   );
@@ -28,58 +47,142 @@ export function CollectionCard({ collection }: { collection: Collection }) {
 
 export function CategoryCard({ category }: { category: Category }) {
   return (
-    <Link
-      href={`/shop?category=${category.slug}`}
-      className="group overflow-hidden rounded-[2rem] border border-white/10 bg-white/4 transition duration-300 hover:-translate-y-1 hover:border-white/18"
-    >
-      <div className="relative h-64 overflow-hidden">
-        <Image
-          src={category.featuredImage}
-          alt={category.altText}
-          fill
-          className="object-cover transition duration-700 group-hover:scale-105"
-        />
+    <Link href={`/categories/${category.slug}`} className="sheen-card group block overflow-hidden rounded-[1.75rem] border border-[#eadfcf] bg-[#fffdf9] shadow-[0_18px_42px_rgba(23,18,12,0.04)] transition duration-300 hover:-translate-y-1.5 hover:shadow-[0_24px_50px_rgba(23,18,12,0.07)]">
+      <div className="relative h-48 overflow-hidden bg-[#f2ece4] sm:h-64 lg:h-72">
+        {category.featuredImage ? (
+          <Image
+            src={category.featuredImage}
+            alt={category.altText}
+            fill
+            className="object-cover transition duration-700 group-hover:scale-105"
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
+            unoptimized={isRemoteAsset(category.featuredImage)}
+          />
+        ) : (
+          <VisualFallback label="Category" />
+        )}
+        <div className="absolute inset-x-3 bottom-3 flex items-center justify-between rounded-full bg-[rgba(255,248,237,0.9)] px-3 py-2 text-[9px] uppercase tracking-[0.18em] text-black/58 backdrop-blur-md sm:inset-x-4 sm:bottom-4 sm:px-4 sm:text-[10px] sm:tracking-[0.22em]">
+          <span>{category.name}</span>
+          <span>View</span>
+        </div>
       </div>
-      <div className="space-y-2 p-6">
-        <p className="text-xs uppercase tracking-[0.28em] text-white/45">Category</p>
-        <h3 className="text-display text-3xl text-white">{category.name}</h3>
-        <p className="text-sm leading-7 text-white/62">{category.shortDescription}</p>
+      <div className="space-y-2 px-3 py-4 sm:px-5 sm:py-5">
+        <p className="text-[11px] uppercase tracking-[0.24em] text-[#9a7a4f]">Category</p>
+        <h3 className="text-display text-xl text-[#171717] sm:text-2xl">{category.name}</h3>
+        <p className="text-sm leading-6 text-black/58 sm:leading-7">{category.shortDescription}</p>
       </div>
     </Link>
   );
 }
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  priorityImage = false,
+}: {
+  product: Product;
+  priorityImage?: boolean;
+}) {
+  const isUnavailable = product.status === "out_of_stock" || product.status === "sold";
+  const effectivePrice = getProductDisplayPrice(product);
+  const secondImage = product.galleryImages.find((image) => image && image !== product.featuredImage);
+  const discountPercentage = hasDiscount(product)
+    ? Math.round(((product.price - effectivePrice) / product.price) * 100)
+    : 0;
+  const badge =
+    product.status === "sold"
+      ? "Sold Out"
+      : product.status === "out_of_stock"
+        ? "Sold Out"
+        : product.newArrival
+          ? "New"
+          : product.bestseller
+            ? "Best Seller"
+            : product.oneOfOne
+              ? "Limited"
+              : null;
+
   return (
-    <Link
-      href={`/stones/${product.slug}`}
-      className="group overflow-hidden rounded-[2rem] border border-white/10 bg-white/3 transition duration-300 hover:-translate-y-1 hover:border-white/18"
-    >
-      <div className="relative h-72 overflow-hidden bg-[#161818]">
-        <Image
-          src={product.featuredImage}
-          alt={product.altText}
-          fill
-          className="object-cover transition duration-700 group-hover:scale-105 group-hover:opacity-90"
-        />
-        {product.status === "out_of_stock" || product.status === "sold" ? (
-          <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-xs uppercase tracking-[0.22em] text-white/72">
-            {product.status === "sold" ? "Sold" : "Out of stock"}
-          </span>
-        ) : null}
-      </div>
-      <div className="space-y-3 p-6">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.24em] text-white/45">{product.stoneType}</p>
-            <h3 className="text-display text-2xl text-white">{product.name}</h3>
-          </div>
-          <p className="text-sm text-white/74">
-            {formatMoney(product.salePrice ?? product.price, product.currency)}
-          </p>
+    <article className="sheen-card group overflow-hidden rounded-[1.35rem] border border-black/8 bg-white shadow-[0_14px_36px_rgba(20,22,26,0.05)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_52px_rgba(20,22,26,0.09)]">
+      <div className="relative h-[13rem] overflow-hidden bg-[#f2eee8] sm:h-[18rem] lg:h-[21rem]">
+        <Link href={`/stones/${product.slug}`} className="absolute inset-0 z-10" aria-label={product.name} />
+        {product.featuredImage ? (
+          <>
+            <Image
+              src={product.featuredImage}
+              alt={product.altText}
+              fill
+              priority={priorityImage}
+              loading={priorityImage ? "eager" : "lazy"}
+              fetchPriority={priorityImage ? "high" : undefined}
+              className={cn(
+                "object-cover transition duration-500 group-hover:scale-[1.03]",
+                secondImage ? "group-hover:opacity-0" : "group-hover:opacity-95",
+              )}
+              sizes="(max-width: 768px) 60vw, (max-width: 1280px) 33vw, 20vw"
+              unoptimized={isRemoteAsset(product.featuredImage)}
+            />
+            {secondImage ? (
+              <Image
+                src={secondImage}
+                alt={product.altText}
+                fill
+                className="object-cover opacity-0 transition duration-500 group-hover:scale-[1.03] group-hover:opacity-100"
+                sizes="(max-width: 768px) 60vw, (max-width: 1280px) 33vw, 20vw"
+                unoptimized={isRemoteAsset(secondImage)}
+              />
+            ) : null}
+          </>
+        ) : (
+          <VisualFallback label="Product" />
+        )}
+        <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
+          {badge ? (
+            <span className="rounded-full bg-[#141414] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+              {badge}
+            </span>
+          ) : null}
+          {discountPercentage > 0 ? (
+            <span className="rounded-full bg-[#f4b234] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#161616]">
+              Save {discountPercentage}%
+            </span>
+          ) : null}
         </div>
-        <p className="text-sm leading-7 text-white/60">{product.shortDescription}</p>
+        <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between gap-3 rounded-full bg-white/94 px-3 py-2 shadow-[0_10px_24px_rgba(12,16,22,0.12)] backdrop-blur-md transition duration-300 group-hover:translate-y-0 lg:translate-y-4 lg:opacity-0 lg:group-hover:opacity-100">
+          <div className="min-w-0">
+            <p className="truncate text-[10px] uppercase tracking-[0.18em] text-black/42">{product.origin || humanizeSlug(product.categorySlug) || product.sku}</p>
+            <p className="truncate text-xs font-medium text-black/72">
+              {product.variants?.length ? `${product.variants.length} options` : product.sizes?.length ? `${product.sizes.length} sizes` : "Ready to ship"}
+            </p>
+          </div>
+          {!isUnavailable ? (
+            <QuickBuyModal product={product} />
+          ) : (
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-black/40">Unavailable</span>
+          )}
+        </div>
       </div>
-    </Link>
+      <div className="space-y-3 px-3 py-4 sm:px-5">
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-black/40">
+            <span>{humanizeSlug(product.collectionSlug || product.categorySlug)}</span>
+            {product.variants?.slice(0, 2).map((variant) => (
+              <span key={variant.id} className="rounded-full bg-[#f6f2ea] px-2 py-1">
+                {variant.label || variant.value}
+              </span>
+            ))}
+          </div>
+          <Link href={`/stones/${product.slug}`} className="line-clamp-2 text-[13px] font-semibold uppercase tracking-[0.12em] text-black/86 hover:text-black sm:text-sm">
+            {product.name}
+          </Link>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-black/72">
+          {hasDiscount(product) ? (
+            <span className="text-black/28 line-through">{formatMoney(product.price, product.currency)}</span>
+          ) : null}
+          <span className="font-semibold text-black">{formatMoney(effectivePrice, product.currency)}</span>
+        </div>
+        <p className="line-clamp-2 text-sm leading-6 text-black/52">{product.shortDescription}</p>
+      </div>
+    </article>
   );
 }

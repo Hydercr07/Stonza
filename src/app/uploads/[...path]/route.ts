@@ -24,7 +24,14 @@ export async function GET(
   const { path: segments } = await params;
   const absolutePath = path.resolve(uploadRoot, ...segments);
 
-  if (!absolutePath.startsWith(uploadRoot)) {
+  // A bare startsWith(uploadRoot) has no trailing separator, so a sibling
+  // directory whose name merely starts with the same string (e.g.
+  // ".stonza/uploads-backup") would satisfy the check via a "../" segment --
+  // the classic CWE-22 prefix-check bypass. path.relative resolves that:
+  // it's only safely inside uploadRoot if the relative path doesn't escape
+  // upward and isn't itself an absolute path (a different drive on Windows).
+  const relative = path.relative(uploadRoot, absolutePath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
     return new NextResponse("Not found", { status: 404 });
   }
 

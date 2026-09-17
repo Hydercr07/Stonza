@@ -1,40 +1,84 @@
 "use server";
 
+import crypto from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { clearAdminSession, getOwnerEmail, getOwnerPassword, requireAdminSession, setAdminSession } from "@/lib/auth/session";
+import { ZodError } from "zod";
 import {
+  clearAdminSession,
+  getAdminSession,
+  getOwnerEmail,
+  getOwnerPassword,
+  isSupabaseAuthEnabled,
+  requireAdminSession,
+  setAdminSession,
+} from "@/lib/auth/session";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
+import {
+  adjustProductInventory,
+  assignProductsToCategory,
+  assignProductsToCollection,
+  deleteCollection,
+  deleteJournalPost,
+  deleteManagedPage,
+  deleteProduct,
   deleteMediaAsset,
+  duplicateProduct,
   duplicateCategory,
+  getAdminSiteSettings,
   getCategoryById,
   getContentLabels,
   getHeroSettings,
+  getHomepageBanners,
+  getJournalPostById,
   getProductById,
   getStoreData,
-  getSiteSettings,
   logActivity,
+  listOrders,
   setProductStatus,
+  updateOrderStatus,
   updateCategoryStatus,
   updateContentLabels,
+  updateHomepageBanners,
   updateHomepageSections,
+  upsertManagedPage,
   updateMediaAsset,
   updateSiteSettings,
   upsertCategory,
   upsertCollection,
   upsertHero,
+  upsertJournalPost,
   upsertProduct,
 } from "@/lib/data/store";
-import { canTransitionProductStatus } from "@/lib/permissions";
+import { canRole, canTransitionProductStatus } from "@/lib/permissions";
 import {
   categorySchema,
   collectionSchema,
   heroSchema,
+  homepageBannerListSchema,
+  journalPostSchema,
   loginSchema,
+  managedPageSchema,
   productSchema,
   settingsSchema,
 } from "@/lib/validation/admin";
 import { slugify } from "@/lib/utils";
-import type { Category, ContentLabel, HomepageSection, NavigationItem, Product, ProductMediaItem } from "@/types/domain";
+import type {
+  Category,
+  ContentLabel,
+  HomepageBanner,
+  HomepageSection,
+  MediaAsset,
+  NavigationItem,
+  Product,
+  ProductMediaItem,
+  ProductSizeChart,
+} from "@/types/domain";
+
+export interface AdminActionState {
+  error: string | null;
+}
 
 function parseBoolean(value: FormDataEntryValue | null) {
   return value === "on" || value === "true";
@@ -53,6 +97,31 @@ function syncMedia(items: ProductMediaItem[]) {
   return ordered.map((item) => ({ ...item, featured: item.id === featuredItem?.id }));
 }
 
+function asProductMediaItem(asset: MediaAsset): ProductMediaItem {
+  return {
+    id: `product-media-${asset.id}`,
+    assetId: asset.id,
+    url: asset.publicUrl,
+    altText: asset.altText || asset.originalFilename.replace(/\.[^.]+$/, ""),
+    fileName: asset.originalFilename,
+    size: asset.size,
+    featured: true,
+    sortOrder: 1,
+  };
+}
+
+async function getRecentUploadFallback(actor: string) {
+  const store = await getStoreData();
+  const recentWindowStart = Date.now() - 10 * 60 * 1000;
+
+  return store.mediaAssets.find(
+    (asset) =>
+      asset.uploadedBy === actor &&
+      !asset.deletedAt &&
+      new Date(asset.uploadedAt).getTime() >= recentWindowStart,
+  );
+}
+
 function parseNavigation(value: FormDataEntryValue | null): NavigationItem[] {
   return parseJson<NavigationItem[]>(value, []).map((item, index) => ({
     ...item,
@@ -66,17 +135,121 @@ function parseNavigation(value: FormDataEntryValue | null): NavigationItem[] {
   }));
 }
 
-export async function loginAction(formData: FormData) {
-  const payload = loginSchema.parse({
-    email: formData.get("email"),
-    password: formData.get("password"),
-  });
+function parseSizeChart(formData: FormData): ProductSizeChart | undefined {
+  const raw = String(formData.get("sizeChartData") ?? "").trim();
+  if (!raw) return undefined;
+  return parseJson<ProductSizeChart>(raw, undefined as never);
+}
 
-  if (payload.email !== getOwnerEmail() || payload.password !== getOwnerPassword()) {
-    throw new Error("Invalid login credentials for local demo mode.");
+function parseProductVariants(formData: FormData) {
+  const raw = String(formData.get("variantsData") ?? "").trim();
+  if (!raw) return [];
+  return parseJson<Product["variants"]>(raw, []);
+}
+
+function parseProductSpecifications(formData: FormData) {
+  const raw = String(formData.get("specificationsData") ?? "").trim();
+  if (!raw) return [];
+  return parseJson<Product["specifications"]>(raw, []);
+}
+
+function toSentenceCase(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function prettifyFieldPath(path: Array<string | number>) {
+  if (!path.length) return "Form";
+  return toSentenceCase(
+    path
+      .map((part) => String(part).replace(/([A-Z])/g, " $1"))
+      .join(" ")
+      .replace(/[_-]/g, " ")
+      .trim(),
+  );
+}
+
+function formatAdminError(error: unknown) {
+  if (error instanceof ZodError) {
+    return error.issues
+      .map((issue) => `${prettifyFieldPath(issue.path.filter((part): part is string | number => typeof part === "string" || typeof part === "number"))}: ${issue.message}`)
+      .join(" ");
   }
 
-  await setAdminSession(payload.email);
+  return error instanceof Error ? error.message : "Product could not be saved right now.";
+}
+
+function timingSafeStringEqual(a: string, b: string) {
+  const bufferA = Buffer.from(a);
+  const bufferB = Buffer.from(b);
+  // Pad to equal length first so the comparison itself doesn't leak length
+  // via early-exit timing, then compare a fixed-size digest for good measure.
+  const paddedA = Buffer.concat([bufferA, Buffer.alloc(Math.max(0, bufferB.length - bufferA.length))]);
+  const paddedB = Buffer.concat([bufferB, Buffer.alloc(Math.max(0, bufferA.length - bufferB.length))]);
+  return bufferA.length === bufferB.length && crypto.timingSafeEqual(paddedA, paddedB);
+}
+
+export type LoginActionState = { error: string } | undefined;
+
+// Returns { error } on failure instead of throwing. A Server Action that
+// throws a plain Error, called from a bare `<form action={...}>` with no
+// client-side error boundary catching it, renders as Next's generic
+// "Application error: a client-side exception has occurred" blank screen --
+// so a wrong password, an expired rate limit, or any other ordinary login
+// failure looked identical to the site being broken. useActionState on the
+// client side (see login/page.tsx) surfaces this return value as a real
+// inline message instead.
+export async function loginAction(_prevState: LoginActionState, formData: FormData): Promise<LoginActionState> {
+  try {
+    const ip = await getClientIp();
+    const limit = checkRateLimit(`login:${ip}`, 5, 15 * 60 * 1000);
+    if (!limit.allowed) {
+      return { error: `Too many login attempts. Try again in ${Math.ceil(limit.retryAfterSeconds / 60)} minute(s).` };
+    }
+
+    const payload = loginSchema.parse({
+      email: formData.get("email"),
+      password: formData.get("password"),
+    });
+
+    if (isSupabaseAuthEnabled()) {
+      const supabase = await createSupabaseServerClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: payload.email,
+        password: payload.password,
+      });
+
+      if (error || !data.user) {
+        return { error: "Invalid login credentials." };
+      }
+
+      const session = await getAdminSession();
+      if (!session) {
+        // Valid Supabase account, but nobody granted it an admin role --
+        // don't leave a signed-in-but-unauthorized session sitting around.
+        await supabase.auth.signOut();
+        return { error: "This account does not have admin access." };
+      }
+    } else {
+      const emailValid = timingSafeStringEqual(payload.email, getOwnerEmail());
+      const passwordValid = timingSafeStringEqual(payload.password, getOwnerPassword());
+
+      if (!emailValid || !passwordValid) {
+        return { error: "Invalid login credentials for local demo mode." };
+      }
+
+      await setAdminSession(payload.email);
+    }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: "Enter a valid email and password." };
+    }
+    // Anything else (a Next.js redirect/navigation signal is never thrown
+    // from inside this try block -- redirect() is only called below, after
+    // it) is a genuinely unexpected failure. Surface it as a message
+    // instead of crashing the page.
+    return { error: "Something went wrong signing in. Please try again." };
+  }
+
   redirect("/admin");
 }
 
@@ -87,7 +260,14 @@ export async function logoutAction() {
 
 export async function saveCategoryAction(formData: FormData) {
   const session = await requireAdminSession("categories:write");
-  const featuredMedia = syncMedia(parseJson<ProductMediaItem[]>(formData.get("featuredMedia"), []));
+  const fallbackAsset = await getRecentUploadFallback(session.email);
+  const featuredMedia = syncMedia(
+    parseJson<ProductMediaItem[]>(formData.get("featuredMedia"), []).length
+      ? parseJson<ProductMediaItem[]>(formData.get("featuredMedia"), [])
+      : fallbackAsset
+        ? [asProductMediaItem(fallbackAsset)]
+        : [],
+  );
   const heroMedia = syncMedia(parseJson<ProductMediaItem[]>(formData.get("heroMedia"), []));
   const mobileMedia = syncMedia(parseJson<ProductMediaItem[]>(formData.get("mobileMedia"), []));
   const payload = categorySchema.parse({
@@ -121,6 +301,10 @@ export async function saveCategoryAction(formData: FormData) {
     createdAt: existing?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
+  const assignedProductSlugs = Array.from(formData.keys())
+    .filter((key) => key.startsWith("product:"))
+    .map((key) => key.replace("product:", ""));
+  await assignProductsToCategory(category.slug, assignedProductSlugs);
 
   await logActivity({
     action: existing ? "category_updated" : "category_created",
@@ -131,6 +315,7 @@ export async function saveCategoryAction(formData: FormData) {
   });
 
   revalidatePath("/shop");
+  revalidatePath(`/categories/${category.slug}`);
   revalidatePath("/collections");
   revalidatePath("/admin/categories");
   redirect(`/admin/categories/${category.id}`);
@@ -165,10 +350,17 @@ export async function transitionCategoryStatusAction(formData: FormData) {
   });
   revalidatePath("/shop");
   revalidatePath("/admin/categories");
+  if (status === "trash") {
+    redirect("/admin/categories?status=trash");
+  }
+  redirect(`/admin/categories/${category.id}`);
 }
 
 export async function saveCollectionAction(formData: FormData) {
   const session = await requireAdminSession("collections:write");
+  const assignedProductSlugs = Array.from(formData.keys())
+    .filter((key) => key.startsWith("product:"))
+    .map((key) => key.replace("product:", ""));
   const payload = collectionSchema.parse({
     id: formData.get("id") || undefined,
     name: formData.get("name"),
@@ -179,9 +371,17 @@ export async function saveCollectionAction(formData: FormData) {
     active: parseBoolean(formData.get("active")),
     featured: parseBoolean(formData.get("featured")),
     sortOrder: formData.get("sortOrder"),
+    seoTitle: String(formData.get("seoTitle") ?? ""),
+    seoDescription: String(formData.get("seoDescription") ?? ""),
+    openGraphImage: String(formData.get("openGraphImage") ?? ""),
   });
 
-  const collection = await upsertCollection(payload);
+  const collection = await upsertCollection({
+    ...payload,
+    featuredImage: payload.featuredImage ?? "",
+    heroMedia: payload.heroMedia ?? payload.featuredImage ?? "",
+  });
+  await assignProductsToCollection(collection.slug, assignedProductSlugs);
   await logActivity({
     action: "collection_saved",
     actor: session.email,
@@ -190,7 +390,25 @@ export async function saveCollectionAction(formData: FormData) {
     detail: collection.name,
   });
   revalidatePath("/collections");
+  revalidatePath(`/collections/${collection.slug}`);
   revalidatePath("/admin/collections");
+  redirect("/admin/collections");
+}
+
+export async function deleteCollectionAction(formData: FormData) {
+  const session = await requireAdminSession("collections:write");
+  const id = String(formData.get("id"));
+  const collection = await deleteCollection(id);
+  await logActivity({
+    action: "collection_deleted",
+    actor: session.email,
+    entity: "collection",
+    entityId: collection.id,
+    detail: collection.name,
+  });
+  revalidatePath("/collections");
+  revalidatePath("/admin/collections");
+  redirect("/admin/collections");
 }
 
 export async function saveHeroAction(formData: FormData) {
@@ -231,7 +449,7 @@ export async function saveHeroAction(formData: FormData) {
 
 export async function saveSettingsAction(formData: FormData) {
   const session = await requireAdminSession("settings:write");
-  const existing = await getSiteSettings();
+  const existing = await getAdminSiteSettings();
 
   const payload = settingsSchema.parse({
     siteTitle: formData.get("siteTitle"),
@@ -355,6 +573,29 @@ export async function saveHomepageSectionsAction(formData: FormData) {
   revalidatePath("/admin/homepage");
 }
 
+export async function saveHomepageBannersAction(formData: FormData) {
+  const session = await requireAdminSession("homepage:write");
+  const existing = await getHomepageBanners(true);
+  const nextBanners = homepageBannerListSchema.parse(
+    parseJson<HomepageBanner[]>(formData.get("banners"), existing).map((banner, index) => ({
+      ...banner,
+      order: index + 1,
+      updatedAt: new Date().toISOString(),
+      updatedBy: session.email,
+    })),
+  );
+
+  await updateHomepageBanners(nextBanners);
+  await logActivity({
+    action: "homepage_banners_updated",
+    actor: session.email,
+    entity: "homepage",
+    entityId: "homepage-banners",
+  });
+  revalidatePath("/");
+  revalidatePath("/admin/homepage");
+}
+
 export async function saveLabelsAction(formData: FormData) {
   const session = await requireAdminSession("settings:write");
   const labels = await getContentLabels();
@@ -379,14 +620,45 @@ export async function saveLabelsAction(formData: FormData) {
 
 export async function saveProductAction(formData: FormData) {
   const session = await requireAdminSession("products:write");
-  const media = syncMedia(parseJson<ProductMediaItem[]>(formData.get("media"), []));
-  const categorySlugs = Array.from(formData.keys())
+  const parsedMedia = parseJson<ProductMediaItem[]>(formData.get("media"), []);
+  const fallbackAsset = parsedMedia.length ? null : await getRecentUploadFallback(session.email);
+  const media = syncMedia(parsedMedia.length ? parsedMedia : fallbackAsset ? [asProductMediaItem(fallbackAsset)] : []);
+  const mainCategorySlug = String(formData.get("mainCategorySlug") ?? "").trim();
+  const selectedCategorySlugs = Array.from(formData.keys())
     .filter((key) => key.startsWith("category:"))
     .map((key) => key.replace("category:", ""));
+  const requestedSubcategorySlug = String(formData.get("subcategorySlug") ?? "").trim() || undefined;
+  const store = await getStoreData();
+  const subcategory = requestedSubcategorySlug
+    ? store.categories.find((category) => category.slug === requestedSubcategorySlug)
+    : null;
+  const subcategorySlug =
+    subcategory && (!mainCategorySlug || subcategory.parentCategorySlug === mainCategorySlug)
+      ? requestedSubcategorySlug
+      : undefined;
+  const parentCategorySlugs = selectedCategorySlugs.length
+    ? selectedCategorySlugs
+    : mainCategorySlug
+      ? [mainCategorySlug]
+      : [];
+  const categorySlugs = [...new Set([
+    ...parentCategorySlugs,
+    ...(subcategorySlug ? [subcategorySlug] : []),
+    ...(subcategory?.parentCategorySlug ? [subcategory.parentCategorySlug] : []),
+  ])];
+
+  if (categorySlugs.length === 0) {
+    throw new Error("Select at least one category before saving this product.");
+  }
+
+  if (media.length === 0) {
+    throw new Error("Upload at least one product image before saving this product.");
+  }
 
   const payload = productSchema.parse({
     id: formData.get("id") || undefined,
     name: formData.get("name"),
+    slug: formData.get("slug") || undefined,
     sku: formData.get("sku"),
     shortDescription: formData.get("shortDescription"),
     description: formData.get("description"),
@@ -395,16 +667,29 @@ export async function saveProductAction(formData: FormData) {
     inventoryQuantity: formData.get("inventoryQuantity"),
     categorySlug: categorySlugs[0] ?? formData.get("categorySlug"),
     categorySlugs,
+    subcategorySlug,
     collectionSlug: formData.get("collectionSlug"),
     stoneType: formData.get("stoneType"),
     origin: formData.get("origin"),
     featuredImage: media.find((item) => item.featured)?.url ?? "",
     media,
+    sizes: String(formData.get("sizes") ?? "")
+      .split(",")
+      .map((size) => size.trim())
+      .filter(Boolean),
+    variantLabel: String(formData.get("variantLabel") ?? "").trim() || undefined,
+    variants: parseProductVariants(formData) ?? [],
+    sizeChart: parseSizeChart(formData),
+    specifications: parseProductSpecifications(formData) ?? [],
     status: formData.get("status"),
+    visibility: formData.get("visibility") ?? "visible",
     featured: parseBoolean(formData.get("featured")),
     newArrival: parseBoolean(formData.get("newArrival")),
     allowCartPurchase: parseBoolean(formData.get("allowCartPurchase")),
     allowEnquiry: parseBoolean(formData.get("allowEnquiry")),
+    seoTitle: String(formData.get("seoTitle") ?? ""),
+    seoDescription: String(formData.get("seoDescription") ?? ""),
+    openGraphImage: String(formData.get("openGraphImage") ?? ""),
   });
 
   const existing = payload.id ? await getProductById(payload.id) : null;
@@ -414,8 +699,8 @@ export async function saveProductAction(formData: FormData) {
   const nextProduct: Product = {
     ...(existing ?? {
       id: nextId,
-      slug: slugify(payload.name),
-      currency: "USD",
+      slug: payload.slug ?? slugify(payload.name),
+      currency: "PKR",
       costPrice: 0,
       lowStockThreshold: 1,
       oneOfOne: false,
@@ -441,14 +726,15 @@ export async function saveProductAction(formData: FormData) {
     }),
     ...payload,
     id: nextId,
-    slug: slugify(payload.name),
+    slug: payload.slug ?? existing?.slug ?? slugify(payload.name),
     categorySlug: payload.categorySlugs[0],
     categorySlugs: payload.categorySlugs,
+    subcategorySlug: payload.subcategorySlug,
     media,
     featuredImage: media.find((item) => item.featured)?.url ?? payload.featuredImage,
     galleryImages: media.map((item) => item.url),
     altText: media.find((item) => item.featured)?.altText ?? media[0]?.altText ?? existing?.altText ?? payload.name,
-    currency: existing?.currency ?? "USD",
+    currency: existing?.currency ?? "PKR",
     costPrice: existing?.costPrice ?? 0,
     lowStockThreshold: existing?.lowStockThreshold ?? 1,
     oneOfOne: existing?.oneOfOne ?? false,
@@ -465,6 +751,12 @@ export async function saveProductAction(formData: FormData) {
     relatedProductSlugs: existing?.relatedProductSlugs ?? [],
     tags: existing?.tags ?? [],
     searchKeywords: existing?.searchKeywords ?? [],
+    sizes: payload.sizes,
+    variantLabel: payload.variantLabel,
+    variants: payload.variants,
+    sizeChart: payload.sizeChart ?? existing?.sizeChart,
+    specifications: payload.specifications,
+    visibility: payload.visibility,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
@@ -477,11 +769,232 @@ export async function saveProductAction(formData: FormData) {
     entityId: nextProduct.id,
     detail: nextProduct.name,
   });
+  if (existing?.slug && existing.slug !== nextProduct.slug) {
+    revalidatePath(`/stones/${existing.slug}`);
+  }
+  if (existing?.collectionSlug && existing.collectionSlug !== nextProduct.collectionSlug) {
+    revalidatePath(`/collections/${existing.collectionSlug}`);
+  }
+  if (nextProduct.collectionSlug) {
+    revalidatePath(`/collections/${nextProduct.collectionSlug}`);
+  }
   revalidatePath("/");
   revalidatePath("/shop");
   revalidatePath(`/stones/${nextProduct.slug}`);
   revalidatePath("/admin/products");
   redirect(`/admin/products/${nextProduct.id}`);
+}
+
+export async function deleteProductAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const id = String(formData.get("id"));
+  const product = await deleteProduct(id);
+  await logActivity({
+    action: "product_deleted",
+    actor: session.email,
+    entity: "product",
+    entityId: product.id,
+    detail: product.name,
+  });
+  revalidatePath("/");
+  revalidatePath("/shop");
+  revalidatePath("/admin/products");
+  redirect("/admin/products");
+}
+
+export async function duplicateProductAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const id = String(formData.get("id"));
+  const product = await duplicateProduct(id);
+  await logActivity({
+    action: "product_duplicated",
+    actor: session.email,
+    entity: "product",
+    entityId: product.id,
+    detail: product.name,
+  });
+  revalidatePath("/shop");
+  revalidatePath("/admin/products");
+  redirect(`/admin/products/${product.id}`);
+}
+
+export async function quickUpdateProductAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const id = String(formData.get("id"));
+  const existing = await getProductById(id);
+  if (!existing) {
+    throw new Error("Product not found.");
+  }
+
+  const price = formData.get("price");
+  const salePrice = formData.get("salePrice");
+  const inventoryQuantity = formData.get("inventoryQuantity");
+  const status = formData.get("status");
+  const featured = formData.get("featured");
+  const categorySlug = formData.get("categorySlug");
+
+  const nextStatus = status ? (String(status) as Product["status"]) : existing.status;
+  if (nextStatus !== existing.status) {
+    // The dedicated Publish/Unpublish action requires products:publish and
+    // validates the transition -- this inline quick-edit dropdown exposed
+    // every status option regardless of the product's current one and
+    // enforced neither, so e.g. selecting "published" on a "sold" or
+    // "trash" row instantly republished it with no state-machine check.
+    if (!canRole(session.role, "products:publish")) {
+      throw new Error("You do not have permission to change product status.");
+    }
+    if (!canTransitionProductStatus(existing.status, nextStatus)) {
+      throw new Error(`Cannot change status from "${existing.status}" to "${nextStatus}".`);
+    }
+  }
+
+  const nextProduct: Product = {
+    ...existing,
+    price: price !== null && String(price).length ? Number(price) : existing.price,
+    salePrice:
+      salePrice !== null
+        ? String(salePrice).trim()
+          ? Number(salePrice)
+          : undefined
+        : existing.salePrice,
+    inventoryQuantity:
+      inventoryQuantity !== null && String(inventoryQuantity).length
+        ? Number(inventoryQuantity)
+        : existing.inventoryQuantity,
+    status: nextStatus,
+    featured: featured ? featured === "true" : existing.featured,
+    categorySlug: categorySlug ? String(categorySlug) : existing.categorySlug,
+    categorySlugs: categorySlug ? [String(categorySlug)] : existing.categorySlugs,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await upsertProduct(nextProduct);
+  await logActivity({
+    action: "product_quick_updated",
+    actor: session.email,
+    entity: "product",
+    entityId: nextProduct.id,
+    detail: nextProduct.name,
+  });
+  revalidatePath("/shop");
+  revalidatePath(`/stones/${nextProduct.slug}`);
+  revalidatePath("/admin/products");
+}
+
+export async function bulkUpdateProductsAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const ids = Array.from(formData.keys())
+    .filter((key) => key.startsWith("product:"))
+    .map((key) => key.replace("product:", ""));
+  const action = String(formData.get("bulkAction") ?? "");
+  const value = String(formData.get("bulkValue") ?? "");
+
+  if (!ids.length) {
+    throw new Error("Select at least one product.");
+  }
+
+  for (const id of ids) {
+    const existing = await getProductById(id);
+    if (!existing) continue;
+
+    if (action === "delete") {
+      await deleteProduct(id);
+      continue;
+    }
+
+    const nextProduct: Product = {
+      ...existing,
+      updatedAt: new Date().toISOString(),
+    };
+
+    const bulkStatusTargets: Partial<Record<string, Product["status"]>> = {
+      publish: "published",
+      draft: "draft",
+      archive: "archived",
+    };
+    const targetStatus = bulkStatusTargets[action];
+    if (targetStatus) {
+      // Mirrors transitionProductStatusAction's guard -- bulk actions used
+      // to set status directly with no permission or state-machine check at
+      // all, so selecting "Publish" over a multi-select that included sold
+      // or trashed items instantly republished them in one click. Skip
+      // (rather than fail the whole batch) any row the transition isn't
+      // valid for, since a bulk action spanning many rows is expected to
+      // apply only to the ones it's actually valid for.
+      if (!canRole(session.role, "products:publish") || !canTransitionProductStatus(existing.status, targetStatus)) {
+        continue;
+      }
+      nextProduct.status = targetStatus;
+    }
+    if (action === "feature") nextProduct.featured = true;
+    if (action === "unfeature") nextProduct.featured = false;
+    if (action === "set-category" && value) {
+      nextProduct.categorySlug = value;
+      nextProduct.categorySlugs = [value];
+    }
+    if (action === "set-collection") {
+      nextProduct.collectionSlug = value;
+    }
+
+    await upsertProduct(nextProduct);
+  }
+
+  await logActivity({
+    action: "products_bulk_updated",
+    actor: session.email,
+    entity: "product",
+    entityId: ids.join(","),
+    detail: action,
+  });
+  revalidatePath("/shop");
+  revalidatePath("/admin/products");
+}
+
+export async function adjustInventoryAction(formData: FormData) {
+  const session = await requireAdminSession("products:write");
+  const id = String(formData.get("id"));
+  const delta = Number(formData.get("delta") ?? 0);
+  const reason = String(formData.get("reason") ?? "").trim();
+
+  if (!delta) {
+    throw new Error("Enter a stock adjustment amount.");
+  }
+
+  const product = await adjustProductInventory(id, delta);
+  await logActivity({
+    action: "inventory_adjusted",
+    actor: session.email,
+    entity: "product",
+    entityId: product.id,
+    detail: `${product.name}: ${delta > 0 ? "+" : ""}${delta}${reason ? ` (${reason})` : ""}`,
+  });
+  revalidatePath("/shop");
+  revalidatePath("/admin/inventory");
+  revalidatePath("/admin/products");
+}
+
+export async function saveProductFormAction(
+  _previousState: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  try {
+    await saveProductAction(formData);
+    return { error: null };
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "digest" in error &&
+      typeof (error as { digest?: string }).digest === "string" &&
+      (error as { digest: string }).digest.includes("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    return {
+      error: formatAdminError(error),
+    };
+  }
 }
 
 export async function transitionProductStatusAction(formData: FormData) {
@@ -505,6 +1018,7 @@ export async function transitionProductStatusAction(formData: FormData) {
   revalidatePath("/shop");
   revalidatePath(`/stones/${updated.slug}`);
   revalidatePath("/admin/products");
+  redirect(`/admin/products/${updated.id}`);
 }
 
 export async function updateMediaAssetAction(formData: FormData) {
@@ -534,4 +1048,296 @@ export async function deleteMediaAssetAction(formData: FormData) {
     entityId: id,
   });
   revalidatePath("/admin/media");
+}
+
+export async function transitionOrderStatusAction(formData: FormData) {
+  const session = await requireAdminSession("orders:write");
+  const orderNumber = String(formData.get("orderNumber"));
+  const status = String(formData.get("status")) as Awaited<ReturnType<typeof listOrders>>[number]["status"];
+  const order = await updateOrderStatus(orderNumber, status);
+  await logActivity({
+    action: "order_status_updated",
+    actor: session.email,
+    entity: "order",
+    entityId: order.id,
+    detail: `${order.orderNumber} -> ${status}`,
+  });
+  revalidatePath("/admin/orders");
+  revalidatePath(`/order-confirmation/${order.orderNumber}`);
+}
+
+export async function saveManagedPageAction(formData: FormData) {
+  const session = await requireAdminSession("settings:write");
+  const payload = managedPageSchema.parse({
+    id: formData.get("id") || undefined,
+    title: formData.get("title"),
+    slug: formData.get("slug") || undefined,
+    heroHeading: formData.get("heroHeading"),
+    heroMedia: String(formData.get("heroMedia") ?? "") || undefined,
+    content: formData.get("content"),
+    status: formData.get("status"),
+    seoTitle: String(formData.get("seoTitle") ?? ""),
+    seoDescription: String(formData.get("seoDescription") ?? ""),
+    openGraphImage: String(formData.get("openGraphImage") ?? ""),
+  });
+
+  const page = await upsertManagedPage({
+    ...payload,
+    slug: payload.slug ?? slugify(payload.title),
+    updatedAt: new Date().toISOString(),
+  });
+
+  await logActivity({
+    action: "page_saved",
+    actor: session.email,
+    entity: "page",
+    entityId: page.id,
+    detail: page.slug,
+  });
+
+  revalidatePath(`/${page.slug}`);
+  revalidatePath("/admin/pages");
+}
+
+export async function deleteManagedPageAction(formData: FormData) {
+  const session = await requireAdminSession("settings:write");
+  const id = String(formData.get("id"));
+  const page = await deleteManagedPage(id);
+
+  await logActivity({
+    action: "page_deleted",
+    actor: session.email,
+    entity: "page",
+    entityId: page.id,
+    detail: page.slug,
+  });
+
+  revalidatePath(`/${page.slug}`);
+  revalidatePath("/admin/pages");
+  redirect("/admin/pages");
+}
+
+export async function saveJournalPostAction(formData: FormData) {
+  const session = await requireAdminSession("settings:write");
+  const payload = journalPostSchema.parse({
+    id: formData.get("id") || undefined,
+    title: formData.get("title"),
+    slug: formData.get("slug") || undefined,
+    heroHeading: formData.get("heroHeading"),
+    heroMedia: String(formData.get("heroMedia") ?? "") || undefined,
+    content: formData.get("content"),
+    status: formData.get("status"),
+    seoTitle: String(formData.get("seoTitle") ?? ""),
+    seoDescription: String(formData.get("seoDescription") ?? ""),
+    openGraphImage: String(formData.get("openGraphImage") ?? ""),
+    excerpt: formData.get("excerpt"),
+    publishedAt: String(formData.get("publishedAt") ?? "") || new Date().toISOString(),
+  });
+
+  const existing = payload.id ? await getJournalPostById(payload.id) : null;
+  const post = await upsertJournalPost({
+    ...existing,
+    ...payload,
+    slug: payload.slug ?? slugify(payload.title),
+    updatedAt: new Date().toISOString(),
+    publishedAt: payload.publishedAt || existing?.publishedAt || new Date().toISOString(),
+  });
+
+  await logActivity({
+    action: existing ? "journal_updated" : "journal_created",
+    actor: session.email,
+    entity: "journal",
+    entityId: post.id,
+    detail: post.slug,
+  });
+
+  revalidatePath("/journal");
+  revalidatePath(`/journal/${post.slug}`);
+  revalidatePath("/admin/journal");
+  redirect("/admin/journal");
+}
+
+export async function deleteJournalPostAction(formData: FormData) {
+  const session = await requireAdminSession("settings:write");
+  const id = String(formData.get("id"));
+  const post = await deleteJournalPost(id);
+
+  await logActivity({
+    action: "journal_deleted",
+    actor: session.email,
+    entity: "journal",
+    entityId: post.id,
+    detail: post.slug,
+  });
+
+  revalidatePath("/journal");
+  revalidatePath(`/journal/${post.slug}`);
+  revalidatePath("/admin/journal");
+  redirect("/admin/journal");
+}
+
+export async function installRequestedTaxonomyAction() {
+  const session = await requireAdminSession("categories:write");
+  const store = await getStoreData();
+  const now = new Date().toISOString();
+  const requested: Array<{
+    name: string;
+    slug: string;
+    legacySlugs: string[];
+    parentCategorySlug?: string;
+    shortDescription: string;
+    description: string;
+  }> = [
+    {
+      name: "Men",
+      slug: "men",
+      legacySlugs: [],
+      parentCategorySlug: undefined,
+      shortDescription: "Men's jewellery and stones curated for bold, grounded styling.",
+      description: "Men's jewellery and stones curated through the STONZA admin portal.",
+    },
+    {
+      name: "Women",
+      slug: "women",
+      legacySlugs: [],
+      parentCategorySlug: undefined,
+      shortDescription: "Women's jewellery and stones arranged in a clean editorial hierarchy.",
+      description: "Women's jewellery and stones curated through the STONZA admin portal.",
+    },
+    {
+      name: "Rings",
+      slug: "men-rings",
+      legacySlugs: ["men-rings"],
+      parentCategorySlug: "men",
+      shortDescription: "Men's rings shaped for statement and daily wear.",
+      description: "Men's rings managed within the STONZA Men category hierarchy.",
+    },
+    {
+      name: "Bracelets & Chains",
+      slug: "men-bracelets-chains",
+      legacySlugs: [],
+      parentCategorySlug: "men",
+      shortDescription: "Men's bracelets and chains presented in one unified rail.",
+      description: "Men's bracelets and chains managed within the STONZA Men category hierarchy.",
+    },
+    {
+      name: "Stones",
+      slug: "men-stones",
+      legacySlugs: ["men-rings-stones", "orig-gem-stones"],
+      parentCategorySlug: "men",
+      shortDescription: "Loose stones and collector pieces aligned to the men's catalogue.",
+      description: "Men's stones managed within the STONZA Men category hierarchy.",
+    },
+    {
+      name: "Rings",
+      slug: "women-rings",
+      legacySlugs: ["women-rings"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's rings arranged under the Women parent category.",
+      description: "Women's rings managed within the STONZA Women category hierarchy.",
+    },
+    {
+      name: "Bracelets",
+      slug: "women-bracelets",
+      legacySlugs: ["bracelets"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's bracelets arranged under the Women parent category.",
+      description: "Women's bracelets managed within the STONZA Women category hierarchy.",
+    },
+    {
+      name: "Jewellery Sets",
+      slug: "women-jewellery-sets",
+      legacySlugs: ["jewellery-sets"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's jewellery sets arranged under the Women parent category.",
+      description: "Women's jewellery sets managed within the STONZA Women category hierarchy.",
+    },
+    {
+      name: "Diamond",
+      slug: "women-diamond",
+      legacySlugs: ["diamond"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's diamond-focused pieces arranged under the Women parent category.",
+      description: "Women's diamond pieces managed within the STONZA Women category hierarchy.",
+    },
+    {
+      name: "Diamond Nose Pin",
+      slug: "women-diamond-nose-pin",
+      legacySlugs: ["diamond-sets"],
+      parentCategorySlug: "women",
+      shortDescription: "Women's diamond nose pin assortment under the Women parent category.",
+      description: "Women's diamond nose pin pieces managed within the STONZA Women category hierarchy.",
+    },
+  ];
+
+  for (const [index, category] of requested.entries()) {
+    const existing =
+      store.categories.find((entry) => entry.slug === category.slug) ??
+      store.categories.find((entry) => category.legacySlugs.includes(entry.slug));
+
+    await upsertCategory({
+      ...existing,
+      name: category.name,
+      slug: category.slug,
+      shortDescription: category.shortDescription,
+      description: category.description,
+      altText: category.name,
+      parentCategorySlug: category.parentCategorySlug,
+      sortOrder: index + 1,
+      featured: existing?.featured ?? false,
+      active: true,
+      status: "published",
+      seoTitle: existing?.seoTitle ?? category.name,
+      seoDescription: existing?.seoDescription ?? category.shortDescription,
+      openGraphImage: existing?.openGraphImage ?? existing?.featuredImage ?? "",
+      createdBy: existing?.createdBy ?? session.email,
+      updatedBy: session.email,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      slugHistory:
+        existing && existing.slug !== category.slug
+          ? [...new Set([...(existing.slugHistory ?? []), existing.slug])]
+          : existing?.slugHistory,
+    });
+  }
+
+  const productRemaps: Array<{
+    legacySlugs: string[];
+    parentSlug: string;
+    subcategorySlug: string;
+  }> = [
+    { legacySlugs: ["men-rings"], parentSlug: "men", subcategorySlug: "men-rings" },
+    { legacySlugs: ["men-rings-stones", "orig-gem-stones"], parentSlug: "men", subcategorySlug: "men-stones" },
+    { legacySlugs: ["women-rings"], parentSlug: "women", subcategorySlug: "women-rings" },
+    { legacySlugs: ["bracelets"], parentSlug: "women", subcategorySlug: "women-bracelets" },
+    { legacySlugs: ["jewellery-sets"], parentSlug: "women", subcategorySlug: "women-jewellery-sets" },
+    { legacySlugs: ["diamond"], parentSlug: "women", subcategorySlug: "women-diamond" },
+    { legacySlugs: ["diamond-sets"], parentSlug: "women", subcategorySlug: "women-diamond-nose-pin" },
+  ];
+
+  for (const product of store.products) {
+    const currentSlugs = [...new Set([product.categorySlug, ...(product.categorySlugs ?? []), product.subcategorySlug ?? ""])].filter(Boolean);
+    const mapping = productRemaps.find((entry) => currentSlugs.some((slug) => entry.legacySlugs.includes(slug)));
+    if (!mapping) continue;
+
+    await upsertProduct({
+      ...product,
+      categorySlug: mapping.parentSlug,
+      categorySlugs: [mapping.parentSlug, mapping.subcategorySlug],
+      subcategorySlug: mapping.subcategorySlug,
+      updatedAt: now,
+    });
+  }
+
+  await logActivity({
+    action: "category_taxonomy_installed",
+    actor: session.email,
+    entity: "category",
+    entityId: "requested-taxonomy",
+    detail: "Installed Men/Women category hierarchy",
+  });
+
+  revalidatePath("/admin/categories");
+  revalidatePath("/");
+  revalidatePath("/shop");
 }
