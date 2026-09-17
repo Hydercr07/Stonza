@@ -18,7 +18,17 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        # Not `npm ci`: this repo has hit repeated cross-platform optional-
+        # dependency lockfile skew (a documented npm limitation with
+        # platform-variant native binaries such as @rolldown/binding-* and
+        # their nested @emnapi/* pins) -- a lockfile regenerated on one OS
+        # doesn't always record every other OS's optional-dependency
+        # resolution, so `npm ci` on this Linux runner rejects a lockfile
+        # that's perfectly valid and installs cleanly via `npm install`
+        # (this runner's own build pipeline included). `npm install` is
+        # less strict than `npm ci` (it can adjust the lockfile rather than
+        # failing outright), which is exactly the tolerance needed here.
+        run: npm install
 
       - name: Typecheck
         run: npm run typecheck
